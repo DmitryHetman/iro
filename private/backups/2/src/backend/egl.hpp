@@ -1,0 +1,36 @@
+#pragma once
+
+#include <iro.hpp>
+#include <util/nonCopyable.hpp>
+
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+
+#include <string>
+#include <vector>
+
+class eglContext : public nonCopyable
+{
+protected:
+    EGLDisplay display_;
+    EGLContext context_;
+    EGLConfig config_;
+
+    std::vector<std::string> extensions_;
+
+public:
+    eglContext(EGLNativeDisplayType display);
+    virtual ~eglContext();
+
+    EGLDisplay getDisplay() const { return display_; }
+    EGLContext getContext() const { return context_; }
+    EGLConfig getConfig() const { return config_; }
+
+    bool hasExtension(const std::string& extension) const;
+
+    static PFNEGLBINDWAYLANDDISPLAYWL eglBindWaylandDisplayWL;
+    static PFNEGLUNBINDWAYLANDDISPLAYWL eglUnbindWaylandDisplayWL;
+    static PFNEGLQUERYWAYLANDBUFFERWL eglQueryWaylandBufferWL;
+    static PFNEGLCREATEIMAGEKHRPROC eglCreateImageKHR;
+    static PFNEGLDESTROYIMAGEKHRPROC eglDestroyImageKHR;
+};

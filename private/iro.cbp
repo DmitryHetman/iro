@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="iro" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/Debug/iro" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+					<Add directory="/mnt/sda5/Programming/projects/iro/src" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="bin/Release/iro" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+			<Add directory="/usr/include/libdrm" />
+		</Compiler>
+		<Linker>
+			<Add library="pthread" />
+			<Add library="X11" />
+			<Add library="wayland-server" />
+			<Add library="EGL" />
+			<Add library="wayland-cursor" />
+			<Add library="wayland-egl" />
+			<Add library="xcb" />
+			<Add library="X11-xcb" />
+			<Add library="xcb-icccm" />
+			<Add library="GLESv2" />
+			<Add library="gbm" />
+			<Add library="drm" />
+		</Linker>
+		<Unit filename="../src/backend/backend.cpp" />
+		<Unit filename="../src/backend/backend.hpp" />
+		<Unit filename="../src/backend/egl.cpp" />
+		<Unit filename="../src/backend/egl.hpp" />
+		<Unit filename="../src/backend/kms/input.cpp" />
+		<Unit filename="../src/backend/kms/input.hpp" />
+		<Unit filename="../src/backend/kms/kmsBackend.cpp" />
+		<Unit filename="../src/backend/kms/kmsBackend.hpp" />
+		<Unit filename="../src/backend/output.cpp" />
+		<Unit filename="../src/backend/output.hpp" />
+		<Unit filename="../src/backend/renderer.cpp" />
+		<Unit filename="../src/backend/renderer.hpp" />
+		<Unit filename="../src/backend/tty.cpp" />
+		<Unit filename="../src/backend/tty.hpp" />
+		<Unit filename="../src/backend/x11/x11Backend.cpp" />
+		<Unit filename="../src/backend/x11/x11Backend.hpp" />
+		<Unit filename="../src/compositor/compositor.cpp" />
+		<Unit filename="../src/compositor/compositor.hpp" />
+		<Unit filename="../src/compositor/subcompositor.cpp" />
+		<Unit filename="../src/compositor/subcompositor.hpp" />
+		<Unit filename="../src/iro.hpp" />
+		<Unit filename="../src/main.cpp" />
+		<Unit filename="../src/resources/buffer.cpp" />
+		<Unit filename="../src/resources/buffer.hpp" />
+		<Unit filename="../src/resources/region.cpp" />
+		<Unit filename="../src/resources/region.hpp" />
+		<Unit filename="../src/resources/resource.cpp" />
+		<Unit filename="../src/resources/resource.hpp" />
+		<Unit filename="../src/resources/shellSurface.cpp" />
+		<Unit filename="../src/resources/shellSurface.hpp" />
+		<Unit filename="../src/resources/subsurface.cpp" />
+		<Unit filename="../src/resources/subsurface.hpp" />
+		<Unit filename="../src/resources/surface.cpp" />
+		<Unit filename="../src/resources/surface.hpp" />
+		<Unit filename="../src/seat/keyboard.cpp" />
+		<Unit filename="../src/seat/keyboard.hpp" />
+		<Unit filename="../src/seat/pointer.cpp" />
+		<Unit filename="../src/seat/pointer.hpp" />
+		<Unit filename="../src/seat/seat.cpp" />
+		<Unit filename="../src/seat/seat.hpp" />
+		<Unit filename="../src/server.cpp" />
+		<Unit filename="../src/server.hpp" />
+		<Unit filename="../src/shader/shader.cpp" />
+		<Unit filename="../src/shader/shader.hpp" />
+		<Unit filename="../src/shader/sources.hpp" />
+		<Unit filename="../src/shell/shell.cpp" />
+		<Unit filename="../src/shell/shell.hpp" />
+		<Unit filename="../src/util/callback.hpp" />
+		<Unit filename="../src/util/mat.hpp" />
+		<Unit filename="../src/util/misc.hpp" />
+		<Unit filename="../src/util/nonCopyable.hpp" />
+		<Unit filename="../src/util/rect.hpp" />
+		<Unit filename="../src/util/refVec.hpp" />
+		<Unit filename="../src/util/region.hpp" />
+		<Unit filename="../src/util/thread.hpp" />
+		<Unit filename="../src/util/time.hpp" />
+		<Unit filename="../src/util/transformable.hpp" />
+		<Unit filename="../src/util/utils.hpp" />
+		<Unit filename="../src/util/vec.hpp" />
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<lib_finder disable_auto="1" />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>
