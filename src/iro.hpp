@@ -16,7 +16,7 @@ class subcompositorRes;
 class shellRes;
 class seatRes;
 class outputRes;
-class buffer;
+class bufferRes;
 
 class pointerRes;
 class keyboardRes;
@@ -26,6 +26,7 @@ class output;
 
 class renderer;
 class shader;
+class surfaceProgram;
 
 class resource;
 class surfaceRes;
@@ -46,6 +47,8 @@ class ttyHandler;
 class inputHandler;
 
 enum class backendType : unsigned char;
+enum class bufferFormat : unsigned char;
+enum class bufferType : unsigned char;
 
 server* getServer();
 compositor* getCompositor();

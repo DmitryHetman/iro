@@ -14,7 +14,7 @@ void surfaceDestroy(wl_client* client, wl_resource* resource)
 void surfaceAttach(wl_client* client, wl_resource* resource, wl_resource* wlbuffer, int x, int y)
 {
     surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
-    surf->getPending().attached = new buffer(wlbuffer);
+    surf->getPending().attached = new bufferRes(wlbuffer);
     surf->getPending().offset = vec2i(x, y);
 }
 void surfaceDamage(wl_client* client, wl_resource* resource, int x, int y, int width, int height)

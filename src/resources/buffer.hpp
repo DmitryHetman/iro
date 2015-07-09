@@ -1,11 +1,12 @@
 #pragma once
 
 #include <iro.hpp>
+#include <resources/resource.hpp>
 #include <util/nonCopyable.hpp>
 
 #include <wayland-server-core.h>
 
-enum class bufferType
+enum class bufferType : unsigned char
 {
     unknown = 0,
 
@@ -13,7 +14,7 @@ enum class bufferType
     egl
 };
 
-enum class bufferFormat
+enum class bufferFormat : unsigned char
 {
     unknown = 0,
 
@@ -21,30 +22,26 @@ enum class bufferFormat
     argb32
 };
 
-class buffer : public nonCopyable
+class bufferRes : public resource
 {
 protected:
-    wl_resource* buffer_;
+    bufferFormat format_ = bufferFormat::unknown;
+    bufferType type_ = bufferType::unknown;
 
-    bufferFormat format_;
-    bool initialized_;
+    unsigned int texture_ = 0; //GLTexture
 
-    bufferType type_;
-    unsigned int textures_[3] = {0, 0, 0};
-    void* images_[3] = {nullptr, nullptr, nullptr};
+    bool fromShmBuffer(wl_shm_buffer* buffer);
+    bool fromEglBuffer(wl_resource* buffer);
 
 public:
-    buffer(wl_resource* resource);
-    ~buffer();
+    bufferRes(wl_resource* res);
+    virtual ~bufferRes();
 
-    bool initialized() const { return initialized_; }
-    bool initialize();
+    bool init();
+    bool initialized() const { return (texture_ != 0); }
 
-    bufferType getType() const { return type_; }
     bufferFormat getFormat() const { return format_; }
+    bufferType getBufferType() const { return type_; }
 
-    void* getImage(unsigned int i = 0) const { return images_[i]; }
-    unsigned int getTexture(unsigned int i = 0) const { return textures_[i]; }
-
-    wl_resource* getWlResource() const { return buffer_; }
+    unsigned int getTexture() const { return texture_; }
 };

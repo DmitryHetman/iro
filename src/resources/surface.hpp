@@ -18,7 +18,7 @@ struct surfaceState
 
     rect2i damage = rect2i(0, 0, 0, 0);
     vec2i offset = vec2i(0, 0);
-    buffer* attached = nullptr;
+    bufferRes* attached = nullptr;
 
     int scale = 1;
     wl_output_transform transform = wl_output_transform::WL_OUTPUT_TRANSFORM_NORMAL;

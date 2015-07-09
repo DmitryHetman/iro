@@ -88,10 +88,10 @@ compositor::compositor()
 
     object = this;
 
-/*
+
     if(x11Backend::available())
         backend_ = new x11Backend();
-    else */
+    else
         backend_ = new kmsBackend();
 
     subcompositor_ = new subcompositor();

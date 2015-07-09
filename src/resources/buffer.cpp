@@ -12,74 +12,84 @@
 
 #include <iostream>
 
-buffer::buffer(wl_resource* resource) : buffer_(resource), type_(bufferType::unknown)
+bufferRes::bufferRes(wl_resource* res) : resource(res)
 {
-
 }
 
-buffer::~buffer()
+bufferRes::~bufferRes()
 {
-
+    if(texture_) glDeleteTextures(1, &texture_);
 }
 
-bool buffer::initialize()
+bool bufferRes::fromShmBuffer(wl_shm_buffer* shmBuffer)
 {
-    wl_shm_buffer* shmBuffer = nullptr;
-    shmBuffer = wl_shm_buffer_get(buffer_);
+    std::cout << "attaching shm" << std::endl;
+    unsigned int format = wl_shm_buffer_get_format(shmBuffer);
 
-    if(shmBuffer) //buffer is shm
+    if(format == WL_SHM_FORMAT_ARGB8888)
     {
-        std::cout << "attaching shm" << std::endl;
-        unsigned int format = wl_shm_buffer_get_format(shmBuffer);
-
-        if(format == WL_SHM_FORMAT_ARGB8888)
-        {
-            format_ = bufferFormat::argb32;
-        }
-        else if(format == WL_SHM_FORMAT_XRGB8888)
-        {
-            format_ = bufferFormat::rgb32;
-        }
-        else
-        {
-            format_ = bufferFormat::unknown;
-            return false;
-        }
-
-        unsigned int pitch = wl_shm_buffer_get_stride(shmBuffer) / 4;
-        GLint glFormat = GL_BGRA_EXT;
-        GLint glPixel = GL_UNSIGNED_BYTE;
-
-        glActiveTexture(GL_TEXTURE0);
-        glGenTextures(1, &textures_[0]);
-        glBindTexture(GL_TEXTURE_2D, textures_[0]);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-        glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, pitch);
-        glPixelStorei(GL_UNPACK_SKIP_PIXELS_EXT, 0);
-        glPixelStorei(GL_UNPACK_SKIP_ROWS_EXT, 0);
-
-        wl_shm_buffer_begin_access(shmBuffer);
-        void* data = wl_shm_buffer_get_data(shmBuffer);
-        glTexImage2D(GL_TEXTURE_2D, 0, glFormat, pitch, wl_shm_buffer_get_height(shmBuffer), 0, glFormat, glPixel, data);
-        wl_shm_buffer_end_access(shmBuffer);
-
-        type_ = bufferType::shm;
+        format_ = bufferFormat::argb32;
     }
-    else //buffer is egl
+    else if(format == WL_SHM_FORMAT_XRGB8888)
     {
-        std::cout << "attaching egl" << std::endl;
-        EGLint format;
-
-        eglContext* ctx = getEglContext();
-        if(!eglContext::eglQueryWaylandBufferWL(ctx->getDisplay(), buffer_, EGL_TEXTURE_FORMAT, &format))
-        {
-            //not a egl buffer
-            return false;
-        }
+        format_ = bufferFormat::rgb32;
+    }
+    else
+    {
+        format_ = bufferFormat::unknown;
+        return false;
     }
 
-    initialized_ = 1;
+    unsigned int pitch = wl_shm_buffer_get_stride(shmBuffer) / 4;
+    GLint glFormat = GL_BGRA_EXT;
+    GLint glPixel = GL_UNSIGNED_BYTE;
+
+    glActiveTexture(GL_TEXTURE0);
+    glGenTextures(1, &texture_);
+    glBindTexture(GL_TEXTURE_2D, texture_);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, pitch);
+    glPixelStorei(GL_UNPACK_SKIP_PIXELS_EXT, 0);
+    glPixelStorei(GL_UNPACK_SKIP_ROWS_EXT, 0);
+
+    wl_shm_buffer_begin_access(shmBuffer);
+    void* data = wl_shm_buffer_get_data(shmBuffer);
+    glTexImage2D(GL_TEXTURE_2D, 0, glFormat, pitch, wl_shm_buffer_get_height(shmBuffer), 0, glFormat, glPixel, data);
+    wl_shm_buffer_end_access(shmBuffer);
+
     return true;
 }
+
+bool bufferRes::fromEglBuffer(wl_resource* buffer)
+{
+    std::cout << "attaching egl" << std::endl;
+    EGLint format;
+
+    eglContext* ctx = getEglContext();
+    if(!eglContext::eglQueryWaylandBufferWL(ctx->getDisplay(), buffer, EGL_TEXTURE_FORMAT, &format))
+    {
+        //not a egl buffer
+        return false;
+    }
+
+
+    return true;
+}
+
+bool bufferRes::init()
+{
+    wl_shm_buffer* shmBuffer = wl_shm_buffer_get(wlResource_);
+    if(shmBuffer)
+    {
+        type_ = bufferType::shm;
+        return fromShmBuffer(shmBuffer);
+    }
+    else
+    {
+        type_ = bufferType::egl;
+        return fromEglBuffer(wlResource_);
+    }
+}
+
