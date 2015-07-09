@@ -181,6 +181,15 @@ kmsOutput::~kmsOutput()
 void kmsOutput::swapBuffers()
 {
     eglSwapBuffers(getEglContext()->getDisplay(), eglSurface_);
+
+    unsigned int height = getKMSBackend()->getDRMMode().vdisplay;
+    unsigned int width = getKMSBackend()->getDRMMode().hdisplay;
+
+    if(gbmBuffer_) gbm_surface_release_buffer(gbmSurface_, gbmBuffer_);
+    if(fbID_) drmModeRmFB(getKMSBackend()->getFD(), fbID_);
+
+    gbmBuffer_ = gbm_surface_lock_front_buffer(gbmSurface_);
+    drmModeAddFB(getKMSBackend()->getFD(), width, height, 24, 32, gbm_bo_get_stride(gbmBuffer_), gbm_bo_get_handle(gbmBuffer_).u32, &fbID_);
 }
 
 void kmsOutput::makeEglCurrent()

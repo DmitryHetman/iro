@@ -4,10 +4,16 @@
 
 #include <string>
 #include <iostream>
+
+#include <ostream>
+#include <fstream>
+
 #include <signal.h>
 
 
 server* server::object = nullptr;
+std::ofstream iroStreamLog_;
+std::ostream& iroLog = iroStreamLog_;
 
 server* getServer()
 {
@@ -18,7 +24,6 @@ server* getServer()
 void signalHandler(int sig)
 {
     if(getServer()) getServer()->exit();
-    exit(0);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -28,11 +33,19 @@ server::server()
 
 server::~server()
 {
-    exit();
+    if(mainLoop_)exit();
+
+    delete compositor_;
 }
 
 bool server::init(const serverSettings& settings)
 {
+    iroStreamLog_.open("log");
+    if(!iroStreamLog_.is_open())
+    {
+        return 0;
+    }
+
     settings_ = settings;
 
     if(object)
@@ -83,7 +96,6 @@ void server::exit()
     mainLoop_ = 0;
     if(compositor_)
     {
-        delete compositor_;
-        compositor_ = nullptr;
+        wl_display_terminate(compositor_->getWlDisplay());
     }
 }

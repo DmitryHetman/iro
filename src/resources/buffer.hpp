@@ -2,7 +2,9 @@
 
 #include <iro.hpp>
 #include <resources/resource.hpp>
+
 #include <util/nonCopyable.hpp>
+#include <util/vec.hpp>
 
 #include <wayland-server-core.h>
 
@@ -44,4 +46,6 @@ public:
     bufferType getBufferType() const { return type_; }
 
     unsigned int getTexture() const { return texture_; }
+
+    vec2ui getSize() const;
 };

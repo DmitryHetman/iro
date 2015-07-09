@@ -101,8 +101,6 @@ compositor::compositor()
 
 compositor::~compositor()
 {
-    if(wlDisplay_)wl_display_terminate(wlDisplay_);
-
     if(wlDisplay_) wl_display_destroy(wlDisplay_);
     if(subcompositor_) delete subcompositor_;
     if(shell_) delete shell_;

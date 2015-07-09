@@ -1,6 +1,7 @@
 #include <backend/renderer.hpp>
 #include <resources/surface.hpp>
 #include <resources/buffer.hpp>
+#include <log.hpp>
 
 #define GL_GLEXT_PROTOTYPES
 #include <GLES2/gl2.h>
@@ -8,22 +9,71 @@
 
 #include <stdexcept>
 
+rect2f rectToGL(const rect2f& src, const vec2ui& size)
+{
+    rect2f ret;
+
+    ret.position = (src.position / size) * 2 - 1;
+    ret.size = (src.size / size) * 2;
+
+    return ret;
+}
+
 /////////////////////////////////////////
-surfaceProgram::surfaceProgram()
+texProgram::texProgram()
 {
-    glGenVertexArrays(1, &vao_);
-    glGenBuffers(1, &vbo_);
 }
 
-surfaceProgram::~surfaceProgram()
+texProgram::~texProgram()
 {
-    glDeleteVertexArrays(1, &vao_);
-    glDeleteBuffers(1, &vbo_);
 }
 
-void surfaceProgram::use(rect2f geometry, unsigned int texture, bufferFormat format)
+void texProgram::use(rect2f geometry, unsigned int texture, bufferFormat format)
 {
+    GLint viewport[4];
+    glGetIntegerv(GL_VIEWPORT, viewport);
 
+    rect2f glGeometry = rectToGL(geometry, vec2ui(viewport[2], viewport[3]));
+
+    const GLfloat vertices[] =
+    {
+        glGeometry.topLeft().x, glGeometry.topLeft().y,
+        glGeometry.topRight().x, glGeometry.topRight().y,
+        glGeometry.bottomRight().x, glGeometry.bottomRight().y,
+        glGeometry.bottomLeft().x, glGeometry.bottomLeft().y,
+    };
+
+    const GLfloat uv[] =
+    {
+        0, 0,
+        1, 0,
+        1, 1,
+        0, 1
+    };
+
+    shader* program = nullptr;
+    switch(format)
+    {
+        case bufferFormat::argb32: program = &shader::argb; break;
+        case bufferFormat::rgb32: program = &shader::rgb; break;
+        default: return;
+    }
+
+    program->use();
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, (void*) vertices);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*) uv);
+
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 }
 
 /////////////////////////////////////////
@@ -37,6 +87,13 @@ renderer::renderer()
             return;
         }
     }
+
+    std::string version;
+    version.append((const char*) glGetString(GL_VERSION));
+
+    //iroLog << "test" << std::endl;
+    iroLog << "version: " << version << std::endl;
+    std::cout << "version: " << version << std::endl;
 }
 
 renderer::~renderer()
@@ -58,87 +115,28 @@ bool renderer::render(surfaceRes* surface)
             return 0;
     }
 
-    shader* prog;
-
-    if(buff->getFormat() == bufferFormat::argb32)
-        prog = &shader::argb;
-    else if(buff->getFormat() == bufferFormat::rgb32)
-        prog = &shader::rgb;
-
-    prog->use();
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, buff->getTexture());
-
-    glUniform1i(glGetUniformLocation(prog->getProgram(), "texture0"), 0);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-    const float coords[] = {
-        0.5f,  -0.5f,
-        -0.5f,  -0.5f,
-        0.5f, 0.5f,
-        -0.5f, 0.5f,
-    };
-
-    const float uv[] = {
-        1, 0,
-        0, 0,
-        1, 1,
-        0, 1
-    };
-
-    GLint ppos = glGetAttribLocation(prog->getProgram(), "pos");
-    GLint puv = glGetAttribLocation(prog->getProgram(), "uv");
-
-    glEnableVertexAttribArray(ppos);
-    glEnableVertexAttribArray(puv);
-
-    glVertexAttribPointer(ppos, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*) coords);
-    glVertexAttribPointer(puv, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*) uv);
-
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    rect2f geometry(surface->getCommited().offset, buff->getSize() * surface->getCommited().scale);
+    texProgram_.use(geometry, buff->getTexture(), buff->getFormat());
 
     return 1;
 }
 
 bool renderer::drawCursor()
 {
-    if(!cursor_)
+    if(cursor_)
+    {
+        return render(cursor_);
+    }
+    else
+    {
+        //custom cursor
         return 0;
+    }
+}
 
-    shader* prog = &shader::rgb;
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, cursor_->getTexture());
-
-
-    const float coords[] = {
-        0.5f,  -0.5f,
-        -0.5f,  -0.5f,
-        0.5f, 0.5f,
-        -0.5f, 0.5f,
-    };
-
-    const float uv[] = {
-        1, 0,
-        0, 0,
-        1, 1,
-        0, 1
-    };
-
-    GLint ppos = glGetAttribLocation(prog->getProgram(), "pos");
-    GLint puv = glGetAttribLocation(prog->getProgram(), "uv");
-
-    glEnableVertexAttribArray(ppos);
-    glEnableVertexAttribArray(puv);
-
-    glVertexAttribPointer(ppos, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*) coords);
-    glVertexAttribPointer(puv, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*) uv);
-
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-    return 1;
+void renderer::setCursor(surfaceRes* surf)
+{
+    surf->setCursorRole();
+    cursor_ = surf;
 }
 

@@ -26,7 +26,7 @@ class output;
 
 class renderer;
 class shader;
-class surfaceProgram;
+class texProgram;
 
 class resource;
 class surfaceRes;

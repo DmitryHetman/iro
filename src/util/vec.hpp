@@ -87,13 +87,13 @@ template<size_t dim, class T> std::ostream& operator<<(std::ostream& os, const v
 }
 
 
-template<size_t dim, class T> vec<dim, T> operator+(vec<dim, T> mvec, const T& other)
+template<size_t dim, class Ta, class Tb> vec<dim, Ta> operator+(vec<dim, Ta> mvec, const Tb& other)
 {
     mvec += other;
     return mvec;
 }
 
-template<size_t dim, class T> vec<dim, T> operator+(const T& other, vec<dim, T> mvec)
+template<size_t dim, class Ta, class Tb> vec<dim, Tb> operator+(const Ta& other, vec<dim, Tb> mvec)
 {
     mvec += other;
     return mvec;
@@ -108,13 +108,13 @@ template<size_t dima, class Ta, size_t dimb, class Tb> vec<dima, Ta> operator+(v
 
 
 
-template<size_t dim, class T> vec<dim, T> operator-(vec<dim, T> mvec, const T& other)
+template<size_t dim, class Ta, class Tb> vec<dim, Ta> operator-(vec<dim, Ta> mvec, const Tb& other)
 {
     mvec -= other;
     return mvec;
 }
 
-template<size_t dim, class T> vec<dim, T> operator-(const T& other, vec<dim, T> mvec)
+template<size_t dim, class Ta, class Tb> vec<dim, Tb> operator-(const Ta& other, vec<dim, Tb> mvec)
 {
     for(unsigned int i(0); i < dim; i++)
     {
@@ -134,14 +134,14 @@ template<size_t dima, class Ta, size_t dimb, class Tb> vec<dima, Ta> operator-(v
 
 
 
-template<size_t dim, class T> vec<dim, T> operator*(vec<dim, T> mvec, const T& other)
+template<size_t dim, class Ta, class Tb> vec<dim, Ta> operator*(vec<dim, Ta> mvec, const Tb& other)
 {
     mvec *= other;
     return mvec;
 }
 
 
-template<size_t dim, class T> vec<dim, T> operator*(const T& other,vec<dim, T> mvec)
+template<size_t dim, class Ta, class Tb> vec<dim, Tb> operator*(const Ta& other,vec<dim, Tb> mvec)
 {
     mvec *= other;
     return mvec;
@@ -156,14 +156,14 @@ template<size_t dima, class Ta, size_t dimb, class Tb> vec<dima, Ta> operator*(v
 
 
 
-template<size_t dim, class T> vec<dim, T> operator/(vec<dim, T> mvec, const T& other)
+template<size_t dim, class Ta, class Tb> vec<dim, Ta> operator/(vec<dim, Ta> mvec, const Tb& other)
 {
     mvec /= other;
     return mvec;
 }
 
 
-template<size_t dim, class T, class O> vec<dim, T> operator/(const T& other,vec<dim, T> mvec)
+template<size_t dim, class Ta, class Tb> vec<dim, Tb> operator/(const Ta& other, vec<dim, Tb> mvec)
 {
     for(unsigned int i(0); i < dim; i++)
     {

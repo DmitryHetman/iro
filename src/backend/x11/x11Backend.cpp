@@ -94,6 +94,8 @@ x11Backend::x11Backend()
 
 x11Backend::~x11Backend()
 {
+    wl_event_source_remove(wlEventSource_);
+
     if(eglContext_) delete eglContext_;
     if(xDisplay_) XCloseDisplay(xDisplay_);
 }
@@ -126,10 +128,10 @@ int x11Backend::eventLoop(int fd, unsigned int mask)
                     delete outputs_[id];
                     outputs_.erase(outputs_.begin() + id);
 
-                    if(outputs_.empty())
+                    if(outputs_.empty() || 1)
                     {
                         getServer()->exit();
-                        return 0;
+                        return count + 1;
                     }
                 }
 

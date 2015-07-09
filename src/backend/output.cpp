@@ -33,10 +33,13 @@ void output::render()
     makeEglCurrent();
     glClearColor(0.8, 0.8, 0.3, 1);
     glClear(GL_COLOR_BUFFER_BIT);
+
     for(unsigned int i(0); i < surfaces_.size(); i++)
     {
         renderer_->render(surfaces_[i]);
     }
+
+    glFinish();
     swapBuffers();
 }
 

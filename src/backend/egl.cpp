@@ -44,7 +44,7 @@ eglContext::eglContext(EGLNativeDisplayType display)
         EGL_BLUE_SIZE, 1,
         EGL_ALPHA_SIZE, 0,
         EGL_DEPTH_SIZE, 0,
-        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES_BIT,
         EGL_NONE
     };
 
@@ -97,6 +97,8 @@ eglContext::eglContext(EGLNativeDisplayType display)
 
 eglContext::~eglContext()
 {
+    //eglUnbindWaylandDisplayWL(display_, getCompositor()->getWlDisplay());
+
     eglMakeCurrent(display_, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     eglDestroyContext(display_, context_);
     eglTerminate(display_);

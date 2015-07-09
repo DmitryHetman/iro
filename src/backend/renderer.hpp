@@ -1,17 +1,16 @@
 #pragma once
 
 #include <iro.hpp>
-#include <util/nonCopyable.hpp>
 #include <shader/shader.hpp>
 
-class surfaceProgram
+#include <util/rect.hpp>
+#include <util/nonCopyable.hpp>
+
+class texProgram
 {
-protected:
-    unsigned int vao_;
-    unsigned int vbo_;
 public:
-    surfaceProgram();
-    ~surfaceProgram();
+    texProgram();
+    ~texProgram();
 
     void use(rect2f geometry, unsigned int texture, bufferFormat format);
 };
@@ -19,8 +18,8 @@ public:
 class renderer : public nonCopyable
 {
 protected:
-    bufferRes* cursor_ = nullptr;
-    surfaceProgram program_;
+    surfaceRes* cursor_ = nullptr;
+    texProgram texProgram_;
 
 public:
     renderer();

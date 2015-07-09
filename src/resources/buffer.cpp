@@ -23,7 +23,6 @@ bufferRes::~bufferRes()
 
 bool bufferRes::fromShmBuffer(wl_shm_buffer* shmBuffer)
 {
-    std::cout << "attaching shm" << std::endl;
     unsigned int format = wl_shm_buffer_get_format(shmBuffer);
 
     if(format == WL_SHM_FORMAT_ARGB8888)
@@ -91,5 +90,26 @@ bool bufferRes::init()
         type_ = bufferType::egl;
         return fromEglBuffer(wlResource_);
     }
+}
+
+vec2ui bufferRes::getSize() const
+{
+    vec2ui ret;
+    if(type_ == bufferType::shm)
+    {
+        wl_shm_buffer* shmBuffer = wl_shm_buffer_get(wlResource_);
+        ret.x = wl_shm_buffer_get_width(shmBuffer);
+        ret.y = wl_shm_buffer_get_height(shmBuffer);
+    }
+    else if(type_ == bufferType::egl)
+    {
+        int w, h;
+        getEglContext()->eglQueryWaylandBufferWL(getEglContext()->getDisplay(), wlResource_, EGL_WIDTH, &w);
+        getEglContext()->eglQueryWaylandBufferWL(getEglContext()->getDisplay(), wlResource_, EGL_HEIGHT, &h);
+        ret.x = w;
+        ret.y = h;
+    }
+
+    return ret;
 }
 
