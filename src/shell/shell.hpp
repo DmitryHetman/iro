@@ -7,6 +7,9 @@
 
 class shell : public nonCopyable
 {
+protected:
+    wl_global* global_;
+
 public:
     shell();
     ~shell();

@@ -51,11 +51,13 @@ protected:
     EGLSurface eglWindow_;
 
 public:
-    x11Output(const x11Backend& backend);
+    x11Output(const x11Backend& backend, unsigned int id);
     ~x11Output();
 
     void makeEglCurrent();
     void swapBuffers();
+
+    vec2ui getSize() const;
 
     xcb_window_t getXWindow() const { return xWindow_; }
 };

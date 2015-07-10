@@ -1,13 +1,12 @@
 #include <server.hpp>
 #include <compositor/compositor.hpp>
-#include <util/vec.hpp>
 
 #include <string>
 #include <iostream>
-
 #include <ostream>
 #include <fstream>
 
+#include <wayland-server-core.h>
 #include <signal.h>
 
 
@@ -20,22 +19,29 @@ server* getServer()
     return server::getObject();
 }
 
+unsigned int getTime()
+{
+    if(!getServer()) return 0;
+    return getServer()->getTime();
+}
+
 /////////////////////////////////////////////7
 void signalHandler(int sig)
 {
-    if(getServer()) getServer()->exit();
+    iroLog << "recieved signal " << sig << std::endl;
+    getServer()->exit();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
 server::server()
 {
+    timer_.reset();
 }
 
 server::~server()
 {
     if(mainLoop_)exit();
-
-    delete compositor_;
+    if(compositor_)delete compositor_;
 }
 
 bool server::init(const serverSettings& settings)

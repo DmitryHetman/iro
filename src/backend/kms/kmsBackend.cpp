@@ -1,5 +1,6 @@
 #include <backend/kms/kmsBackend.hpp>
 #include <backend/kms/input.hpp>
+#include <compositor/compositor.hpp>
 #include <backend/egl.hpp>
 #include <backend/tty.hpp>
 #include <backend/renderer.hpp>
@@ -9,6 +10,9 @@
 #include <GL/gl.h>
 
 #include <fcntl.h>
+#include <xf86drm.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <stdexcept>
 #include <iostream>
@@ -29,6 +33,23 @@ inputHandler* getInputHandler()
 {
     if(!getKMSBackend()) return nullptr;
     return getKMSBackend()->getInputHandler();
+}
+
+///////////////////////////////////////////////////////////////////////////
+void drmPageFlipEvent(int fd, unsigned int frame, unsigned int sec, unsigned int usec, void *data)
+{
+    ((kmsOutput*)getKMSBackend()->getOutput())->wasFlipped();
+}
+
+int drmEvent(int fd, unsigned int mask, void* data)
+{
+    drmEventContext ev;
+    memset(&ev, 0, sizeof(ev));
+    ev.version = DRM_EVENT_CONTEXT_VERSION;
+    ev.page_flip_handler = drmPageFlipEvent;
+    drmHandleEvent(fd, &ev);
+
+    return 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -102,8 +123,10 @@ kmsBackend::kmsBackend()
         return;
     }
 
+    drmEventSource_ = wl_event_loop_add_fd(getWlEventLoop(), fd_, WL_EVENT_READABLE, drmEvent, this);
+
     eglContext_ = new eglContext((EGLNativeDisplayType)gbmDevice_);
-    outputs_.push_back(new kmsOutput(*this));
+    outputs_.push_back(new kmsOutput(*this, 0));
 
     onEnter();
 }
@@ -134,7 +157,7 @@ void kmsBackend::onLeave()
 }
 
 ////////////////////77
-kmsOutput::kmsOutput(const kmsBackend& kms)
+kmsOutput::kmsOutput(const kmsBackend& kms, unsigned int id) : output(id)
 {
     eglContext* egl = kms.getEglContext();
 
@@ -173,6 +196,7 @@ kmsOutput::kmsOutput(const kmsBackend& kms)
     gbmBuffer_ = gbm_surface_lock_front_buffer(gbmSurface_);
     drmModeAddFB(kms.getFD(), width, height, 24, 32, gbm_bo_get_stride(gbmBuffer_), gbm_bo_get_handle(gbmBuffer_).u32, &fbID_);
 
+    //drmModePageFlip(kms.getFD(), kms.getDRMEncoder()->crtc_id, fbID_, DRM_MODE_PAGE_FLIP_EVENT, this);
 
     renderer_ = new renderer();
 }
@@ -184,16 +208,27 @@ kmsOutput::~kmsOutput()
 
 void kmsOutput::swapBuffers()
 {
-    eglSwapBuffers(getEglContext()->getDisplay(), eglSurface_);
+    if(!flipping_ && getKMSBackend() && getTTYHandler()->focus())
+    {
+        eglSwapBuffers(getEglContext()->getDisplay(), eglSurface_);
 
-    unsigned int height = getKMSBackend()->getDRMMode().vdisplay;
-    unsigned int width = getKMSBackend()->getDRMMode().hdisplay;
+        unsigned int height = getKMSBackend()->getDRMMode().vdisplay;
+        unsigned int width = getKMSBackend()->getDRMMode().hdisplay;
 
-    if(gbmBuffer_) gbm_surface_release_buffer(gbmSurface_, gbmBuffer_);
-    if(fbID_) drmModeRmFB(getKMSBackend()->getFD(), fbID_);
+        gbm_bo* oldBuffer = gbmBuffer_;
+        int oldFB = fbID_;
 
-    gbmBuffer_ = gbm_surface_lock_front_buffer(gbmSurface_);
-    drmModeAddFB(getKMSBackend()->getFD(), width, height, 24, 32, gbm_bo_get_stride(gbmBuffer_), gbm_bo_get_handle(gbmBuffer_).u32, &fbID_);
+        gbmBuffer_ = gbm_surface_lock_front_buffer(gbmSurface_);
+        drmModeAddFB(getKMSBackend()->getFD(), width, height, 24, 32, gbm_bo_get_stride(gbmBuffer_), gbm_bo_get_handle(gbmBuffer_).u32, &fbID_);
+
+        drmModePageFlip(getKMSBackend()->getFD(), getKMSBackend()->getDRMEncoder()->crtc_id, fbID_, DRM_MODE_PAGE_FLIP_EVENT, this);
+
+        if(oldBuffer) gbm_surface_release_buffer(gbmSurface_, oldBuffer);
+        if(oldFB) drmModeRmFB(getKMSBackend()->getFD(), oldFB);
+
+        flipping_ = 1;
+    }
+
 }
 
 void kmsOutput::makeEglCurrent()
@@ -201,3 +236,10 @@ void kmsOutput::makeEglCurrent()
     eglMakeCurrent(getEglContext()->getDisplay(), eglSurface_, eglSurface_, getEglContext()->getContext());
 }
 
+vec2ui kmsOutput::getSize() const
+{
+    vec2ui ret;
+    ret.x = getKMSBackend()->getDRMMode().vdisplay;
+    ret.y = getKMSBackend()->getDRMMode().hdisplay;
+    return ret;
+}

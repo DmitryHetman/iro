@@ -5,8 +5,6 @@
 
 #include <util/vec.hpp>
 
-#include <wayland-server-core.h>
-
 enum class pointerState
 {
     normal,
@@ -44,8 +42,8 @@ public:
 
     vec2ui getPosition() const { return position_; }
 
-    void startResize();
-    void startMove();
+    void startResize(shellSurfaceRes* shellSurf, unsigned int edges);
+    void startMove(shellSurfaceRes* shellSurf);
 };
 ////////////////////////
 class pointerRes : public resource

@@ -1,4 +1,5 @@
 #include <backend/tty.hpp>
+#include <log.hpp>
 
 //C
 #include <stdio.h>
@@ -93,6 +94,9 @@ ttyHandler::ttyHandler() : focus_(0)
 
 ttyHandler::~ttyHandler()
 {
+    std::cout << "reset tty" << std::endl;
+    iroLog << "reset tty" << std::endl;
+
     activate();
 
     //dont care for exceptions, just try
@@ -114,6 +118,8 @@ bool ttyHandler::activate()
     if(ioctl(fd_, VT_WAITACTIVE, number_) == -1) return 0;
 
     focus_ = 1;
+
+
     return 1;
 }
 
@@ -124,7 +130,15 @@ void ttyHandler::enteredTTY()
     ioctl(fd_, VT_RELDISP, VT_ACKACQ);
     focus_ = 1;
 
+
     afterEnter_();
+
+
+    struct sigaction action;
+    action.sa_handler = ttySignalhandler;
+
+    sigaction(SIGUSR1, &action, nullptr);
+    sigaction(SIGUSR2, &action, nullptr);
 }
 
 void ttyHandler::leftTTY()
@@ -135,4 +149,11 @@ void ttyHandler::leftTTY()
     focus_ = 0;
 
     afterLeave_();
+
+
+    struct sigaction action;
+    action.sa_handler = ttySignalhandler;
+
+    sigaction(SIGUSR1, &action, nullptr);
+    sigaction(SIGUSR2, &action, nullptr);
 }

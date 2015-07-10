@@ -11,6 +11,8 @@
 #include <backend/x11/x11Backend.hpp>
 #include <backend/kms/kmsBackend.hpp>
 
+#include <wayland-server-protocol.h>
+
 #include <stdexcept>
 #include <iostream>
 
@@ -42,6 +44,18 @@ shell* getShell()
 {
     if(!getCompositor()) return nullptr;
     return getCompositor()->getShell();
+}
+
+wl_display* getWlDisplay()
+{
+    if(!getCompositor()) return nullptr;
+    return getCompositor()->getWlDisplay();
+}
+
+wl_event_loop* getWlEventLoop()
+{
+    if(!getCompositor()) return nullptr;
+    return getCompositor()->getWlEventLoop();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -122,5 +136,4 @@ wl_event_loop* compositor::getWlEventLoop() const
 ////////////////////////////////////
 compositorRes::compositorRes(wl_client* client, unsigned int id, unsigned int version) : resource(client, id, &wl_compositor_interface, &compositorImplementation, version)
 {
-
 }

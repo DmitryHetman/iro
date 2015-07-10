@@ -1,5 +1,7 @@
 #include <resources/shellSurface.hpp>
 
+#include <wayland-server-protocol.h>
+
 void shellSurfacePong(wl_client* client, wl_resource* resource, unsigned int serial)
 {
 
@@ -56,6 +58,16 @@ const struct wl_shell_surface_interface shellSurfaceImplementation
 };
 
 ///////////////////////////////////////////////////////////////////////
-shellSurfaceRes::shellSurfaceRes(surfaceRes* surf, wl_client* client, unsigned int id) : resource(client, id, &wl_shell_surface_interface, &shellSurfaceImplementation, 1, surf)
+shellSurfaceRes::shellSurfaceRes(surfaceRes* surf, wl_client* client, unsigned int id) : resource(client, id, &wl_shell_surface_interface, &shellSurfaceImplementation), surface_(surf)
 {
+}
+
+void shellSurfaceRes::setClassName(const std::string& name)
+{
+    className_ = name;
+}
+
+void shellSurfaceRes::setTitle(const std::string& name)
+{
+    title_ = name;
 }

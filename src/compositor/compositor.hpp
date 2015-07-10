@@ -2,9 +2,8 @@
 
 #include <iro.hpp>
 #include <resources/resource.hpp>
-#include <util/nonCopyable.hpp>
 
-#include <wayland-server-protocol.h>
+#include <util/nonCopyable.hpp>
 
 ///////////////////////////////////////////
 class compositor : public nonCopyable

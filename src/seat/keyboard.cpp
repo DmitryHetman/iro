@@ -1,6 +1,7 @@
 #include <seat/keyboard.hpp>
 
 #include <seat/seat.hpp>
+#include <wayland-server-protocol.h>
 
 ///////////////////////////////////////
 void keyboardRelease(wl_client* client, wl_resource* resource)
@@ -20,17 +21,29 @@ keyboard::keyboard(seat* s) : seat_(s), grab_(nullptr)
 
 void keyboard::sendKeyPress(unsigned int key)
 {
+    if(!grab_)
+        return;
 
+    wl_keyboard_send_key(grab_->getWlResource(), wl_display_next_serial(getWlDisplay()), getTime(), key, 1);
 }
 
 void keyboard::sendKeyRelease(unsigned int key)
 {
+    if(!grab_)
+        return;
 
+    wl_keyboard_send_key(grab_->getWlResource(), wl_display_next_serial(getWlDisplay()), getTime(), key, 0);
 }
 
 void keyboard::sendFocus(keyboardRes* newGrab)
 {
+    if(grab_)
+    {
+        //focus release
+    }
+    grab_ = newGrab;
 
+    //focus gain
 }
 
 /////////////////////////

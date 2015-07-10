@@ -6,8 +6,6 @@
 #include <util/vec.hpp>
 #include <util/region.hpp>
 
-#include <wayland-server-core.h>
-
 #include <vector>
 
 //state////////////////////////////////////////////////////
@@ -21,7 +19,7 @@ struct surfaceState
     bufferRes* attached = nullptr;
 
     int scale = 1;
-    wl_output_transform transform = wl_output_transform::WL_OUTPUT_TRANSFORM_NORMAL;
+    unsigned int transform = 0;
 
     int zOrder = 0;
 };
@@ -52,6 +50,7 @@ protected:
     };
 
     std::vector<surfaceRes*> children_;
+    callbackRes* callback_ = nullptr;
 
 public:
     surfaceRes(wl_client* client, unsigned int id);
@@ -62,6 +61,8 @@ public:
 
     surfaceState& getPending() { return pending_; }
     const surfaceState& getPending() const { return pending_; }
+
+    void registerFrameCallback(unsigned int id);
 
     void commit();
 

@@ -6,8 +6,7 @@
 #include <util/nonCopyable.hpp>
 #include <util/vec.hpp>
 
-#include <wayland-server-core.h>
-
+/////////////////////////////////////////////
 enum class bufferType : unsigned char
 {
     unknown = 0,
@@ -16,6 +15,8 @@ enum class bufferType : unsigned char
     egl
 };
 
+
+//////////////////////////////////////////////
 enum class bufferFormat : unsigned char
 {
     unknown = 0,
@@ -24,6 +25,7 @@ enum class bufferFormat : unsigned char
     argb32
 };
 
+///////////////////////////////////////////////
 class bufferRes : public resource
 {
 protected:
@@ -31,6 +33,7 @@ protected:
     bufferType type_ = bufferType::unknown;
 
     unsigned int texture_ = 0; //GLTexture
+    void* image_ = nullptr; //EGLImageKHR
 
     bool fromShmBuffer(wl_shm_buffer* buffer);
     bool fromEglBuffer(wl_resource* buffer);
@@ -46,6 +49,7 @@ public:
     bufferType getBufferType() const { return type_; }
 
     unsigned int getTexture() const { return texture_; }
+    void* getImage() const { return image_; }
 
     vec2ui getSize() const;
 };

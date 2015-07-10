@@ -1,6 +1,5 @@
 #include <backend/kms/input.hpp>
 
-#include <compositor/compositor.hpp>
 #include <seat/seat.hpp>
 #include <seat/pointer.hpp>
 #include <log.hpp>
@@ -51,11 +50,11 @@ inputHandler::inputHandler()
     udev_monitor_filter_add_match_subsystem_devtype(udevMonitor_, "drm", nullptr);
     udev_monitor_filter_add_match_subsystem_devtype(udevMonitor_, "input", nullptr);
     udev_monitor_enable_receiving(udevMonitor_);
-    wl_event_loop_add_fd(getCompositor()->getWlEventLoop(), udev_monitor_get_fd(udevMonitor_), WL_EVENT_READABLE, udevEventLoop, this);
+    wl_event_loop_add_fd(getWlEventLoop(), udev_monitor_get_fd(udevMonitor_), WL_EVENT_READABLE, udevEventLoop, this);
 
     input_ = libinput_udev_create_context(&libinputImplementation, this, udev_);
     libinput_udev_assign_seat(input_, "seat0");
-    inputEventSource_ = wl_event_loop_add_fd(getCompositor()->getWlEventLoop(), libinput_get_fd(input_), WL_EVENT_READABLE, inputEventLoop, this);
+    inputEventSource_ = wl_event_loop_add_fd(getWlEventLoop(), libinput_get_fd(input_), WL_EVENT_READABLE, inputEventLoop, this);
 }
 
 inputHandler::~inputHandler()

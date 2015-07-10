@@ -1,8 +1,9 @@
 #include <shell/shell.hpp>
 
-#include <compositor/compositor.hpp>
 #include <resources/surface.hpp>
 #include <resources/shellSurface.hpp>
+
+#include <wayland-server-protocol.h>
 
 //shell
 void shellGetShellSurface(wl_client* client, wl_resource* resource, unsigned int id, wl_resource* surface)
@@ -24,12 +25,12 @@ void bindShell(wl_client* client, void* data, unsigned int version, unsigned int
 ////////////////////////////
 shell::shell()
 {
-    wl_global_create(getCompositor()->getWlDisplay(), &wl_shell_interface, 1, this, bindShell);
+    global_ = wl_global_create(getWlDisplay(), &wl_shell_interface, 1, this, bindShell);
 }
 
 shell::~shell()
 {
-
+    wl_global_destroy(global_);
 }
 
 /////////////////////////////

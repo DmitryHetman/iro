@@ -3,8 +3,6 @@
 #include <iro.hpp>
 #include <util/nonCopyable.hpp>
 
-#include <wayland-server-core.h>
-
 #include <vector>
 
 enum class backendType : unsigned char

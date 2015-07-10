@@ -18,6 +18,8 @@ class seatRes;
 class outputRes;
 class bufferRes;
 
+class callbackRes;
+
 class pointerRes;
 class keyboardRes;
 
@@ -60,6 +62,21 @@ eglContext* getEglContext();
 
 ttyHandler* getTTYHandler();
 inputHandler* getInputHandler();
+
+struct wl_display;
+struct wl_event_loop;
+struct wl_global;
+struct wl_resource;
+struct wl_client;
+struct wl_interface;
+struct wl_event_source;
+struct wl_output;
+struct wl_shm_buffer;
+
+wl_display* getWlDisplay();
+wl_event_loop* getWlEventLoop();
+
+unsigned int getTime();
 
 //todo
 class dataSource;

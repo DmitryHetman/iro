@@ -27,8 +27,9 @@ protected:
     drmModeEncoder* drmEncoder_ = nullptr;
     drmModeModeInfo drmMode_;
 
-    drmModeCrtc* drmCrtc_ = nullptr;
     drmModeCrtc* drmSavedCrtc_ = nullptr;
+
+    wl_event_source* drmEventSource_ = nullptr;
 
     void onEnter();
     void onLeave();
@@ -46,7 +47,6 @@ public:
     drmModeConnector* getDRMConnector() const { return drmConnector_; }
     drmModeEncoder* getDRMEncoder() const { return drmEncoder_; }
     const drmModeModeInfo& getDRMMode() const { return drmMode_; }
-    drmModeCrtc* getDRMCrtc() const { return drmCrtc_; }
 
     int getFD() const { return fd_; }
 };
@@ -54,19 +54,25 @@ public:
 class kmsOutput : public output
 {
 protected:
-    gbm_surface* gbmSurface_;
-    gbm_bo* gbmBuffer_;
+    gbm_surface* gbmSurface_ = nullptr;
+    gbm_bo* gbmBuffer_ = nullptr;
 
-    unsigned int fbID_;
+    bool flipping_ = 0;
+
+    unsigned int fbID_ = 0;
 
     EGLSurface eglSurface_;
 
 public:
-    kmsOutput(const kmsBackend& kms);
+    kmsOutput(const kmsBackend& kms, unsigned int id);
     ~kmsOutput();
 
     unsigned int getFBID() const { return fbID_; }
 
     void makeEglCurrent();
     void swapBuffers();
+
+    void wasFlipped(){ flipping_ = 0; }
+
+    vec2ui getSize() const;
 };

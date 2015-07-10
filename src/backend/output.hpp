@@ -2,23 +2,28 @@
 
 #include <iro.hpp>
 #include <resources/resource.hpp>
+
 #include <util/nonCopyable.hpp>
+#include <util/vec.hpp>
 
 #include <vector>
 
 class output : public nonCopyable
 {
 protected:
-    std::vector<surfaceRes*> surfaces_;
+    unsigned int id_;
+
+    std::vector<surfaceRes*> mappedSurfaces_;
     renderer* renderer_ = nullptr;
 
     wl_event_source* drawEventSource_;
+    wl_global* global_;
 
 public:
-    output();
+    output(unsigned int id);
     virtual ~output();
 
-    const std::vector<surfaceRes*> getSurfaces() const { return surfaces_; }
+    const std::vector<surfaceRes*> getSurfaces() const { return mappedSurfaces_; }
 
     void mapSurface(surfaceRes* surf);
     void unmapSurface(surfaceRes* surf);
@@ -28,6 +33,8 @@ public:
 
     virtual void swapBuffers() = 0;
     virtual void makeEglCurrent() = 0;
+
+    virtual vec2ui getSize() const = 0;
 };
 
 //////////////////

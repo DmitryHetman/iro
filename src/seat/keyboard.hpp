@@ -5,8 +5,6 @@
 
 #include <util/nonCopyable.hpp>
 
-#include <wayland-server-core.h>
-
 //////////////////////////////////////////
 class keyboard : public nonCopyable
 {

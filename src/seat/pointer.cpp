@@ -5,6 +5,8 @@
 #include <backend/backend.hpp>
 #include <backend/output.hpp>
 
+#include <wayland-server-protocol.h>
+
 //////////////////////////
 void pointerSetCursor(wl_client* client, wl_resource* resource, unsigned int serial, wl_resource* surface, int hotspot_x, int hotspot_y)
 {
@@ -55,12 +57,12 @@ void pointer::sendScroll()
 
 }
 
-void pointer::startResize()
+void pointer::startResize(shellSurfaceRes* shellSurf, unsigned int edges)
 {
 
 }
 
-void pointer::startMove()
+void pointer::startMove(shellSurfaceRes* shellSurf)
 {
 
 }
@@ -74,7 +76,6 @@ void pointer::setCursor(surfaceRes* surf, vec2ui hotspot)
 //////////////////////////////////////
 pointerRes::pointerRes(seatRes* sr, wl_client* client, unsigned int id) : resource(client, id, &wl_pointer_interface, &pointerImplementation), seatRes_(sr)
 {
-
 }
 
 seat* pointerRes::getSeat() const

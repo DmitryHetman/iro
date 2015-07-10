@@ -2,7 +2,6 @@
 
 #include <backend/egl.hpp>
 #include <backend/renderer.hpp>
-#include <compositor/compositor.hpp>
 #include <seat/seat.hpp>
 
 #define GL_GLEXT_PROTOTYPES
@@ -27,15 +26,19 @@ void bindOutput(wl_client* client, void* data, unsigned int version, unsigned in
 }
 
 //////////////////////////
-output::output()
+output::output(unsigned int id) : id_(id)
 {
-    wl_global_create(getCompositor()->getWlDisplay(), &wl_output_interface, 2, this, bindOutput);
-    drawEventSource_ = wl_event_loop_add_timer(getCompositor()->getWlEventLoop(), outputRedraw, this);
+    global_ = wl_global_create(getWlDisplay(), &wl_output_interface, 2, this, bindOutput);
+
+    drawEventSource_ = wl_event_loop_add_timer(getWlEventLoop(), outputRedraw, this);
 }
 
 output::~output()
 {
+    wl_event_source_remove(drawEventSource_);
     if(renderer_) delete renderer_;
+
+    wl_global_destroy(global_);
 }
 
 void output::render()
@@ -46,9 +49,9 @@ void output::render()
     glClear(GL_COLOR_BUFFER_BIT);
 
 
-    for(unsigned int i(0); i < surfaces_.size(); i++)
+    for(unsigned int i(0); i < mappedSurfaces_.size(); i++)
     {
-        renderer_->render(surfaces_[i]);
+        renderer_->render(mappedSurfaces_[i]);
     }
 
     renderer_->drawCursor(getSeat()->getPointer());
@@ -64,19 +67,20 @@ void output::refresh()
 
 void output::mapSurface(surfaceRes* surf)
 {
-    surfaces_.push_back(surf);
+    mappedSurfaces_.push_back(surf);
     refresh();
 }
 
 void output::unmapSurface(surfaceRes* surf)
 {
-    for(unsigned int i(0); i < surfaces_.size(); i++)
+    for(unsigned int i(0); i < mappedSurfaces_.size(); i++)
     {
-        if(surfaces_[i] == surf)
-            surfaces_.erase(surfaces_.begin() + i);
+        if(mappedSurfaces_[i] == surf)
+            mappedSurfaces_.erase(mappedSurfaces_.begin() + i);
     }
     refresh();
 }
+
 
 ///////////////////////7
 outputRes::outputRes(output* out, wl_client* client, unsigned int id, unsigned int version) : resource(client, id, &wl_output_interface, nullptr, version), output_(out)

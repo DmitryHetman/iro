@@ -1,5 +1,4 @@
 #include <backend/egl.hpp>
-#include <compositor/compositor.hpp>
 
 #include <util/misc.hpp>
 
@@ -92,7 +91,7 @@ eglContext::eglContext(EGLNativeDisplayType display)
         return;
     }
 
-    eglBindWaylandDisplayWL(display_, getCompositor()->getWlDisplay());
+    eglBindWaylandDisplayWL(display_, getWlDisplay());
 }
 
 eglContext::~eglContext()

@@ -3,8 +3,6 @@
 #include <iro.hpp>
 #include <util/nonCopyable.hpp>
 
-#include <wayland-server-protocol.h>
-
 enum class resourceType : unsigned char
 {
     unknown,
@@ -21,6 +19,8 @@ enum class resourceType : unsigned char
     dataSource,
     dataOffer,
 
+    callback,
+
     //globals
     seat,
     compositor,
@@ -35,14 +35,15 @@ class resource : public nonCopyable
 protected:
     wl_resource* wlResource_ = nullptr;
 
-    resource(wl_resource* res) : wlResource_(res) {};
-    resource(wl_client* client, unsigned int id, const struct wl_interface* interface, const void* implementation, unsigned int version = 1, void* data = nullptr, wl_resource_destroy_func_t destroyFunc = nullptr);
     resource() = default;
+    resource(wl_client* client, unsigned int id, const struct wl_interface* interface, const void* implementation, unsigned int version = 1, void* data = nullptr, void(*destroyFunc)(wl_resource*) = nullptr);
 
-    void create(wl_client* client, unsigned int id, const struct wl_interface* interface, const void* implementation, unsigned int version = 1, void* data = nullptr, wl_resource_destroy_func_t destroyFunc = nullptr);
+    void create(wl_client* client, unsigned int id, const struct wl_interface* interface, const void* implementation, unsigned int version = 1, void* data = nullptr, void(*destroyFunc)(wl_resource*) = nullptr);
 
 public:
+    resource(wl_resource* res);
     virtual ~resource();
+
     void destroy();
 
     unsigned int getID() const;

@@ -1,4 +1,5 @@
 #include <resources/region.hpp>
+#include <wayland-server-protocol.h>
 
 void regionDestroy(wl_client* client, wl_resource* resource)
 {

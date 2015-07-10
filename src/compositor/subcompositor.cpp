@@ -3,6 +3,8 @@
 #include <resources/surface.hpp>
 #include <compositor/compositor.hpp>
 
+#include <wayland-server-protocol.h>
+
 void subcompositorDestroy(wl_client* client, wl_resource* resource)
 {
     subcompositorRes* res = (subcompositorRes*) wl_resource_get_user_data(resource);
@@ -27,7 +29,7 @@ void bindSubcompositor(wl_client* client, void* data, unsigned int version, unsi
 /////////////////////////////////
 subcompositor::subcompositor()
 {
-    wl_global_create(getCompositor()->getWlDisplay(), &wl_subcompositor_interface, 1, this, bindSubcompositor);
+    wl_global_create(getWlDisplay(), &wl_subcompositor_interface, 1, this, bindSubcompositor);
 }
 
 /////////////////////////

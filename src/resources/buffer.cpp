@@ -79,6 +79,9 @@ bool bufferRes::fromEglBuffer(wl_resource* buffer)
 
 bool bufferRes::init()
 {
+    if(initialized())
+        return 1;
+
     wl_shm_buffer* shmBuffer = wl_shm_buffer_get(wlResource_);
     if(shmBuffer)
     {

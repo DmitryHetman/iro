@@ -3,14 +3,18 @@
 #include <resources/shellSurface.hpp>
 #include <resources/subsurface.hpp>
 #include <resources/buffer.hpp>
+#include <resources/region.hpp>
 #include <backend/output.hpp>
 #include <backend/backend.hpp>
 #include <seat/seat.hpp>
 #include <seat/pointer.hpp>
 
+#include <wayland-server-protocol.h>
+
 void surfaceDestroy(wl_client* client, wl_resource* resource)
 {
     surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
+    surf->destroy();
     delete surf;
 }
 void surfaceAttach(wl_client* client, wl_resource* resource, wl_resource* wlbuffer, int x, int y)
@@ -26,12 +30,22 @@ void surfaceDamage(wl_client* client, wl_resource* resource, int x, int y, int w
 }
 void surfaceFrame(wl_client* client, wl_resource* resource, unsigned int callback)
 {
+    surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
+    surf->registerFrameCallback(callback);
 }
 void surfaceOpaqueRegion(wl_client* client,wl_resource* resource, wl_resource* region)
 {
+    surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
+    regionRes* reg = (regionRes*) wl_resource_get_user_data(region);
+
+    surf->getPending().opaque = reg->getRegion();
 }
 void surfaceInputRegion(wl_client* client,wl_resource* resource, wl_resource* region)
 {
+    surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
+    regionRes* reg = (regionRes*) wl_resource_get_user_data(region);
+
+    surf->getPending().input = reg->getRegion();
 }
 void surfaceCommit(wl_client* client, wl_resource* resource)
 {
@@ -40,9 +54,13 @@ void surfaceCommit(wl_client* client, wl_resource* resource)
 }
 void surfaceBufferTransform(wl_client* client, wl_resource* resource, int transform)
 {
+    surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
+    surf->getPending().transform = transform;
 }
 void surfaceBufferScale(wl_client* client, wl_resource* resource, int scale)
 {
+    surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
+    surf->getPending().scale = scale;
 }
 
 const struct wl_surface_interface surfaceImplementation =
@@ -58,14 +76,9 @@ const struct wl_surface_interface surfaceImplementation =
     &surfaceBufferScale
 };
 
-void destroySurface(wl_resource* res)
-{
-    surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(res);
-    delete surf;
-}
 
 //////////////////////////////////////////////////////////////////////////////
-surfaceRes::surfaceRes(wl_client* client, unsigned int id) : resource(client, id, &wl_surface_interface, &surfaceImplementation, 3, this, destroySurface)
+surfaceRes::surfaceRes(wl_client* client, unsigned int id) : resource(client, id, &wl_surface_interface, &surfaceImplementation, 3)
 {
 }
 
@@ -142,6 +155,11 @@ bool surfaceRes::isChild(surfaceRes* surf) const
             return 1;
     }
     return 0;
+}
+
+void surfaceRes::registerFrameCallback(unsigned int id)
+{
+
 }
 
 void surfaceRes::commit()

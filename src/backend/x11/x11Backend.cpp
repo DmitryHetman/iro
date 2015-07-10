@@ -74,7 +74,7 @@ x11Backend::x11Backend()
 
 
     //event source
-    wlEventSource_ =  wl_event_loop_add_fd(getCompositor()->getWlEventLoop(), xcb_get_file_descriptor(xConnection_), WL_EVENT_READABLE, x11EventLoop, this);
+    wlEventSource_ =  wl_event_loop_add_fd(getWlEventLoop(), xcb_get_file_descriptor(xConnection_), WL_EVENT_READABLE, x11EventLoop, this);
     if(!wlEventSource_)
     {
         throw std::runtime_error("could not create wayland event source");
@@ -87,7 +87,7 @@ x11Backend::x11Backend()
     unsigned int numOutputs = 1;
     for(unsigned int i(0); i < numOutputs; i++)
     {
-        x11Output* o = new x11Output(*this);
+        x11Output* o = new x11Output(*this, i);
         outputs_.push_back(o);
     }
 
@@ -219,7 +219,7 @@ int x11EventLoop(int fd, unsigned int mask, void* data)
 }
 
 /////////////////////////////
-x11Output::x11Output(const x11Backend& backend) : output()
+x11Output::x11Output(const x11Backend& backend, unsigned int id) : output(id)
 {
     xcb_connection_t* connection = backend.getXConnection();
     xcb_screen_t* screen = backend.getXScreen();
@@ -298,5 +298,13 @@ void x11Output::makeEglCurrent()
 void x11Output::swapBuffers()
 {
     eglSwapBuffers(getEglContext()->getDisplay(), eglWindow_);
+}
+
+vec2ui x11Output::getSize() const
+{
+    vec2ui ret;
+    ret.x = 800;
+    ret.y = 500;
+    return ret;
 }
 

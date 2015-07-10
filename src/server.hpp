@@ -2,13 +2,16 @@
 
 #include <iro.hpp>
 
+#include <util/nonCopyable.hpp>
+#include <util/time.hpp>
+
 struct serverSettings
 {
     int argc;
     const char** argv;
 };
 
-class server
+class server : public nonCopyable
 {
 protected:
     compositor* compositor_ = nullptr;
@@ -17,6 +20,8 @@ protected:
 
     bool initialized_ = 0;
     bool mainLoop_ = 0;
+
+    timer timer_;
 
     static server* object;
 
@@ -31,6 +36,9 @@ public:
 
     bool isInitialized() const { return initialized_; }
     bool isInMainLoop() const { return mainLoop_; }
+
+    unsigned int getTime() const { return timer_.getElapsedTime().asSeconds(); }
+    timeDuration getDuration() const { return timer_.getElapsedTime(); }
 
     compositor* getCompositor() const { return compositor_; }
 

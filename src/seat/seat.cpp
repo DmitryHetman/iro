@@ -3,7 +3,7 @@
 #include <seat/keyboard.hpp>
 #include <seat/pointer.hpp>
 
-#include <compositor/compositor.hpp>
+#include <wayland-server-protocol.h>
 
 #include <stdexcept>
 #include <iostream>
@@ -37,14 +37,7 @@ void bindSeat(wl_client* client, void* data, unsigned int version, unsigned int 
 /////////////////////////
 seat::seat()
 {
-    compositor* comp = getCompositor();
-    if(!comp)
-    {
-        throw std::runtime_error("seat::seat(): no compositor initialized");
-        return;
-    }
-
-    wl_global_create(comp->getWlDisplay(), &wl_seat_interface, 1, this, &bindSeat);
+    wl_global_create(getWlDisplay(), &wl_seat_interface, 1, this, &bindSeat);
 
     keyboard_ = new keyboard(this);
     pointer_ = new pointer(this);

@@ -1,6 +1,7 @@
 #include <resources/subsurface.hpp>
 
 #include <resources/surface.hpp>
+#include <wayland-server-protocol.h>
 
 void subsurfaceDestroy(wl_client* client, wl_resource* resource)
 {
@@ -61,6 +62,6 @@ const struct wl_subsurface_interface subsurfaceImplementation =
 };
 
 /////////////////////////////7
-subsurfaceRes::subsurfaceRes(surfaceRes* surface, wl_client* client, unsigned int id, surfaceRes* parent) : resource(client, id, &wl_subsurface_interface, &subsurfaceImplementation, 1, surface), parent_(parent)
+subsurfaceRes::subsurfaceRes(surfaceRes* surf, wl_client* client, unsigned int id, surfaceRes* parent) : resource(client, id, &wl_subsurface_interface, &subsurfaceImplementation), surface_(surf), parent_(parent)
 {
 }
