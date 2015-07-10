@@ -44,6 +44,8 @@ ttyHandler::ttyHandler() : focus_(0)
     close(tty0FD);
 
     ////
+    number_ = 3;
+
     //open own tty
     std::string ttyString;
     ttyString += "/dev/tty";
@@ -61,13 +63,13 @@ ttyHandler::ttyHandler() : focus_(0)
         throw std::runtime_error("Could not activate tty");
         return;
     }
-/*
+
     if(ioctl(fd_, KDSETMODE, KD_GRAPHICS) == -1)
     {
         throw std::runtime_error("Could not set tty to graphics mode");
         return;
     }
-*/
+
     focus_ = 1;
 
     vt_mode mode;

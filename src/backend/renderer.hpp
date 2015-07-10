@@ -18,15 +18,14 @@ public:
 class renderer : public nonCopyable
 {
 protected:
-    surfaceRes* cursor_ = nullptr;
     texProgram texProgram_;
+
+    unsigned int defaultCursorTex_;
 
 public:
     renderer();
     virtual ~renderer();
 
-    bool render(surfaceRes* surface);
-    bool drawCursor();
-
-    void setCursor(surfaceRes* surf);
+    bool render(surfaceRes* surface, vec2ui pos = vec2ui(0,0));
+    bool drawCursor(pointer* p);
 };

@@ -8,7 +8,11 @@ resource::resource(wl_client* client, unsigned int id, const struct wl_interface
 
 resource::~resource()
 {
-    //wl_resource_destroy(wlResource_);
+}
+
+void resource::destroy()
+{
+    wl_resource_destroy(wlResource_);
 }
 
 void resource::create(wl_client* client, unsigned int id, const struct wl_interface* interface, const void* implementation, unsigned int version, void* data, wl_resource_destroy_func_t destroyFunc)

@@ -1,6 +1,7 @@
 #include <backend/renderer.hpp>
 #include <resources/surface.hpp>
 #include <resources/buffer.hpp>
+#include <seat/pointer.hpp>
 #include <log.hpp>
 
 #define GL_GLEXT_PROTOTYPES
@@ -13,7 +14,7 @@ rect2f rectToGL(const rect2f& src, const vec2ui& size)
 {
     rect2f ret;
 
-    ret.position = (src.position / size) * 2 - 1;
+    ret.position = (vec2f(src.position.x, size.y - src.position.y - src.size.y) / size) * 2 - 1;
     ret.size = (src.size / size) * 2;
 
     return ret;
@@ -90,25 +91,40 @@ renderer::renderer()
 
     std::string version;
     version.append((const char*) glGetString(GL_VERSION));
+    iroLog << "glVersion: " << version << std::endl;
 
-    //iroLog << "test" << std::endl;
-    iroLog << "version: " << version << std::endl;
-    std::cout << "version: " << version << std::endl;
+    //init cursor texture
+    glActiveTexture(GL_TEXTURE0);
+    glGenTextures(1, &defaultCursorTex_);
+    glBindTexture(GL_TEXTURE_2D, defaultCursorTex_);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, 1);
+    glPixelStorei(GL_UNPACK_SKIP_PIXELS_EXT, 0);
+    glPixelStorei(GL_UNPACK_SKIP_ROWS_EXT, 0);
+
+    GLfloat pixels[] = {
+        1.0f, 1.0f, 1.0f
+    };
+
+    glTexImage2D(GL_TEXTURE_2D, 0,  GL_RGB, 1, 1, 0, GL_RGB, GL_FLOAT, pixels);
 }
 
 renderer::~renderer()
 {
-
+    glDeleteTextures(1, &defaultCursorTex_);
 }
 
-bool renderer::render(surfaceRes* surface)
+bool renderer::render(surfaceRes* surface, vec2ui pos)
 {
-    if(!surface || surface->getRole() == surfaceRole::none || !surface->getPending().attached)
+    if(!surface || surface->getRole() == surfaceRole::none || !surface->getCommited().attached)
     {
         return 0;
     }
 
-    bufferRes* buff = surface->getPending().attached;
+    bufferRes* buff = surface->getCommited().attached;
     if(!buff->initialized())
     {
         if(!buff->init())
@@ -116,27 +132,22 @@ bool renderer::render(surfaceRes* surface)
     }
 
     rect2f geometry(surface->getCommited().offset, buff->getSize() * surface->getCommited().scale);
+    geometry.position += pos;
     texProgram_.use(geometry, buff->getTexture(), buff->getFormat());
 
     return 1;
 }
 
-bool renderer::drawCursor()
+bool renderer::drawCursor(pointer* p)
 {
-    if(cursor_)
+    if(p->getCursor())
     {
-        return render(cursor_);
+        return render(p->getCursor(), p->getPosition());
     }
     else
     {
-        //custom cursor
-        return 0;
+        rect2f geometry(p->getPosition(), vec2ui(50, 50));
+        texProgram_.use(geometry, defaultCursorTex_, bufferFormat::rgb32);
+        return 1;
     }
 }
-
-void renderer::setCursor(surfaceRes* surf)
-{
-    surf->setCursorRole();
-    cursor_ = surf;
-}
-

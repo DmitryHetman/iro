@@ -48,6 +48,7 @@ protected:
     {
         shellSurfaceRes* shellSurface_;
         subsurfaceRes* subsurface_;
+        vec2ui cursorHotspot_;
     };
 
     std::vector<surfaceRes*> children_;
@@ -66,7 +67,7 @@ public:
 
     void setSubsurface(unsigned int id, surfaceRes* parent);
     void setShellSurface(unsigned int id);
-    void setCursorRole();
+    void setCursorRole(vec2ui hotspot);
     void unsetRole();
 
     void addChild(surfaceRes* child);

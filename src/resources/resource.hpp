@@ -43,6 +43,7 @@ protected:
 
 public:
     virtual ~resource();
+    void destroy();
 
     unsigned int getID() const;
     unsigned int getVersion() const;

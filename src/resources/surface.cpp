@@ -5,6 +5,8 @@
 #include <resources/buffer.hpp>
 #include <backend/output.hpp>
 #include <backend/backend.hpp>
+#include <seat/seat.hpp>
+#include <seat/pointer.hpp>
 
 void surfaceDestroy(wl_client* client, wl_resource* resource)
 {
@@ -90,11 +92,12 @@ void surfaceRes::setSubsurface(unsigned int id, surfaceRes* parent)
     parent->addChild(this);
 }
 
-void surfaceRes::setCursorRole()
+void surfaceRes::setCursorRole(vec2ui hotspot)
 {
     unsetRole();
 
     role_ = surfaceRole::cursor;
+    cursorHotspot_ = hotspot;
 }
 
 void surfaceRes::unsetRole()
@@ -107,6 +110,10 @@ void surfaceRes::unsetRole()
     {
         subsurface_->getParent()->removeChild(this);
         delete subsurface_;
+    }
+    else if(role_ == surfaceRole::cursor && getSeat()->getPointer()->getCursor() == this)
+    {
+        getSeat()->getPointer()->setCursor(nullptr, vec2ui(0, 0));
     }
 
     role_ = surfaceRole::none;
@@ -139,20 +146,29 @@ bool surfaceRes::isChild(surfaceRes* surf) const
 
 void surfaceRes::commit()
 {
-    if(pending_.attached && role_ != surfaceRole::none)
-    {
-        getBackend()->getOutput()->mapSurface(this);
-    }
-    else
-    {
-        getBackend()->getOutput()->render();
-    }
-
-    if(commited_.attached)
-        delete commited_.attached;
+    surfaceState old = commited_;
 
     commited_ = pending_;
     pending_ = surfaceState();
+
+    if(role_ != surfaceRole::none && role_ != surfaceRole::cursor)
+    {
+        if(commited_.attached && !old.attached)
+        {
+            getBackend()->getOutput()->mapSurface(this);
+        }
+        else if(!commited_.attached && old.attached)
+        {
+            getBackend()->getOutput()->unmapSurface(this);
+        }
+        else if(commited_.attached && old.attached)
+        {
+            getBackend()->getOutput()->refresh();
+        }
+    }
+
+    if(old.attached)
+        old.attached->destroy();
 }
 
 

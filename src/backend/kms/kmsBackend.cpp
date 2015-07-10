@@ -2,6 +2,7 @@
 #include <backend/kms/input.hpp>
 #include <backend/egl.hpp>
 #include <backend/tty.hpp>
+#include <backend/renderer.hpp>
 
 #include <util/misc.hpp>
 
@@ -171,6 +172,9 @@ kmsOutput::kmsOutput(const kmsBackend& kms)
 
     gbmBuffer_ = gbm_surface_lock_front_buffer(gbmSurface_);
     drmModeAddFB(kms.getFD(), width, height, 24, 32, gbm_bo_get_stride(gbmBuffer_), gbm_bo_get_handle(gbmBuffer_).u32, &fbID_);
+
+
+    renderer_ = new renderer();
 }
 
 kmsOutput::~kmsOutput()

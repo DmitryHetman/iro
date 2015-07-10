@@ -12,6 +12,8 @@ protected:
     std::vector<surfaceRes*> surfaces_;
     renderer* renderer_ = nullptr;
 
+    wl_event_source* drawEventSource_;
+
 public:
     output();
     virtual ~output();
@@ -22,6 +24,7 @@ public:
     void unmapSurface(surfaceRes* surf);
 
     virtual void render();
+    virtual void refresh();
 
     virtual void swapBuffers() = 0;
     virtual void makeEglCurrent() = 0;

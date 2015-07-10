@@ -3,6 +3,8 @@
 #include <iro.hpp>
 #include <resources/resource.hpp>
 
+#include <util/vec.hpp>
+
 #include <wayland-server-core.h>
 
 enum class pointerState
@@ -21,6 +23,8 @@ protected:
     pointerRes* grab_ = nullptr;
     pointerState state_ = pointerState::normal;
 
+    vec2ui position_;
+
     surfaceRes* cursor_ = nullptr;
 
     pointer(seat* s);
@@ -30,11 +34,15 @@ public:
     void sendButtonRelease(unsigned int button);
     void sendScroll();
 
-    bool hasGrab() const { return (grab_ == nullptr); }
     pointerRes* getGrab() const { return grab_; }
 
     pointerState getState() const { return state_; }
     seat* getSeat() const { return seat_; }
+
+    void setCursor(surfaceRes* surf, vec2ui hotspot);
+    surfaceRes* getCursor() const { return cursor_; }
+
+    vec2ui getPosition() const { return position_; }
 
     void startResize();
     void startMove();

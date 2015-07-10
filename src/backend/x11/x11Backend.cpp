@@ -1,6 +1,8 @@
 #include <backend/x11/x11Backend.hpp>
 #include <server.hpp>
 #include <compositor/compositor.hpp>
+#include <seat/seat.hpp>
+#include <seat/pointer.hpp>
 
 #include <wayland-server-core.h>
 
@@ -147,6 +149,8 @@ int x11Backend::eventLoop(int fd, unsigned int mask)
             }
             case XCB_MOTION_NOTIFY:
             {
+                xcb_motion_notify_event_t* ev = (xcb_motion_notify_event_t*) event;
+                getSeat()->getPointer()->sendMove(ev->event_x, ev->event_y);
                 break;
             }
             case XCB_KEY_PRESS:

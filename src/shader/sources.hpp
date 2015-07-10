@@ -33,8 +33,7 @@ const std::string argbFS =
       "uniform sampler2D texture0;\n"
       "varying vec2 vs_uv;\n"
       "void main() {\n"
-      "  vec4 col = texture2D(texture0, vs_uv);\n"
-      "  gl_FragColor = vec4(col.rgb, col.a);\n"
+      "  gl_FragColor = texture2D(texture0, vs_uv);\n"
       "}\n";
 
 const std::string rgbFS =
