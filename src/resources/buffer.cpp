@@ -25,18 +25,11 @@ bool bufferRes::fromShmBuffer(wl_shm_buffer* shmBuffer)
 {
     unsigned int format = wl_shm_buffer_get_format(shmBuffer);
 
-    if(format == WL_SHM_FORMAT_ARGB8888)
+    switch(format)
     {
-        format_ = bufferFormat::argb32;
-    }
-    else if(format == WL_SHM_FORMAT_XRGB8888)
-    {
-        format_ = bufferFormat::rgb32;
-    }
-    else
-    {
-        format_ = bufferFormat::unknown;
-        return false;
+        case WL_SHM_FORMAT_ARGB8888: format_ = bufferFormat::argb32; break;
+        case WL_SHM_FORMAT_XRGB8888: format_ = bufferFormat::rgb32; break;
+        default: return false;
     }
 
     unsigned int pitch = wl_shm_buffer_get_stride(shmBuffer) / 4;
@@ -73,14 +66,40 @@ bool bufferRes::fromEglBuffer(wl_resource* buffer)
         return false;
     }
 
+    switch(format)
+    {
+        default:format_ = bufferFormat::argb32; break;
+    }
+
+    glActiveTexture(GL_TEXTURE0);
+    glGenTextures(1, &texture_);
+    glBindTexture(GL_TEXTURE_2D, texture_);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    EGLint attribs[] =
+    {
+        EGL_WAYLAND_PLANE_WL, 0,
+        EGL_NONE
+    };
+
+    image_ = getEglContext()->eglCreateImageKHR(getEglContext()->getDisplay(), getEglContext()->getContext(), EGL_WAYLAND_BUFFER_WL, (EGLClientBuffer) wlResource_, attribs);
+
+    PFNGLEGLIMAGETARGETTEXTURE2DOESPROC func = (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC) eglGetProcAddress("glEGLImageTargetTexture2DOES");
+    func(GL_TEXTURE_2D, image_);
 
     return true;
 }
 
 bool bufferRes::init()
 {
+    if(!wlResource_)
+        return 0;
+
     if(initialized())
         return 1;
+
+    std::cout << wlResource_ << std::endl;
 
     wl_shm_buffer* shmBuffer = wl_shm_buffer_get(wlResource_);
     if(shmBuffer)

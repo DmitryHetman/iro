@@ -49,6 +49,19 @@ seat::~seat()
     delete pointer_;
 }
 
+void seat::moveShellSurface(seatRes* res, shellSurfaceRes* shellSurface)
+{
+    pointer_->state_ = pointerState::move;
+    pointer_->grab_ = res->getPointerRes();
+}
+
+void seat::resizeShellSurface(seatRes* res, shellSurfaceRes* shellSurface, unsigned int edges)
+{
+    pointer_->state_ = pointerState::resize;
+    pointer_->grab_ = res->getPointerRes();
+    pointer_->resizeEdges_ = edges;
+}
+
 //////////////////////////
 seatRes::seatRes(seat* s, wl_client* client, unsigned int id, unsigned int version) : resource(client, id, &wl_seat_interface, &seatImplementation, version), seat_(s)
 {

@@ -15,7 +15,6 @@ enum class shellSurfaceState
     transient
 };
 
-//user data of wl_shell_surface resources is the a surfaceRes, which role is a shellSurface
 class shellSurfaceRes : public resource
 {
 protected:
@@ -24,6 +23,8 @@ protected:
 
     std::string className_;
     std::string title_;
+
+    bool ping_ = 0;
 
     surfaceRes* surface_;
 
@@ -43,6 +44,11 @@ public:
 
     void setClassName(const std::string& name);
     void setTitle(const std::string& name);
+
+    void ping();
+    void pong() { ping_ = 0; }
+
+    bool hasPing() const { return ping_; }
 
     shellSurfaceState getState() const { return state_; }
 

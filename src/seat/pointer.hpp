@@ -19,7 +19,12 @@ protected:
 
     seat* seat_;
     pointerRes* grab_ = nullptr;
+
     pointerState state_ = pointerState::normal;
+    union
+    {
+        unsigned int resizeEdges_ = 0;
+    };
 
     vec2ui position_;
 
@@ -41,9 +46,6 @@ public:
     surfaceRes* getCursor() const { return cursor_; }
 
     vec2ui getPosition() const { return position_; }
-
-    void startResize(shellSurfaceRes* shellSurf, unsigned int edges);
-    void startMove(shellSurfaceRes* shellSurf);
 };
 ////////////////////////
 class pointerRes : public resource

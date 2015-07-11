@@ -30,7 +30,7 @@ shell::shell()
 
 shell::~shell()
 {
-    wl_global_destroy(global_);
+    //wl_global_destroy(global_);
 }
 
 /////////////////////////////

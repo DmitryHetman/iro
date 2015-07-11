@@ -57,16 +57,6 @@ void pointer::sendScroll()
 
 }
 
-void pointer::startResize(shellSurfaceRes* shellSurf, unsigned int edges)
-{
-
-}
-
-void pointer::startMove(shellSurfaceRes* shellSurf)
-{
-
-}
-
 void pointer::setCursor(surfaceRes* surf, vec2ui hotspot)
 {
     surf->setCursorRole(hotspot);

@@ -1,18 +1,26 @@
 #include <resources/shellSurface.hpp>
+#include <seat/seat.hpp>
 
 #include <wayland-server-protocol.h>
 
 void shellSurfacePong(wl_client* client, wl_resource* resource, unsigned int serial)
 {
-
+    shellSurfaceRes* surf = (shellSurfaceRes*) wl_resource_get_user_data(resource);
+    surf->pong();
 }
 void shellSurfaceMove(wl_client* client, wl_resource* resource, wl_resource* seat, unsigned int serial)
 {
+    seatRes* seatr = (seatRes*) wl_resource_get_user_data(seat);
+    shellSurfaceRes* surf = (shellSurfaceRes*) wl_resource_get_user_data(resource);
 
+    seatr->getSeat()->moveShellSurface(seatr, surf);
 }
 void shellSurfaceResize(wl_client* client, wl_resource* resource, wl_resource* seat, unsigned int serial, unsigned int edges)
 {
+    seatRes* seatr = (seatRes*) wl_resource_get_user_data(seat);
+    shellSurfaceRes* surf = (shellSurfaceRes*) wl_resource_get_user_data(resource);
 
+    seatr->getSeat()->resizeShellSurface(seatr, surf, edges);
 }
 void shellSurfaceSetToplevel(wl_client* client, wl_resource* resource)
 {
@@ -36,11 +44,13 @@ void shellSurfaceSetMaximized(wl_client* client, wl_resource* resource, wl_resou
 }
 void shellSurfaceSetTitle(wl_client* client, wl_resource* resource, const char* title)
 {
-
+    shellSurfaceRes* surf = (shellSurfaceRes*) wl_resource_get_user_data(resource);
+    surf->setClassName(title);
 }
-void shellSurfaceSetClass(wl_client* client, wl_resource* resource, const char* class_)
+void shellSurfaceSetClass(wl_client* client, wl_resource* resource, const char* className)
 {
-
+    shellSurfaceRes* surf = (shellSurfaceRes*) wl_resource_get_user_data(resource);
+    surf->setClassName(className);
 }
 
 const struct wl_shell_surface_interface shellSurfaceImplementation
@@ -70,4 +80,10 @@ void shellSurfaceRes::setClassName(const std::string& name)
 void shellSurfaceRes::setTitle(const std::string& name)
 {
     title_ = name;
+}
+
+void shellSurfaceRes::ping()
+{
+    ping_ = 1;
+    wl_shell_surface_send_ping(getWlResource(), wl_display_next_serial(getWlDisplay()));
 }

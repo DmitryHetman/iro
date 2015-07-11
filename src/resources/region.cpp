@@ -25,15 +25,7 @@ const struct wl_region_interface regionImplementation
 
 ////////////////////////////////////////7
 
-regionRes::regionRes(wl_client* client, unsigned int id)
+regionRes::regionRes(wl_client* client, unsigned int id) : resource(client, id, &wl_region_interface, &regionImplementation)
 {
-    wlResource_ = wl_resource_create(client, &wl_region_interface, 3, id);
-    if(!wlResource_)
-    {
-        throw std::runtime_error("failed to create wayland surface");
-        return;
-    }
-
-    wl_resource_set_implementation(wlResource_, &regionImplementation, this, nullptr);
 }
 

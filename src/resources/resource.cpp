@@ -3,16 +3,21 @@
 
 #include <wayland-server-core.h>
 
+#include <iostream>
+
 void destroyResource(wl_resource* res)
 {
     resource* mres = (resource*) wl_resource_get_user_data(res);
-    delete mres;
+
+    std::cout << wl_resource_get_id(res) << " " << mres << std::endl;
+    if(mres) delete mres;
+
+    std::cout << "finished" << std::endl;
 }
 
 /////////////////////////////////////////////////////////
 resource::resource(wl_resource* res) : wlResource_(res)
 {
-    wl_resource_set_destructor(wlResource_, destroyResource);
 }
 
 resource::resource(wl_client* client, unsigned int id, const struct wl_interface* interface, const void* implementation, unsigned int version, void* data, wl_resource_destroy_func_t destroyFunc)
@@ -31,7 +36,9 @@ void resource::destroy()
 
 void resource::create(wl_client* client, unsigned int id, const struct wl_interface* interface, const void* implementation, unsigned int version, void* data, wl_resource_destroy_func_t destroyFunc)
 {
-    if(data == nullptr)
+    std::cout << id << " " << interface->name << " " << this << std::endl;
+
+    if(data == nullptr || 1)
         data = this;
 
     if(!destroyFunc)

@@ -16,6 +16,9 @@ public:
 
     pointer* getPointer() const { return pointer_; }
     keyboard* getKeyboard() const { return keyboard_; }
+
+    void resizeShellSurface(seatRes* res, shellSurfaceRes* shellSurf, unsigned int edges);
+    void moveShellSurface(seatRes* res, shellSurfaceRes* shellSurf);
 };
 
 ////////////////////////////////

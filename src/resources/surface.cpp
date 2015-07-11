@@ -117,12 +117,12 @@ void surfaceRes::unsetRole()
 {
     if(role_ == surfaceRole::shell)
     {
-        delete shellSurface_;
+        shellSurface_->destroy();
     }
     else if(role_ == surfaceRole::sub)
     {
         subsurface_->getParent()->removeChild(this);
-        delete subsurface_;
+        subsurface_->destroy();
     }
     else if(role_ == surfaceRole::cursor && getSeat()->getPointer()->getCursor() == this)
     {
