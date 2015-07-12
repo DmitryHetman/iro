@@ -18,7 +18,9 @@ protected:
     friend seat;
 
     seat* seat_;
+
     pointerRes* grab_ = nullptr;
+    surfaceRes* over_ = nullptr;
 
     pointerState state_ = pointerState::normal;
     union
@@ -31,11 +33,13 @@ protected:
     surfaceRes* cursor_ = nullptr;
 
     pointer(seat* s);
+    ~pointer();
+
 public:
     void sendMove(unsigned int x, unsigned int y);
     void sendButtonPress(unsigned int button);
     void sendButtonRelease(unsigned int button);
-    void sendScroll();
+    void sendScroll(unsigned int axis, double value);
 
     pointerRes* getGrab() const { return grab_; }
 

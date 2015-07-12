@@ -69,8 +69,8 @@ seatRes::seatRes(seat* s, wl_client* client, unsigned int id, unsigned int versi
 }
 seatRes::~seatRes()
 {
-    if(pointer_) delete pointer_;
-    if(keyboard_) delete keyboard_;
+    if(pointer_) pointer_->destroy();
+    if(keyboard_) keyboard_->destroy();
 }
 
 void seatRes::createPointer(unsigned int id)

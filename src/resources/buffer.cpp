@@ -56,7 +56,6 @@ bool bufferRes::fromShmBuffer(wl_shm_buffer* shmBuffer)
 
 bool bufferRes::fromEglBuffer(wl_resource* buffer)
 {
-    std::cout << "attaching egl" << std::endl;
     EGLint format;
 
     eglContext* ctx = getEglContext();
@@ -98,8 +97,6 @@ bool bufferRes::init()
 
     if(initialized())
         return 1;
-
-    std::cout << wlResource_ << std::endl;
 
     wl_shm_buffer* shmBuffer = wl_shm_buffer_get(wlResource_);
     if(shmBuffer)

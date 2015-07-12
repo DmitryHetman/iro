@@ -8,11 +8,7 @@
 void destroyResource(wl_resource* res)
 {
     resource* mres = (resource*) wl_resource_get_user_data(res);
-
-    std::cout << wl_resource_get_id(res) << " " << mres << std::endl;
     if(mres) delete mres;
-
-    std::cout << "finished" << std::endl;
 }
 
 /////////////////////////////////////////////////////////
@@ -36,8 +32,6 @@ void resource::destroy()
 
 void resource::create(wl_client* client, unsigned int id, const struct wl_interface* interface, const void* implementation, unsigned int version, void* data, wl_resource_destroy_func_t destroyFunc)
 {
-    std::cout << id << " " << interface->name << " " << this << std::endl;
-
     if(data == nullptr || 1)
         data = this;
 
@@ -47,9 +41,7 @@ void resource::create(wl_client* client, unsigned int id, const struct wl_interf
     wlResource_ = wl_resource_create(client, interface, version, id);
     if(!wlResource_)
     {
-        std::string error;
-        error.append("failed to create resource for ");
-        error.append(interface->name);
+        std::string error = "failed to create resource for " + std::string(interface->name) + ", id " + std::to_string(id) + ", version " + std::to_string(version);
         throw std::runtime_error(error);
         return;
     }

@@ -189,5 +189,10 @@ void surfaceRes::commit()
         old.attached->destroy();
 }
 
+vec2ui surfaceRes::getPosition() const
+{
+    return vec2ui();
+}
+
 
 

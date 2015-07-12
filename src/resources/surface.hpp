@@ -79,8 +79,11 @@ public:
     shellSurfaceRes* getShellSurface() const { if(role_ == surfaceRole::shell) return shellSurface_; return nullptr; }
     subsurfaceRes* getSubsurface() const { if(role_ == surfaceRole::sub) return subsurface_; return nullptr; }
 
+    vec2ui getPosition() const;
+
     const std::vector<surfaceRes*>& getChildren() const { return children_; }
     bool isChild(surfaceRes* surf) const;
 
+    //resource
     resourceType getType() const { return resourceType::surface; }
 };

@@ -34,27 +34,52 @@ pointer::pointer(seat* s) : seat_(s), grab_(nullptr)
 {
 }
 
+pointer::~pointer()
+{
+
+}
+
 void pointer::sendMove(unsigned int x, unsigned int y)
 {
     position_.x = x;
     position_.y = y;
 
     getBackend()->getOutput()->refresh();
+
+    if(!grab_ || !over_)
+        return;
+
+    wl_fixed_t fx = wl_fixed_from_int(x - over_->getPosition().x);
+    wl_fixed_t fy = wl_fixed_from_int(y - over_->getPosition().x);
+    wl_pointer_send_motion(grab_->getWlResource(), getTime(), fx, fy);
+
+    //surface enter, leave
 }
 
 void pointer::sendButtonPress(unsigned int button)
 {
+    if(!grab_)
+        return;
 
+    wl_pointer_send_button(grab_->getWlResource(), wl_display_next_serial(getWlDisplay()), getTime(), button, 1);
+
+    //keyboard focus
 }
 
 void pointer::sendButtonRelease(unsigned int button)
 {
+    if(!grab_)
+        return;
 
+    wl_pointer_send_button(grab_->getWlResource(), wl_display_next_serial(getWlDisplay()), getTime(), button, 0);
 }
 
-void pointer::sendScroll()
+void pointer::sendScroll(unsigned int axis, double value)
 {
+    if(!grab_)
+        return;
 
+    wl_pointer_send_axis(grab_->getWlResource(), getTime(), axis, value);
 }
 
 void pointer::setCursor(surfaceRes* surf, vec2ui hotspot)

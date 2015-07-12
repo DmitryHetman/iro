@@ -19,6 +19,10 @@ keyboard::keyboard(seat* s) : seat_(s), grab_(nullptr)
 {
 }
 
+keyboard::~keyboard()
+{
+}
+
 void keyboard::sendKeyPress(unsigned int key)
 {
     if(!grab_)

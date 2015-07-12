@@ -15,6 +15,8 @@ protected:
     keyboardRes* grab_ = nullptr;
 
     keyboard(seat* s);
+    ~keyboard();
+
 public:
     void sendKeyPress(unsigned int key);
     void sendKeyRelease(unsigned int key);
