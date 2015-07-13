@@ -5,6 +5,8 @@
 
 #include <util/nonCopyable.hpp>
 
+#include <unordered_map>
+
 ///////////////////////////////////////////
 class compositor : public nonCopyable
 {
@@ -15,6 +17,8 @@ protected:
     shell* shell_ = nullptr;
     seat* seat_ = nullptr;
     subcompositor* subcompositor_ = nullptr;
+
+    std::unordered_map<wl_client*, client*> clients_;
 
     static compositor* object;
 
@@ -31,6 +35,13 @@ public:
 
     wl_display* getWlDisplay() const { return wlDisplay_; }
     wl_event_loop* getWlEventLoop() const;
+
+    unsigned int getNumberClients() const { return clients_.size(); }
+
+    client* getClient(wl_client* wlc);
+
+    void registerClient(client* c);
+    void unregisterClient(client* c);
 
     static compositor* getObject(){ return object; }
 };

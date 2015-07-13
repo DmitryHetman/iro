@@ -189,9 +189,14 @@ void surfaceRes::commit()
         old.attached->destroy();
 }
 
-vec2ui surfaceRes::getPosition() const
+vec2i surfaceRes::getPosition() const
 {
-    return vec2ui();
+    return vec2i();
+}
+
+rect2i surfaceRes::getExtents() const
+{
+    return rect2i(getPosition(), (commited_.attached) ? commited_.attached->getSize() * commited_.scale : vec2ui(0,0));
 }
 
 

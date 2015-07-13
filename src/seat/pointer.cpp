@@ -2,6 +2,7 @@
 
 #include <seat/seat.hpp>
 #include <resources/surface.hpp>
+#include <resources/client.hpp>
 #include <backend/backend.hpp>
 #include <backend/output.hpp>
 
@@ -46,14 +47,35 @@ void pointer::sendMove(unsigned int x, unsigned int y)
 
     getBackend()->getOutput()->refresh();
 
+    //surface enter, leave
+    surfaceRes* surf = getBackend()->getOutput()->getSurfaceAt(x, y);
+    if(surf != over_)
+    {
+        grab_ = nullptr;
+        if(over_)
+        {
+            pointerRes* pres = over_->getClient()->getSeatRes()->getPointerRes();
+            wl_pointer_send_leave(pres->getWlResource(), wl_display_next_serial(getWlDisplay()), over_->getWlResource());
+        }
+        if(surf)
+        {
+            wl_fixed_t fx = wl_fixed_from_int(x - surf->getPosition().x);
+            wl_fixed_t fy = wl_fixed_from_int(y - surf->getPosition().x);
+
+            pointerRes* pres = surf->getClient()->getSeatRes()->getPointerRes();
+            wl_pointer_send_enter(pres->getWlResource(), wl_display_next_serial(getWlDisplay()), surf->getWlResource(), fx, fy);
+
+            grab_ = pres;
+        }
+        over_ = surf;
+    }
+
     if(!grab_ || !over_)
         return;
 
     wl_fixed_t fx = wl_fixed_from_int(x - over_->getPosition().x);
     wl_fixed_t fy = wl_fixed_from_int(y - over_->getPosition().x);
     wl_pointer_send_motion(grab_->getWlResource(), getTime(), fx, fy);
-
-    //surface enter, leave
 }
 
 void pointer::sendButtonPress(unsigned int button)

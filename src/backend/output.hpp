@@ -31,6 +31,8 @@ public:
     virtual void render();
     virtual void refresh();
 
+    surfaceRes* getSurfaceAt(int x, int y) const { return nullptr; }
+
     virtual void swapBuffers() = 0;
     virtual void makeEglCurrent() = 0;
 

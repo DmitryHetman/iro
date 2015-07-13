@@ -3,6 +3,7 @@
 #define WL_HIDE_DEPRECATED
 
 class server;
+class client;
 class compositor;
 class subcompositor;
 class shell;

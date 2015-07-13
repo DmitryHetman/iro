@@ -148,7 +148,7 @@ kmsBackend::~kmsBackend()
 void kmsBackend::onEnter()
 {
     kmsOutput* out = (kmsOutput*) outputs_[0];
-    drmModeSetCrtc(fd_, drmEncoder_->crtc_id, out->getFBID(), 0, 0, &drmConnector_->connector_id, 1, &drmMode_);
+    drmModeSetCrtc(fd_, drmEncoder_->crtc_id, out->getFB(), 0, 0, &drmConnector_->connector_id, 1, &drmMode_);
 }
 
 void kmsBackend::onLeave()
@@ -193,17 +193,22 @@ kmsOutput::kmsOutput(const kmsBackend& kms, unsigned int id) : output(id)
 
     eglSwapBuffers(egl->getDisplay(), eglSurface_);
 
-    gbmBuffer_ = gbm_surface_lock_front_buffer(gbmSurface_);
-    drmModeAddFB(kms.getFD(), width, height, 24, 32, gbm_bo_get_stride(gbmBuffer_), gbm_bo_get_handle(gbmBuffer_).u32, &fbID_);
+    fbs_[0].buffer = gbm_surface_lock_front_buffer(gbmSurface_);
+    drmModeAddFB(kms.getFD(), width, height, 24, 32, gbm_bo_get_stride(fbs_[0].buffer), gbm_bo_get_handle(fbs_[0].buffer).u32, &fbs_[0].fb);
 
-    //drmModePageFlip(kms.getFD(), kms.getDRMEncoder()->crtc_id, fbID_, DRM_MODE_PAGE_FLIP_EVENT, this);
+    drmModeAddFB(kms.getFD(), width, height, 24, 32, gbm_bo_get_stride(fbs_[0].buffer), gbm_bo_get_handle(fbs_[0].buffer).u32, &fbs_[1].fb);
 
     renderer_ = new renderer();
 }
 
 kmsOutput::~kmsOutput()
 {
-    drmModeRmFB(getKMSBackend()->getFD(), fbID_);
+    gbm_surface_release_buffer(gbmSurface_, fbs_[0].buffer);
+    gbm_surface_release_buffer(gbmSurface_, fbs_[1].buffer);
+    drmModeRmFB(getKMSBackend()->getFD(), fbs_[0].fb);
+    drmModeRmFB(getKMSBackend()->getFD(), fbs_[1].fb);
+
+    gbm_surface_destroy(gbmSurface_);
 }
 
 void kmsOutput::swapBuffers()
@@ -212,21 +217,13 @@ void kmsOutput::swapBuffers()
     {
         eglSwapBuffers(getEglContext()->getDisplay(), eglSurface_);
 
-        unsigned int height = getKMSBackend()->getDRMMode().vdisplay;
-        unsigned int width = getKMSBackend()->getDRMMode().hdisplay;
-
-        gbm_bo* oldBuffer = gbmBuffer_;
-        int oldFB = fbID_;
-
-        gbmBuffer_ = gbm_surface_lock_front_buffer(gbmSurface_);
-        drmModeAddFB(getKMSBackend()->getFD(), width, height, 24, 32, gbm_bo_get_stride(gbmBuffer_), gbm_bo_get_handle(gbmBuffer_).u32, &fbID_);
-
-        drmModePageFlip(getKMSBackend()->getFD(), getKMSBackend()->getDRMEncoder()->crtc_id, fbID_, DRM_MODE_PAGE_FLIP_EVENT, this);
-
-        if(oldBuffer) gbm_surface_release_buffer(gbmSurface_, oldBuffer);
-        if(oldFB) drmModeRmFB(getKMSBackend()->getFD(), oldFB);
+        drmModePageFlip(getKMSBackend()->getFD(), getKMSBackend()->getDRMEncoder()->crtc_id, fbs_[0].fb, DRM_MODE_PAGE_FLIP_EVENT, this);
 
         flipping_ = 1;
+        if(frontBuffer_ == 1) frontBuffer_ = 0;
+        else if(frontBuffer_ == 0) frontBuffer_ = 1;
+
+        std::cout << "flippred" << std::endl;
     }
 
 }

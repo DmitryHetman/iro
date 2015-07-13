@@ -94,7 +94,6 @@ ttyHandler::ttyHandler() : focus_(0)
 
 ttyHandler::~ttyHandler()
 {
-    std::cout << "reset tty" << std::endl;
     iroLog << "reset tty" << std::endl;
 
     activate();

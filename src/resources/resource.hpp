@@ -51,6 +51,7 @@ public:
 
     wl_resource* getWlResource() const { return wlResource_; }
     wl_client* getWlClient() const;
+    client* getClient() const;
 
     virtual resourceType getType() const { return resourceType::unknown; };
 };

@@ -4,6 +4,7 @@
 
 #include <resources/surface.hpp>
 #include <resources/region.hpp>
+#include <resources/client.hpp>
 
 #include <seat/seat.hpp>
 
@@ -132,6 +133,23 @@ int compositor::run()
 wl_event_loop* compositor::getWlEventLoop() const
 {
     return wl_display_get_event_loop(wlDisplay_);
+}
+
+client* compositor::getClient(wl_client* wlc)
+{
+    if(!clients_[wlc])
+        clients_[wlc] = new client(wlc);
+
+    return clients_[wlc];
+}
+
+void compositor::unregisterClient(client* c)
+{
+    auto it = clients_.find(c->getWlClient());
+    if(it != clients_.end())
+    {
+        clients_.erase(it->first);
+    }
 }
 
 ////////////////////////////////////

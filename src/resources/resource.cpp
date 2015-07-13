@@ -1,9 +1,11 @@
 #include <resources/resource.hpp>
-#include <stdexcept>
+#include <resources/client.hpp>
+#include <compositor/compositor.hpp>
 
 #include <wayland-server-core.h>
 
 #include <iostream>
+#include <stdexcept>
 
 void destroyResource(wl_resource* res)
 {
@@ -14,6 +16,7 @@ void destroyResource(wl_resource* res)
 /////////////////////////////////////////////////////////
 resource::resource(wl_resource* res) : wlResource_(res)
 {
+    getCompositor()->getClient(getWlClient())->addResource(this);
 }
 
 resource::resource(wl_client* client, unsigned int id, const struct wl_interface* interface, const void* implementation, unsigned int version, void* data, wl_resource_destroy_func_t destroyFunc)
@@ -47,9 +50,16 @@ void resource::create(wl_client* client, unsigned int id, const struct wl_interf
     }
 
     wl_resource_set_implementation(wlResource_, implementation, data, destroyFunc);
+
+    getCompositor()->getClient(getWlClient())->addResource(this);
 }
 
 wl_client* resource::getWlClient() const
 {
     return wl_resource_get_client(wlResource_);
+}
+
+client* resource::getClient() const
+{
+    return getCompositor()->getClient(getWlClient());
 }

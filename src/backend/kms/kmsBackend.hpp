@@ -54,20 +54,25 @@ public:
 class kmsOutput : public output
 {
 protected:
+    struct fb
+    {
+        gbm_bo* buffer = nullptr;
+        unsigned int fb = 0;
+    };
+
+protected:
     gbm_surface* gbmSurface_ = nullptr;
-    gbm_bo* gbmBuffer_ = nullptr;
-
     bool flipping_ = 0;
-
-    unsigned int fbID_ = 0;
-
     EGLSurface eglSurface_;
+
+    fb fbs_[2];
+    unsigned char frontBuffer_ = 0;
 
 public:
     kmsOutput(const kmsBackend& kms, unsigned int id);
     ~kmsOutput();
 
-    unsigned int getFBID() const { return fbID_; }
+    unsigned int getFB() const { return fbs_[frontBuffer_].fb; }
 
     void makeEglCurrent();
     void swapBuffers();
