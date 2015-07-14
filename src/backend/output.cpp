@@ -2,6 +2,7 @@
 
 #include <backend/egl.hpp>
 #include <backend/renderer.hpp>
+#include <resources/surface.hpp>
 #include <seat/seat.hpp>
 
 #define GL_GLEXT_PROTOTYPES
@@ -79,6 +80,16 @@ void output::unmapSurface(surfaceRes* surf)
             mappedSurfaces_.erase(mappedSurfaces_.begin() + i);
     }
     refresh();
+}
+
+surfaceRes* output::getSurfaceAt(vec2i pos)
+{
+    for(surfaceRes* res : mappedSurfaces_)
+    {
+        if(res->getExtents().contains(pos))
+            return res;
+    }
+    return nullptr;
 }
 
 

@@ -2,6 +2,17 @@
 
 #define WL_HIDE_DEPRECATED
 
+struct wl_display;
+struct wl_event_loop;
+struct wl_global;
+struct wl_resource;
+struct wl_client;
+struct wl_interface;
+struct wl_event_source;
+struct wl_output;
+struct wl_shm_buffer;
+
+
 class server;
 class client;
 class compositor;
@@ -64,15 +75,7 @@ eglContext* getEglContext();
 ttyHandler* getTTYHandler();
 inputHandler* getInputHandler();
 
-struct wl_display;
-struct wl_event_loop;
-struct wl_global;
-struct wl_resource;
-struct wl_client;
-struct wl_interface;
-struct wl_event_source;
-struct wl_output;
-struct wl_shm_buffer;
+void addClientResource(wl_client* c, resource* res);
 
 wl_display* getWlDisplay();
 wl_event_loop* getWlEventLoop();

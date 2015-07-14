@@ -3,6 +3,7 @@
 #include <seat/seat.hpp>
 #include <resources/surface.hpp>
 #include <resources/client.hpp>
+#include <resources/shellSurface.hpp>
 #include <backend/backend.hpp>
 #include <backend/output.hpp>
 
@@ -42,40 +43,76 @@ pointer::~pointer()
 
 void pointer::sendMove(unsigned int x, unsigned int y)
 {
+    vec2i delta = vec2ui(x,y) - position_;
     position_.x = x;
     position_.y = y;
 
     getBackend()->getOutput()->refresh();
 
-    //surface enter, leave
-    surfaceRes* surf = getBackend()->getOutput()->getSurfaceAt(x, y);
-    if(surf != over_)
+    if(state_ == pointerState::normal)
     {
-        grab_ = nullptr;
-        if(over_)
+        //surface enter, leave
+        surfaceRes* surf = getBackend()->getOutput()->getSurfaceAt(position_);
+        if(surf != over_)
         {
-            pointerRes* pres = over_->getClient()->getSeatRes()->getPointerRes();
-            wl_pointer_send_leave(pres->getWlResource(), wl_display_next_serial(getWlDisplay()), over_->getWlResource());
-        }
-        if(surf)
-        {
-            wl_fixed_t fx = wl_fixed_from_int(x - surf->getPosition().x);
-            wl_fixed_t fy = wl_fixed_from_int(y - surf->getPosition().x);
+            grab_ = nullptr;
+            if(over_)
+            {
+                if(!over_->getClient()->getSeatRes())
+                {
+                    std::cout << "w1" << std::endl;
+                    return;
+                }
 
-            pointerRes* pres = surf->getClient()->getSeatRes()->getPointerRes();
-            wl_pointer_send_enter(pres->getWlResource(), wl_display_next_serial(getWlDisplay()), surf->getWlResource(), fx, fy);
+                pointerRes* pres = over_->getClient()->getSeatRes()->getPointerRes();
+                wl_pointer_send_leave(pres->getWlResource(), wl_display_next_serial(getWlDisplay()), over_->getWlResource());
+            }
+            if(surf)
+            {
+                if(!surf->getClient()->getSeatRes())
+                {
+                    std::cout << "w2" << std::endl;
+                    return;
+                }
 
-            grab_ = pres;
+                wl_fixed_t fx = wl_fixed_from_int(x - surf->getPosition().x);
+                wl_fixed_t fy = wl_fixed_from_int(y - surf->getPosition().x);
+
+                pointerRes* pres = surf->getClient()->getSeatRes()->getPointerRes();
+                wl_pointer_send_enter(pres->getWlResource(), wl_display_next_serial(getWlDisplay()), surf->getWlResource(), fx, fy);
+
+                grab_ = pres;
+            }
+            over_ = surf;
         }
-        over_ = surf;
+
+        if(!grab_ || !over_)
+            return;
+
+        wl_fixed_t fx = wl_fixed_from_int(x - over_->getPosition().x);
+        wl_fixed_t fy = wl_fixed_from_int(y - over_->getPosition().x);
+        wl_pointer_send_motion(grab_->getWlResource(), getTime(), fx, fy);
     }
+    else if(state_ == pointerState::move)
+    {
+        getSeat()->getGrab()->move(delta);
+    }
+    else if(state_ == pointerState::resize)
+    {
+        int w = 0, h = 0;
 
-    if(!grab_ || !over_)
-        return;
+        if(resizeEdges_ & WL_SHELL_SURFACE_RESIZE_BOTTOM)
+            h = position_.y - over_->getPosition().y;
+        else if(resizeEdges_ & WL_SHELL_SURFACE_RESIZE_TOP)
+            h = over_->getExtents().bottom() - position_.y;
 
-    wl_fixed_t fx = wl_fixed_from_int(x - over_->getPosition().x);
-    wl_fixed_t fy = wl_fixed_from_int(y - over_->getPosition().x);
-    wl_pointer_send_motion(grab_->getWlResource(), getTime(), fx, fy);
+        if(resizeEdges_ & WL_SHELL_SURFACE_RESIZE_RIGHT)
+            w = position_.x - over_->getPosition().y;
+        else if(resizeEdges_ & WL_SHELL_SURFACE_RESIZE_LEFT)
+            w = over_->getExtents().right() - position_.x;
+
+        wl_shell_surface_send_configure(getSeat()->getGrab()->getWlResource(), resizeEdges_, w, h);
+    }
 }
 
 void pointer::sendButtonPress(unsigned int button)

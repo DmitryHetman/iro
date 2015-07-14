@@ -31,7 +31,7 @@ const struct wl_seat_interface seatImplementation
 
 void bindSeat(wl_client* client, void* data, unsigned int version, unsigned int id)
 {
-    new seatRes(getSeat(), client, id, version);
+    addClientResource(client, new seatRes(getSeat(), client, id, version));
 }
 
 /////////////////////////
@@ -51,12 +51,16 @@ seat::~seat()
 
 void seat::moveShellSurface(seatRes* res, shellSurfaceRes* shellSurface)
 {
+    grab_ = shellSurface;
+
     pointer_->state_ = pointerState::move;
     pointer_->grab_ = res->getPointerRes();
 }
 
 void seat::resizeShellSurface(seatRes* res, shellSurfaceRes* shellSurface, unsigned int edges)
 {
+    grab_ = shellSurface;
+
     pointer_->state_ = pointerState::resize;
     pointer_->grab_ = res->getPointerRes();
     pointer_->resizeEdges_ = edges;

@@ -50,6 +50,8 @@ public:
 
     bool hasPing() const { return ping_; }
 
+    void move(vec2i delta){ toplevelPosition_ += delta; }
+
     shellSurfaceState getState() const { return state_; }
 
     vec2i getToplevelPosition() const { return state_ == shellSurfaceState::toplevel ? toplevelPosition_ : vec2i(); }

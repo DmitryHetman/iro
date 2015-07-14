@@ -10,6 +10,8 @@ protected:
     pointer* pointer_;
     keyboard* keyboard_;
 
+    shellSurfaceRes* grab_ = nullptr;
+
 public:
     seat();
     ~seat();
@@ -19,6 +21,8 @@ public:
 
     void resizeShellSurface(seatRes* res, shellSurfaceRes* shellSurf, unsigned int edges);
     void moveShellSurface(seatRes* res, shellSurfaceRes* shellSurf);
+
+    shellSurfaceRes* getGrab() const { return grab_; }
 };
 
 ////////////////////////////////
@@ -45,5 +49,5 @@ public:
 
     seat* getSeat() const { return seat_; }
 
-    resourceType getType() const { return resourceType::seat; }
+    virtual resourceType getType() const { return resourceType::seat; }
 };

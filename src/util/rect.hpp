@@ -86,10 +86,10 @@ public:
 	vec<2, prec> bottomLeft() const { return position + vec<2, prec>(0, size.y);}
 	vec<2, prec> bottomRight() const { return position + size; }
 
-	const prec& left() const { return position.x; }
-	const prec& right() const { return position.x + size.x; }
-	const prec& top() const { return position.y; }
-	const prec& bottom() const { return position.y + size.y; }
+	const prec left() const { return position.x; }
+	const prec right() const { return position.x + size.x; }
+	const prec top() const { return position.y; }
+	const prec bottom() const { return position.y + size.y; }
 
     prec& left() { return position.x; }
 	prec& top() { return position.y; }

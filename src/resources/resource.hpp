@@ -5,7 +5,7 @@
 
 enum class resourceType : unsigned char
 {
-    unknown,
+    unknown = 0,
 
     surface,
     shellSurface,

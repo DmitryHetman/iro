@@ -50,13 +50,11 @@ void resource::create(wl_client* client, unsigned int id, const struct wl_interf
     }
 
     wl_resource_set_implementation(wlResource_, implementation, data, destroyFunc);
-
-    getCompositor()->getClient(getWlClient())->addResource(this);
 }
 
 wl_client* resource::getWlClient() const
 {
-    return wl_resource_get_client(wlResource_);
+    return (wlResource_) ? wl_resource_get_client(wlResource_) : nullptr;
 }
 
 client* resource::getClient() const
