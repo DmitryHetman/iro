@@ -50,11 +50,11 @@ inputHandler::inputHandler()
     udev_monitor_filter_add_match_subsystem_devtype(udevMonitor_, "drm", nullptr);
     udev_monitor_filter_add_match_subsystem_devtype(udevMonitor_, "input", nullptr);
     udev_monitor_enable_receiving(udevMonitor_);
-    wl_event_loop_add_fd(getWlEventLoop(), udev_monitor_get_fd(udevMonitor_), WL_EVENT_READABLE, udevEventLoop, this);
+    wl_event_loop_add_fd(iroWlEventLoop(), udev_monitor_get_fd(udevMonitor_), WL_EVENT_READABLE, udevEventLoop, this);
 
     input_ = libinput_udev_create_context(&libinputImplementation, this, udev_);
     libinput_udev_assign_seat(input_, "seat0");
-    inputEventSource_ = wl_event_loop_add_fd(getWlEventLoop(), libinput_get_fd(input_), WL_EVENT_READABLE, inputEventLoop, this);
+    inputEventSource_ = wl_event_loop_add_fd(iroWlEventLoop(), libinput_get_fd(input_), WL_EVENT_READABLE, inputEventLoop, this);
 }
 
 inputHandler::~inputHandler()
@@ -74,19 +74,17 @@ int inputHandler::inputEvent()
         {
             case LIBINPUT_EVENT_POINTER_MOTION:
             {
-                iroLog << "motion1" << std::endl;
                 struct libinput_event_pointer* ev = libinput_event_get_pointer_event(event);
                 double x = libinput_event_pointer_get_dx(ev);
                 double y = libinput_event_pointer_get_dy(ev);
-                vec2ui pos = getSeat()->getPointer()->getPosition() + vec2ui(x,y);
-                getSeat()->getPointer()->sendMove(pos.x, pos.y);
+                vec2ui pos = iroSeat()->getPointer()->getPosition() + vec2ui(x,y);
+                iroSeat()->getPointer()->sendMove(pos.x, pos.y);
                 break;
             }
             case LIBINPUT_EVENT_POINTER_MOTION_ABSOLUTE:
             {
-                iroLog << "motion2" << std::endl;
                 struct libinput_event_pointer* ev = libinput_event_get_pointer_event(event);
-                getSeat()->getPointer()->sendMove(libinput_event_pointer_get_absolute_x(ev), libinput_event_pointer_get_absolute_y(ev));
+                iroSeat()->getPointer()->sendMove(libinput_event_pointer_get_absolute_x(ev), libinput_event_pointer_get_absolute_y(ev));
 
                 break;
             }

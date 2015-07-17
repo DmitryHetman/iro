@@ -17,8 +17,6 @@ protected:
     ttyHandler* tty_ = nullptr;
     inputHandler* input_ = nullptr;
 
-    eglContext* eglContext_ = nullptr;
-
     int fd_;
 
     gbm_device* gbmDevice_ = nullptr;
@@ -39,7 +37,6 @@ public:
     ~kmsBackend();
 
     backendType getType() const { return backendType::kms; }
-    eglContext* getEglContext() const { return eglContext_; }
     ttyHandler* getTTYHandler() const { return tty_; }
     inputHandler* getInputHandler() const { return input_; }
 
@@ -47,6 +44,7 @@ public:
     drmModeConnector* getDRMConnector() const { return drmConnector_; }
     drmModeEncoder* getDRMEncoder() const { return drmEncoder_; }
     const drmModeModeInfo& getDRMMode() const { return drmMode_; }
+    drmModeModeInfo& getDRMMode() { return drmMode_; }
 
     int getFD() const { return fd_; }
 };
@@ -65,8 +63,15 @@ protected:
     bool flipping_ = 0;
     EGLSurface eglSurface_;
 
+    bool set = 0;
+
     fb fbs_[2];
     unsigned char frontBuffer_ = 0;
+
+    void releaseFB(fb& obj);
+    void createFB(fb& obj);
+
+    void render();
 
 public:
     kmsOutput(const kmsBackend& kms, unsigned int id);
@@ -77,7 +82,7 @@ public:
     void makeEglCurrent();
     void swapBuffers();
 
-    void wasFlipped(){ flipping_ = 0; }
+    void wasFlipped();
 
     vec2ui getSize() const;
 };
