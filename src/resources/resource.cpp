@@ -2,6 +2,8 @@
 #include <resources/client.hpp>
 #include <compositor/compositor.hpp>
 
+#include <log.hpp>
+
 #include <wayland-server-core.h>
 
 #include <iostream>
@@ -14,18 +16,20 @@ void destroyResource(wl_resource* res)
 }
 
 /////////////////////////////////////////////////////////
-resource::resource(wl_resource* res) : wlResource_(res)
+resource::resource(wl_resource& res) : wlResource_(&res)
 {
-    getCompositor()->getClient(getWlClient())->addResource(this);
+    getClient().addResource(*this);
 }
 
-resource::resource(wl_client* client, unsigned int id, const struct wl_interface* interface, const void* implementation, unsigned int version, void* data, wl_resource_destroy_func_t destroyFunc)
+resource::resource(wl_client& client, unsigned int id, const struct wl_interface* interface, const void* implementation, unsigned int version)
 {
-    create(client, id, interface, implementation, version, data, destroyFunc);
+    create(client, id, interface, implementation, version);
+    getClient().addResource(*this);
 }
 
 resource::~resource()
 {
+    getClient().removeResource(*this);
 }
 
 void resource::destroy()
@@ -33,15 +37,11 @@ void resource::destroy()
     wl_resource_destroy(wlResource_);
 }
 
-void resource::create(wl_client* client, unsigned int id, const struct wl_interface* interface, const void* implementation, unsigned int version, void* data, wl_resource_destroy_func_t destroyFunc)
+void resource::create(wl_client& client, unsigned int id, const struct wl_interface* interface, const void* implementation, unsigned int version)
 {
-    if(data == nullptr || 1)
-        data = this;
+    iroDebug("new resource ",this, " with id ", id, " and type ", interface->name, ", version ", version, " for client ", &client);
 
-    if(!destroyFunc)
-        destroyFunc = destroyResource;
-
-    wlResource_ = wl_resource_create(client, interface, version, id);
+    wlResource_ = wl_resource_create(&client, interface, version, id);
     if(!wlResource_)
     {
         std::string error = "failed to create resource for " + std::string(interface->name) + ", id " + std::to_string(id) + ", version " + std::to_string(version);
@@ -49,15 +49,26 @@ void resource::create(wl_client* client, unsigned int id, const struct wl_interf
         return;
     }
 
-    wl_resource_set_implementation(wlResource_, implementation, data, destroyFunc);
+    wl_resource_set_implementation(wlResource_, implementation, this, destroyResource);
 }
 
-wl_client* resource::getWlClient() const
+wl_client& resource::getWlClient() const
 {
-    return (wlResource_) ? wl_resource_get_client(wlResource_) : nullptr;
+    return *(wl_resource_get_client(wlResource_));
 }
 
-client* resource::getClient() const
+client& resource::getClient() const
 {
-    return getCompositor()->getClient(getWlClient());
+    return iroCompositor()->getClient(getWlClient());
+}
+
+unsigned int resource::getID() const
+{
+    return wl_resource_get_id(wlResource_);
+}
+
+//////////////////
+bool operator==(const resource& r1, const resource& r2)
+{
+    return (r1.getID() == r2.getID() && &r1.getWlClient() == &r2.getWlClient());
 }

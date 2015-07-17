@@ -7,6 +7,7 @@
 #include <resources/client.hpp>
 
 #include <seat/seat.hpp>
+#include <log.hpp>
 
 #include <backend/backend.hpp>
 #include <backend/x11/x11Backend.hpp>
@@ -18,55 +19,55 @@
 #include <iostream>
 
 compositor* compositor::object = nullptr;
-compositor* getCompositor()
+compositor* iroCompositor()
 {
     return compositor::getObject();
 }
 
 subcompositor* getSubcompositor()
 {
-    if(!getCompositor()) return nullptr;
-    return getCompositor()->getSubcompositor();
+    if(!iroCompositor()) return nullptr;
+    return iroCompositor()->getSubcompositor();
 }
 
-backend* getBackend()
+backend* iroBackend()
 {
-    if(!getCompositor()) return nullptr;
-    return getCompositor()->getBackend();
+    if(!iroCompositor()) return nullptr;
+    return iroCompositor()->getBackend();
 }
 
-seat* getSeat()
+seat* iroSeat()
 {
-    if(!getCompositor()) return nullptr;
-    return getCompositor()->getSeat();
+    if(!iroCompositor()) return nullptr;
+    return iroCompositor()->getSeat();
 }
 
-shell* getShell()
+shell* iroShell()
 {
-    if(!getCompositor()) return nullptr;
-    return getCompositor()->getShell();
+    if(!iroCompositor()) return nullptr;
+    return iroCompositor()->getShell();
 }
 
-wl_display* getWlDisplay()
+wl_display* iroWlDisplay()
 {
-    if(!getCompositor()) return nullptr;
-    return getCompositor()->getWlDisplay();
+    if(!iroCompositor()) return nullptr;
+    return iroCompositor()->getWlDisplay();
 }
 
-wl_event_loop* getWlEventLoop()
+wl_event_loop* iroWlEventLoop()
 {
-    if(!getCompositor()) return nullptr;
-    return getCompositor()->getWlEventLoop();
+    if(!iroCompositor()) return nullptr;
+    return iroCompositor()->iroWlEventLoop();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
 void compositorCreateSurface(wl_client* client, wl_resource* resource, unsigned int id)
 {
-    new surfaceRes(client, id);
+    new surfaceRes(*client, id);
 }
 void compositorCreateRegion(wl_client* client, wl_resource* resource, unsigned int id)
 {
-    new regionRes(client, id);
+    new regionRes(*client, id);
 }
 
 const struct wl_compositor_interface compositorImplementation =
@@ -77,7 +78,7 @@ const struct wl_compositor_interface compositorImplementation =
 
 void bindCompositor(wl_client* client, void* data, unsigned int version, unsigned int id)
 {
-    new compositorRes(client, id, version);
+    new compositorRes(*client, id, version);
 }
 
 /////////////////////////////////////////////////////////////////////////////////77
@@ -130,22 +131,22 @@ int compositor::run()
     return 1;
 }
 
-wl_event_loop* compositor::getWlEventLoop() const
+wl_event_loop* compositor::iroWlEventLoop() const
 {
     return wl_display_get_event_loop(wlDisplay_);
 }
 
-client* compositor::getClient(wl_client* wlc)
+client& compositor::getClient(wl_client& wlc)
 {
-    if(!clients_[wlc])
-        clients_[wlc] = new client(wlc);
+    if(!clients_[&wlc])
+        clients_[&wlc] = new client(wlc);
 
-    return clients_[wlc];
+    return *clients_[&wlc];
 }
 
 void compositor::unregisterClient(client* c)
 {
-    auto it = clients_.find(c->getWlClient());
+    auto it = clients_.find(&c->getWlClient());
     if(it != clients_.end())
     {
         clients_.erase(it->first);
@@ -153,6 +154,6 @@ void compositor::unregisterClient(client* c)
 }
 
 ////////////////////////////////////
-compositorRes::compositorRes(wl_client* client, unsigned int id, unsigned int version) : resource(client, id, &wl_compositor_interface, &compositorImplementation, version)
+compositorRes::compositorRes(wl_client& client, unsigned int id, unsigned int version) : resource(client, id, &wl_compositor_interface, &compositorImplementation, version)
 {
 }

@@ -13,14 +13,14 @@ void shellSurfaceMove(wl_client* client, wl_resource* resource, wl_resource* sea
     seatRes* seatr = (seatRes*) wl_resource_get_user_data(seat);
     shellSurfaceRes* surf = (shellSurfaceRes*) wl_resource_get_user_data(resource);
 
-    seatr->getSeat()->moveShellSurface(seatr, surf);
+    seatr->getSeat().moveShellSurface(seatr, surf);
 }
 void shellSurfaceResize(wl_client* client, wl_resource* resource, wl_resource* seat, unsigned int serial, unsigned int edges)
 {
     seatRes* seatr = (seatRes*) wl_resource_get_user_data(seat);
     shellSurfaceRes* surf = (shellSurfaceRes*) wl_resource_get_user_data(resource);
 
-    seatr->getSeat()->resizeShellSurface(seatr, surf, edges);
+    seatr->getSeat().resizeShellSurface(seatr, surf, edges);
 }
 void shellSurfaceSetToplevel(wl_client* client, wl_resource* resource)
 {
@@ -68,7 +68,7 @@ const struct wl_shell_surface_interface shellSurfaceImplementation
 };
 
 ///////////////////////////////////////////////////////////////////////
-shellSurfaceRes::shellSurfaceRes(surfaceRes* surf, wl_client* client, unsigned int id) : resource(client, id, &wl_shell_surface_interface, &shellSurfaceImplementation), surface_(surf)
+shellSurfaceRes::shellSurfaceRes(surfaceRes& surf, wl_client& client, unsigned int id) : resource(client, id, &wl_shell_surface_interface, &shellSurfaceImplementation), surface_(surf)
 {
 }
 
@@ -85,5 +85,5 @@ void shellSurfaceRes::setTitle(const std::string& name)
 void shellSurfaceRes::ping()
 {
     ping_ = 1;
-    wl_shell_surface_send_ping(getWlResource(), wl_display_next_serial(getWlDisplay()));
+    wl_shell_surface_send_ping(&getWlResource(), wl_display_next_serial(iroWlDisplay()));
 }

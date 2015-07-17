@@ -8,6 +8,9 @@ private:
 protected:
 	nonCopyable() = default;
 	nonCopyable(nonCopyable&) = default;
+
+    nonCopyable(nonCopyable&&) noexcept = default;
+    nonCopyable& operator=(nonCopyable&&) noexcept = default;
 };
 
 

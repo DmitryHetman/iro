@@ -18,7 +18,7 @@ void subsurfacePlaceAbove(wl_client* client, wl_resource* resource, wl_resource*
     surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
     surfaceRes* sib = (surfaceRes*) wl_resource_get_user_data(sibling);
 
-    if(surf->isChild(sib) || surf->getSubsurface()->getParent() == sib)
+    if(surf->isChild(sib) || &surf->getSubsurface()->getParent() == sib)
     {
         surf->getPending().zOrder = sib->getCommited().zOrder + 1;
     }
@@ -32,7 +32,7 @@ void subsurfacePlaceBelow(wl_client* client, wl_resource* resource, wl_resource*
     surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
     surfaceRes* sib = (surfaceRes*) wl_resource_get_user_data(sibling);
 
-    if(surf->isChild(sib) || surf->getSubsurface()->getParent() == sib)
+    if(surf->isChild(sib) || &surf->getSubsurface()->getParent() == sib)
     {
         surf->getPending().zOrder = sib->getCommited().zOrder - 1;
     }
@@ -62,6 +62,6 @@ const struct wl_subsurface_interface subsurfaceImplementation =
 };
 
 /////////////////////////////7
-subsurfaceRes::subsurfaceRes(surfaceRes* surf, wl_client* client, unsigned int id, surfaceRes* parent) : resource(client, id, &wl_subsurface_interface, &subsurfaceImplementation), surface_(surf), parent_(parent)
+subsurfaceRes::subsurfaceRes(surfaceRes& surf, wl_client& client, unsigned int id, surfaceRes& parent) : resource(client, id, &wl_subsurface_interface, &subsurfaceImplementation), surface_(surf), parent_(parent)
 {
 }

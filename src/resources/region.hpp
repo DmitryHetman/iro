@@ -10,7 +10,7 @@ protected:
     region region_;
 
 public:
-    regionRes(wl_client* client, unsigned int id);
+    regionRes(wl_client& client, unsigned int id);
 
     region& getRegion(){ return region_; }
     const region& getRegion() const { return region_; }

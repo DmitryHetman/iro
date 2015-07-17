@@ -29,7 +29,7 @@ template<class U, class ... t, class ... o> std::function<U(t..., o...)> addPara
 }
 
 
-template<class ... Args> void printVar(std::ostream& out, Args ... args)
+template<class ... Args> void printVars(std::ostream& out, Args ... args)
 {
     int a[sizeof...(Args)] = { (out << args, 0)... };
     unused(a);

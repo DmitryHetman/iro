@@ -2,6 +2,7 @@
 
 #include <iro.hpp>
 #include <util/nonCopyable.hpp>
+#include <log.hpp>
 
 enum class resourceType : unsigned char
 {
@@ -36,12 +37,12 @@ protected:
     wl_resource* wlResource_ = nullptr;
 
     resource() = default;
-    resource(wl_client* client, unsigned int id, const struct wl_interface* interface, const void* implementation, unsigned int version = 1, void* data = nullptr, void(*destroyFunc)(wl_resource*) = nullptr);
+    resource(wl_client& client, unsigned int id, const wl_interface* interface, const void* implementation, unsigned int version = 1);
 
-    void create(wl_client* client, unsigned int id, const struct wl_interface* interface, const void* implementation, unsigned int version = 1, void* data = nullptr, void(*destroyFunc)(wl_resource*) = nullptr);
+    void create(wl_client& client, unsigned int id, const wl_interface* interface, const void* implementation, unsigned int version = 1);
 
 public:
-    resource(wl_resource* res);
+    resource(wl_resource& res);
     virtual ~resource();
 
     void destroy();
@@ -49,9 +50,12 @@ public:
     unsigned int getID() const;
     unsigned int getVersion() const;
 
-    wl_resource* getWlResource() const { return wlResource_; }
-    wl_client* getWlClient() const;
-    client* getClient() const;
+    wl_resource& getWlResource() const { return *wlResource_; }
+    wl_client& getWlClient() const;
+    client& getClient() const;
 
+    //restype
     virtual resourceType getType() const { return resourceType::unknown; };
 };
+
+bool operator==(const resource& r1, const resource& r2);

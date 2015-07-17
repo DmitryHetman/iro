@@ -15,7 +15,7 @@ const struct wl_keyboard_interface keyboardImplementation
 };
 
 ///////////////////////////////////
-keyboard::keyboard(seat* s) : seat_(s), grab_(nullptr)
+keyboard::keyboard(seat& s) : seat_(s), grab_(nullptr)
 {
 }
 
@@ -28,7 +28,7 @@ void keyboard::sendKeyPress(unsigned int key)
     if(!grab_)
         return;
 
-    wl_keyboard_send_key(grab_->getWlResource(), wl_display_next_serial(getWlDisplay()), getTime(), key, 1);
+    wl_keyboard_send_key(&grab_->getWlResource(), wl_display_next_serial(iroWlDisplay()), getTime(), key, 1);
 }
 
 void keyboard::sendKeyRelease(unsigned int key)
@@ -36,7 +36,7 @@ void keyboard::sendKeyRelease(unsigned int key)
     if(!grab_)
         return;
 
-    wl_keyboard_send_key(grab_->getWlResource(), wl_display_next_serial(getWlDisplay()), getTime(), key, 0);
+    wl_keyboard_send_key(&grab_->getWlResource(), wl_display_next_serial(iroWlDisplay()), getTime(), key, 0);
 }
 
 void keyboard::sendFocus(keyboardRes* newGrab)
@@ -51,17 +51,17 @@ void keyboard::sendFocus(keyboardRes* newGrab)
 }
 
 /////////////////////////
-keyboardRes::keyboardRes(seatRes* sr, wl_client* client, unsigned int id) : resource(client, id, &wl_keyboard_interface, &keyboardImplementation), seatRes_(sr)
+keyboardRes::keyboardRes(seatRes& sr, wl_client& client, unsigned int id) : resource(client, id, &wl_keyboard_interface, &keyboardImplementation), seatRes_(sr)
 {
 
 }
 
-seat* keyboardRes::getSeat() const
+seat& keyboardRes::getSeat() const
 {
-    return seatRes_->getSeat();
+    return seatRes_.getSeat();
 }
 
-keyboard* keyboardRes::getKeyboard() const
+keyboard& keyboardRes::getKeyboard() const
 {
-    return getSeat()->getKeyboard();
+    return *getSeat().getKeyboard();
 }

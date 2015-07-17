@@ -12,7 +12,7 @@
 
 #include <iostream>
 
-bufferRes::bufferRes(wl_resource* res) : resource(res)
+bufferRes::bufferRes(wl_resource& res) : resource(res)
 {
 }
 
@@ -58,7 +58,7 @@ bool bufferRes::fromEglBuffer(wl_resource* buffer)
 {
     EGLint format;
 
-    eglContext* ctx = getEglContext();
+    eglContext* ctx = iroEglContext();
     if(!eglContext::eglQueryWaylandBufferWL(ctx->getDisplay(), buffer, EGL_TEXTURE_FORMAT, &format))
     {
         //not a egl buffer
@@ -82,7 +82,7 @@ bool bufferRes::fromEglBuffer(wl_resource* buffer)
         EGL_NONE
     };
 
-    image_ = getEglContext()->eglCreateImageKHR(getEglContext()->getDisplay(), getEglContext()->getContext(), EGL_WAYLAND_BUFFER_WL, (EGLClientBuffer) wlResource_, attribs);
+    image_ = iroEglContext()->eglCreateImageKHR(iroEglContext()->getDisplay(), iroEglContext()->getContext(), EGL_WAYLAND_BUFFER_WL, (EGLClientBuffer) wlResource_, attribs);
 
     PFNGLEGLIMAGETARGETTEXTURE2DOESPROC func = (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC) eglGetProcAddress("glEGLImageTargetTexture2DOES");
     func(GL_TEXTURE_2D, image_);
@@ -123,8 +123,8 @@ vec2ui bufferRes::getSize() const
     else if(type_ == bufferType::egl)
     {
         int w, h;
-        getEglContext()->eglQueryWaylandBufferWL(getEglContext()->getDisplay(), wlResource_, EGL_WIDTH, &w);
-        getEglContext()->eglQueryWaylandBufferWL(getEglContext()->getDisplay(), wlResource_, EGL_HEIGHT, &h);
+        iroEglContext()->eglQueryWaylandBufferWL(iroEglContext()->getDisplay(), wlResource_, EGL_WIDTH, &w);
+        iroEglContext()->eglQueryWaylandBufferWL(iroEglContext()->getDisplay(), wlResource_, EGL_HEIGHT, &h);
         ret.x = w;
         ret.y = h;
     }

@@ -16,7 +16,9 @@ protected:
     void leftTTY();
 
     bool focus_;
+
     unsigned int number_;
+    unsigned int savedNumber_;
 
     int fd_;
 

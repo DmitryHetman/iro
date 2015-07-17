@@ -2,6 +2,7 @@
 #include <server.hpp>
 #include <compositor/compositor.hpp>
 #include <seat/seat.hpp>
+#include <seat/keyboard.hpp>
 #include <seat/pointer.hpp>
 
 #include <wayland-server-core.h>
@@ -28,8 +29,8 @@ int x11EventLoop(int fd, unsigned int mask, void* data);
 
 x11Backend* getXBackend()
 {
-    if(!getBackend()) return nullptr;
-    return (x11Backend*)getBackend();
+    if(!iroBackend()) return nullptr;
+    return (x11Backend*)iroBackend();
 }
 
 //////////////////////////////////////////
@@ -66,15 +67,23 @@ x11Backend::x11Backend()
     //atoms
     xcb_intern_atom_reply_t* reply;
 
-    reply = xcb_intern_atom_reply(xConnection_, xcb_intern_atom(xConnection_, 0, strlen("WM_PROTOCOLS"), "WM_PROTOCOLS"), nullptr);
-    atomProtocols = (reply ? reply->atom : 0);
+    struct atomProp
+    {
+        xcb_atom_t& ret;
+        const char* str;
+    } vec[] = {
+        {atomProtocols, "WM_PROTOCOLS"},
+        {atomDeleteWindow, "WM_DELETE_WINDOW"}
+    };
 
-    reply = xcb_intern_atom_reply(xConnection_, xcb_intern_atom(xConnection_, 0, strlen("WM_DELETE_WINDOW"), "WM_DELETE_WINDOW"), nullptr);
-    atomDeleteWindow = (reply ? reply->atom : 0);
-
+    for(auto& p : vec)
+    {
+        reply = xcb_intern_atom_reply(xConnection_, xcb_intern_atom(xConnection_, 0, strlen(p.str), p.str), nullptr);
+        p.ret = (reply ? reply->atom : 0);
+    }
 
     //event source
-    wlEventSource_ =  wl_event_loop_add_fd(getWlEventLoop(), xcb_get_file_descriptor(xConnection_), WL_EVENT_READABLE, x11EventLoop, this);
+    wlEventSource_ =  wl_event_loop_add_fd(iroWlEventLoop(), xcb_get_file_descriptor(xConnection_), WL_EVENT_READABLE, x11EventLoop, this);
     if(!wlEventSource_)
     {
         throw std::runtime_error("could not create wayland event source");
@@ -92,6 +101,8 @@ x11Backend::x11Backend()
     }
 
     xcb_flush(xConnection_);
+
+    renderer_ = new renderer();
 }
 
 x11Backend::~x11Backend()
@@ -113,6 +124,14 @@ int x11Backend::eventLoop(int fd, unsigned int mask)
         {
             case XCB_EXPOSE:
             {
+                xcb_expose_event_t* ev = (xcb_expose_event_t*) event;
+                int id = outputIDForWindow(ev->window);
+                if(id == -1)
+                {
+                    iroWarning("invalid xcb window");
+                    break;
+                }
+                outputs_[id]->refresh();
                 break;
             }
             case XCB_CLIENT_MESSAGE:
@@ -123,16 +142,16 @@ int x11Backend::eventLoop(int fd, unsigned int mask)
                     int id = outputIDForWindow(ev->window);
                     if(id == -1)
                     {
-                        std::cout << "invalid x Window" << std::endl;
+                        iroWarning("invalid xcb window");
                         break;
                     }
 
                     delete outputs_[id];
                     outputs_.erase(outputs_.begin() + id);
 
-                    if(outputs_.empty() || 1)
+                    if(outputs_.empty())
                     {
-                        getServer()->exit();
+                        iroServer()->exit();
                         return count + 1;
                     }
                 }
@@ -141,24 +160,32 @@ int x11Backend::eventLoop(int fd, unsigned int mask)
             }
             case XCB_BUTTON_PRESS:
             {
+                xcb_button_press_event_t* ev = (xcb_button_press_event_t*) event;
+                iroSeat()->getPointer()->sendButtonPress(ev->detail);
                 break;
             }
             case XCB_BUTTON_RELEASE:
             {
+                xcb_button_release_event_t* ev = (xcb_button_release_event_t*) event;
+                iroSeat()->getPointer()->sendButtonRelease(ev->detail);
                 break;
             }
             case XCB_MOTION_NOTIFY:
             {
                 xcb_motion_notify_event_t* ev = (xcb_motion_notify_event_t*) event;
-                getSeat()->getPointer()->sendMove(ev->event_x, ev->event_y);
+                iroSeat()->getPointer()->sendMove(ev->event_x, ev->event_y);
                 break;
             }
             case XCB_KEY_PRESS:
             {
+                xcb_key_press_event_t* ev = (xcb_key_press_event_t*) event;
+                iroSeat()->getKeyboard()->sendKeyPress(ev->detail);
                 break;
             }
             case XCB_KEY_RELEASE:
             {
+                xcb_key_press_event_t* ev = (xcb_key_press_event_t*) event;
+                iroSeat()->getKeyboard()->sendKeyRelease(ev->detail);
                 break;
             }
             case XCB_FOCUS_IN:
@@ -280,9 +307,6 @@ x11Output::x11Output(const x11Backend& backend, unsigned int id) : output(id)
     eglMakeCurrent(ctx->getDisplay(), eglWindow_, eglWindow_, ctx->getContext());
 
     xcb_map_window(connection, xWindow_);
-
-    //renderer
-    renderer_ = new renderer();
 }
 
 x11Output::~x11Output()
@@ -292,12 +316,12 @@ x11Output::~x11Output()
 
 void x11Output::makeEglCurrent()
 {
-    eglMakeCurrent(getEglContext()->getDisplay(), eglWindow_, eglWindow_, getEglContext()->getContext());
+    eglMakeCurrent(iroEglContext()->getDisplay(), eglWindow_, eglWindow_, iroEglContext()->getContext());
 }
 
 void x11Output::swapBuffers()
 {
-    eglSwapBuffers(getEglContext()->getDisplay(), eglWindow_);
+    eglSwapBuffers(iroEglContext()->getDisplay(), eglWindow_);
 }
 
 vec2ui x11Output::getSize() const

@@ -8,16 +8,21 @@
 
 #include <vector>
 
+output* outputAt(int x, int y);
+output* outputAt(vec2i pos);
+
 class output : public nonCopyable
 {
 protected:
     unsigned int id_;
 
     std::vector<surfaceRes*> mappedSurfaces_;
-    renderer* renderer_ = nullptr;
 
     wl_event_source* drawEventSource_;
     wl_global* global_;
+
+    friend int outputRedraw(void* data);
+    virtual void render();
 
 public:
     output(unsigned int id);
@@ -28,7 +33,6 @@ public:
     void mapSurface(surfaceRes* surf);
     void unmapSurface(surfaceRes* surf);
 
-    virtual void render();
     virtual void refresh();
 
     surfaceRes* getSurfaceAt(vec2i pos);
@@ -37,16 +41,17 @@ public:
     virtual void makeEglCurrent() = 0;
 
     virtual vec2ui getSize() const = 0;
+    virtual vec2i getPosition() const { return vec2i(); }
 };
 
 //////////////////
 class outputRes : public resource
 {
 protected:
-    output* output_;
+    output& output_;
 
 public:
-    outputRes(output* out, wl_client* client, unsigned int id, unsigned int version);
+    outputRes(output& out, wl_client& client, unsigned int id, unsigned int version);
 
-    output* getOutput() const { return output_; }
+    output& getOutput() const { return output_; }
 };

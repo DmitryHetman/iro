@@ -15,12 +15,11 @@ void surfaceDestroy(wl_client* client, wl_resource* resource)
 {
     surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
     surf->destroy();
-    delete surf;
 }
 void surfaceAttach(wl_client* client, wl_resource* resource, wl_resource* wlbuffer, int x, int y)
 {
     surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
-    surf->getPending().attached = new bufferRes(wlbuffer);
+    surf->getPending().attached = new bufferRes(*wlbuffer);
     surf->getPending().offset = vec2i(x, y);
 }
 void surfaceDamage(wl_client* client, wl_resource* resource, int x, int y, int width, int height)
@@ -78,8 +77,10 @@ const struct wl_surface_interface surfaceImplementation =
 
 
 //////////////////////////////////////////////////////////////////////////////
-surfaceRes::surfaceRes(wl_client* client, unsigned int id) : resource(client, id, &wl_surface_interface, &surfaceImplementation, 3)
+surfaceRes::surfaceRes(wl_client& client, unsigned int id) : resource(client, id, &wl_surface_interface, &surfaceImplementation, 3)
 {
+    //todo
+    mapper_ = iroBackend()->getOutputs()[0];
 }
 
 surfaceRes::~surfaceRes()
@@ -92,7 +93,7 @@ void surfaceRes::setShellSurface(unsigned int id)
     unsetRole();
 
     role_ = surfaceRole::shell;
-    shellSurface_ = new shellSurfaceRes(this, getWlClient(), id);
+    shellSurface_ = new shellSurfaceRes(*this, getWlClient(), id);
 }
 
 void surfaceRes::setSubsurface(unsigned int id, surfaceRes* parent)
@@ -100,9 +101,9 @@ void surfaceRes::setSubsurface(unsigned int id, surfaceRes* parent)
     unsetRole();
 
     role_ = surfaceRole::sub;
-    subsurface_ = new subsurfaceRes(this, getWlClient(), id, parent);
+    subsurface_ = new subsurfaceRes(*this, getWlClient(), id, *parent);
 
-    parent->addChild(this);
+    parent->addChild(*this);
 }
 
 void surfaceRes::setCursorRole(vec2ui hotspot)
@@ -121,28 +122,29 @@ void surfaceRes::unsetRole()
     }
     else if(role_ == surfaceRole::sub)
     {
-        subsurface_->getParent()->removeChild(this);
+        subsurface_->getParent().removeChild(*this);
         subsurface_->destroy();
     }
-    else if(role_ == surfaceRole::cursor && getSeat()->getPointer()->getCursor() == this)
+    else if(role_ == surfaceRole::cursor && iroSeat()->getPointer()->getCursor() == this)
     {
-        getSeat()->getPointer()->setCursor(nullptr, vec2ui(0, 0));
+        iroSeat()->getPointer()->setCursor(nullptr, vec2ui(0, 0));
     }
 
     role_ = surfaceRole::none;
-    getBackend()->getOutput()->unmapSurface(this);
+
+    if(mapper_)mapper_->unmapSurface(this);
 }
 
-void surfaceRes::addChild(surfaceRes* child)
+void surfaceRes::addChild(surfaceRes& child)
 {
-    children_.push_back(child);
+    children_.push_back(&child);
 }
 
-void surfaceRes::removeChild(surfaceRes* child)
+void surfaceRes::removeChild(surfaceRes& child)
 {
     for(unsigned int i(0); i < children_.size(); i++)
     {
-        if(children_[i] == child)
+        if(children_[i] == &child)
             children_.erase(children_.begin() + i);
     }
 }
@@ -173,15 +175,15 @@ void surfaceRes::commit()
     {
         if(commited_.attached && !old.attached)
         {
-            getBackend()->getOutput()->mapSurface(this);
+           mapper_->mapSurface(this);
         }
         else if(!commited_.attached && old.attached)
         {
-            getBackend()->getOutput()->unmapSurface(this);
+            mapper_->unmapSurface(this);
         }
         else if(commited_.attached && old.attached)
         {
-            getBackend()->getOutput()->refresh();
+            mapper_->refresh();
         }
     }
 

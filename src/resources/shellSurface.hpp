@@ -19,14 +19,14 @@ class shellSurfaceRes : public resource
 {
 protected:
     friend surfaceRes;
-    shellSurfaceRes(surfaceRes* surf, wl_client* client, unsigned int id);
+    shellSurfaceRes(surfaceRes& surf, wl_client& client, unsigned int id);
 
     std::string className_;
     std::string title_;
 
     bool ping_ = 0;
 
-    surfaceRes* surface_;
+    surfaceRes& surface_;
 
     shellSurfaceState state_ = shellSurfaceState::toplevel;
 
@@ -37,7 +37,7 @@ protected:
     };
 
 public:
-    surfaceRes* getSurface() const { return surface_; }
+    surfaceRes& getSurface() const { return surface_; }
 
     std::string getClassName() const { return className_; };
     std::string getTitle() const { return title_; };

@@ -22,8 +22,6 @@ protected:
     xcb_connection_t* xConnection_ = nullptr;
     xcb_screen_t* xScreen_ = nullptr;
 
-    eglContext* eglContext_ = nullptr;
-
     int eventLoop(int fd, unsigned int mask);
 
     int outputIDForWindow(xcb_window_t win) const;
@@ -36,7 +34,6 @@ public:
     xcb_connection_t* getXConnection() const { return xConnection_; }
     xcb_screen_t* getXScreen() const { return xScreen_; }
 
-    eglContext* getEglContext() const { return eglContext_; }
     backendType getType() const { return backendType::x11; }
 
 public:

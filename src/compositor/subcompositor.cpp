@@ -23,17 +23,17 @@ const struct wl_subcompositor_interface subcompositorImplementation =
 };
 void bindSubcompositor(wl_client* client, void* data, unsigned int version, unsigned int id)
 {
-    new subcompositorRes(client, id, version);
+    new subcompositorRes(*client, id, version);
 }
 
 /////////////////////////////////
 subcompositor::subcompositor()
 {
-    wl_global_create(getWlDisplay(), &wl_subcompositor_interface, 1, this, bindSubcompositor);
+    wl_global_create(iroWlDisplay(), &wl_subcompositor_interface, 1, this, bindSubcompositor);
 }
 
 /////////////////////////
-subcompositorRes::subcompositorRes(wl_client* client, unsigned int id, unsigned int version) : resource(client, id, &wl_subcompositor_interface, &subcompositorImplementation, version)
+subcompositorRes::subcompositorRes(wl_client& client, unsigned int id, unsigned int version) : resource(client, id, &wl_subcompositor_interface, &subcompositorImplementation, version)
 {
 
 }

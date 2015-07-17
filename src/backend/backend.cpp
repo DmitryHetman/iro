@@ -1,26 +1,26 @@
 #include <backend/backend.hpp>
 #include <backend/output.hpp>
+#include <backend/renderer.hpp>
 
-eglContext* getEglContext()
+eglContext* iroEglContext()
 {
-    if(!getBackend())return nullptr;
-    return getBackend()->getEglContext();
+    if(!iroBackend())return nullptr;
+    return iroBackend()->getEglContext();
 }
 
-backendType getBackendType()
+backendType iroBackendType()
 {
-    if(!getBackend())return backendType::none;
-    return getBackend()->getType();
+    if(!iroBackend())return backendType::none;
+    return iroBackend()->getType();
 }
 
+///////////////////////////////////////////////////////
 
-/////////////////////////////77
+backend::backend()
+{
+}
+
 backend::~backend()
 {
-    for(unsigned int i(0); i < outputs_.size(); i++)
-    {
-        delete outputs_[i];
-    }
+    if(renderer_) delete renderer_;
 }
-
-

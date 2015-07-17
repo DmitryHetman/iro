@@ -39,7 +39,7 @@ protected:
     bool fromEglBuffer(wl_resource* buffer);
 
 public:
-    bufferRes(wl_resource* res);
+    bufferRes(wl_resource& res);
     virtual ~bufferRes();
 
     bool init();

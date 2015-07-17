@@ -34,11 +34,11 @@ public:
     subcompositor* getSubcompositor() const { return subcompositor_; }
 
     wl_display* getWlDisplay() const { return wlDisplay_; }
-    wl_event_loop* getWlEventLoop() const;
+    wl_event_loop* iroWlEventLoop() const;
 
     unsigned int getNumberClients() const { return clients_.size(); }
 
-    client* getClient(wl_client* wlc);
+    client& getClient(wl_client& wlc);
 
     void registerClient(client* c);
     void unregisterClient(client* c);
@@ -50,7 +50,7 @@ public:
 class compositorRes : public resource
 {
 public:
-    compositorRes(wl_client* client, unsigned int id, unsigned int version);
+    compositorRes(wl_client& client, unsigned int id, unsigned int version);
 
     resourceType getType() const { return resourceType::compositor; }
 };

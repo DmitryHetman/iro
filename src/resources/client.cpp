@@ -1,21 +1,20 @@
 #include <resources/client.hpp>
 #include <compositor/compositor.hpp>
 
+#include <log.hpp>
+
 #include <wayland-server-core.h>
 
 #include <algorithm>
 #include <iostream>
 
-void addClientResource(wl_client* c, resource* res)
-{
-    getCompositor()->getClient(c)->addResource(res);
-}
-
 /////////////////////
 void destroyClient(struct wl_listener* listener, void* data)
 {
-    client* c = getCompositor()->getClient((wl_client*) data);
-    delete c;
+    wl_client* wlc = (wl_client*) data;
+
+    client& c = iroCompositor()->getClient(*wlc);
+    delete &c;
 }
 
 struct wl_listener onClientDestroy =
@@ -25,46 +24,35 @@ struct wl_listener onClientDestroy =
 };
 
 //////////////////////////////////////////////////////////
-client::client(wl_client* wlc) : wlClient_(wlc)
+client::client(wl_client& wlc) : wlClient_(wlc)
 {
-    std::cout << "create client " << wlc << std::endl;
-    wl_client_add_destroy_listener(wlc, &onClientDestroy);
-    std::cout << "c2 " << std::endl;
+    wl_client_add_destroy_listener(&wlc, &onClientDestroy);
 }
 
 client::~client()
 {
-    std::cout << "client destroyed " << wlClient_ << std::endl;
+    iroCompositor()->unregisterClient(this);
+}
 
-    getCompositor()->unregisterClient(this);
+void client::addResource(resource& res)
+{
+    resources_.push_back(&res);
 
-    if(resources_.size() > 0)
+    if(res.getType() == resourceType::seat)
     {
-        //warning?
+        seat_ = (seatRes*) &resources_.back();
     }
 }
 
-void client::addResource(resource* res)
+bool client::removeResource(resource& res)
 {
-    std::cout << "addRes " << (int)res->getType() << std::endl;
-
-    if(res->getType() == resourceType::seat)
-    {
-        seat_ = (seatRes*) res;
-    }
-
-    resources_.push_back(res);
-}
-
-void client::removeResource(resource* res)
-{
-    auto it = std::find(resources_.begin(), resources_.end(), res);
+    auto it = std::find(resources_.begin(), resources_.end(), &res);
     if(it != resources_.end())
     {
         resources_.erase(it);
+        return 1;
     }
-    else
-    {
-        //warning?
-    }
+
+    iroWarning("resource that should be removed was not found");
+    return 0;
 }

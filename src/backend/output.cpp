@@ -1,9 +1,12 @@
 #include <backend/output.hpp>
+#include <backend/backend.hpp>
 
 #include <backend/egl.hpp>
 #include <backend/renderer.hpp>
 #include <resources/surface.hpp>
 #include <seat/seat.hpp>
+
+#include <util/time.hpp>
 
 #define GL_GLEXT_PROTOTYPES
 #include <GLES2/gl2.h>
@@ -19,51 +22,68 @@ int outputRedraw(void* data)
     return 1;
 }
 
+output* outputAt(vec2i pos)
+{
+    for(auto out : iroBackend()->getOutputs())
+    {
+        if(rect2i(out->getPosition(), out->getSize()).contains(pos))
+            return out;
+    }
+
+    return nullptr;
+}
+
+output* outputAt(int x, int y)
+{
+    return outputAt(vec2i(x,y));
+}
+
 //////////////////////////////
 void bindOutput(wl_client* client, void* data, unsigned int version, unsigned int id)
 {
     output* out = (output*) data;
-    new outputRes(out, client, version, id);
+    new outputRes(*out, *client, id, version);
 }
 
 //////////////////////////
 output::output(unsigned int id) : id_(id)
 {
-    global_ = wl_global_create(getWlDisplay(), &wl_output_interface, 2, this, bindOutput);
-
-    drawEventSource_ = wl_event_loop_add_timer(getWlEventLoop(), outputRedraw, this);
+    global_ = wl_global_create(iroWlDisplay(), &wl_output_interface, 2, this, bindOutput);
+    drawEventSource_ = wl_event_loop_add_timer(iroWlEventLoop(), outputRedraw, this);
 }
 
 output::~output()
 {
     wl_event_source_remove(drawEventSource_);
-    if(renderer_) delete renderer_;
-
     wl_global_destroy(global_);
 }
 
 void output::render()
 {
+    timer t;
+
     makeEglCurrent();
 
     glClearColor(0.8, 0.8, 0.3, 1);
     glClear(GL_COLOR_BUFFER_BIT);
 
 
-    for(unsigned int i(0); i < mappedSurfaces_.size(); i++)
+    for(auto surf : mappedSurfaces_)
     {
-        renderer_->render(mappedSurfaces_[i]);
+        iroBackend()->getRenderer()->render(surf);
     }
 
-    renderer_->drawCursor(getSeat()->getPointer());
+    iroBackend()->getRenderer()->drawCursor(iroSeat()->getPointer());
 
     glFinish();
     swapBuffers();
+
+    iroDebug("time for frame in ms: ", t.getElapsedTime().asMilliseconds());
 }
 
 void output::refresh()
 {
-    wl_event_source_timer_update(drawEventSource_, 1);
+    wl_event_source_timer_update(drawEventSource_, 5);
 }
 
 void output::mapSurface(surfaceRes* surf)
@@ -94,7 +114,7 @@ surfaceRes* output::getSurfaceAt(vec2i pos)
 
 
 ///////////////////////7
-outputRes::outputRes(output* out, wl_client* client, unsigned int id, unsigned int version) : resource(client, id, &wl_output_interface, nullptr, version), output_(out)
+outputRes::outputRes(output& out, wl_client& client, unsigned int id, unsigned int version) : resource(client, id, &wl_output_interface, nullptr, version), output_(out)
 {
 
 }

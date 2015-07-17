@@ -63,22 +63,21 @@ class inputHandler;
 enum class backendType : unsigned char;
 enum class bufferFormat : unsigned char;
 enum class bufferType : unsigned char;
+enum class resourceType : unsigned char;
 
-server* getServer();
-compositor* getCompositor();
+server* iroServer();
+compositor* iroCompositor();
 subcompositor* getSubcompositor();
-backend* getBackend();
-seat* getSeat();
-shell* getShell();
-eglContext* getEglContext();
+backend* iroBackend();
+seat* iroSeat();
+shell* iroShell();
+eglContext* iroEglContext();
 
 ttyHandler* getTTYHandler();
 inputHandler* getInputHandler();
 
-void addClientResource(wl_client* c, resource* res);
-
-wl_display* getWlDisplay();
-wl_event_loop* getWlEventLoop();
+wl_display* iroWlDisplay();
+wl_event_loop* iroWlEventLoop();
 
 unsigned int getTime();
 

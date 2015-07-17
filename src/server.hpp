@@ -37,10 +37,10 @@ public:
     bool isInitialized() const { return initialized_; }
     bool isInMainLoop() const { return mainLoop_; }
 
-    unsigned int getTime() const { return timer_.getElapsedTime().asSeconds(); }
+    unsigned int getTime() const { return timer_.getElapsedTime().asMilliseconds(); }
     timeDuration getDuration() const { return timer_.getElapsedTime(); }
 
-    compositor* getCompositor() const { return compositor_; }
+    compositor* iroCompositor() const { return compositor_; }
 
     const serverSettings& getSettings() const { return settings_; }
 

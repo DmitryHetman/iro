@@ -29,13 +29,13 @@ public:
 class seatRes : public resource
 {
 protected:
-    seat* seat_;
+    seat& seat_;
 
     pointerRes* pointer_ = nullptr;
     keyboardRes* keyboard_ = nullptr;
 
 public:
-    seatRes(seat* s, wl_client* client, unsigned int id, unsigned int version);
+    seatRes(seat& s, wl_client& client, unsigned int id, unsigned int version);
     ~seatRes();
 
     void createPointer(unsigned int id);
@@ -47,7 +47,7 @@ public:
     pointerRes* getPointerRes() const { return pointer_; }
     keyboardRes* getKeyboardRes() const { return keyboard_; }
 
-    seat* getSeat() const { return seat_; }
+    seat& getSeat() const { return seat_; }
 
     virtual resourceType getType() const { return resourceType::seat; }
 };

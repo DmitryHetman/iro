@@ -6,5 +6,5 @@
 class callbackRes : public resource
 {
 public:
-    callbackRes(wl_client* client, unsigned int id);
+    callbackRes(wl_client& client, unsigned int id);
 };

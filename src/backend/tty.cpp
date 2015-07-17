@@ -45,7 +45,17 @@ ttyHandler::ttyHandler() : focus_(0)
     close(tty0FD);
 
     ////
-    number_ = 3;
+    //save current
+    vt_stat state;
+    if(ioctl(fd_, VT_GETSTATE, &state) == -1)
+    {
+        throw std::runtime_error("could not get current tty");
+        return;
+    }
+
+    savedNumber_ = state.v_active;
+
+    //number_ = 3;
 
     //open own tty
     std::string ttyString;
@@ -94,9 +104,9 @@ ttyHandler::ttyHandler() : focus_(0)
 
 ttyHandler::~ttyHandler()
 {
-    iroLog << "reset tty" << std::endl;
+    iroDebug("reset tty");
 
-    activate();
+    //activate?
 
     //dont care for exceptions, just try
     vt_mode mode;
@@ -104,6 +114,9 @@ ttyHandler::~ttyHandler()
     ioctl(fd_, VT_SETMODE, &mode);
 
     ioctl(fd_, KDSETMODE, KD_TEXT);
+
+    //switch back to old one
+    ioctl(fd_, VT_ACTIVATE, savedNumber_);
 
     //close fd
     close(fd_);

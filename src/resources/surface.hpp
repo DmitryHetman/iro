@@ -42,6 +42,8 @@ protected:
 
     surfaceRole role_ = surfaceRole::none;
 
+    output* mapper_ = nullptr;
+
     union
     {
         shellSurfaceRes* shellSurface_;
@@ -53,7 +55,7 @@ protected:
     callbackRes* callback_ = nullptr;
 
 public:
-    surfaceRes(wl_client* client, unsigned int id);
+    surfaceRes(wl_client& client, unsigned int id);
     ~surfaceRes();
 
     surfaceState& getCommited() { return commited_; }
@@ -71,8 +73,8 @@ public:
     void setCursorRole(vec2ui hotspot);
     void unsetRole();
 
-    void addChild(surfaceRes* child);
-    void removeChild(surfaceRes* child);
+    void addChild(surfaceRes& child);
+    void removeChild(surfaceRes& child);
 
     surfaceRole getRole() const { return role_; }
 

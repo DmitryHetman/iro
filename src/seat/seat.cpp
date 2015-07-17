@@ -31,16 +31,16 @@ const struct wl_seat_interface seatImplementation
 
 void bindSeat(wl_client* client, void* data, unsigned int version, unsigned int id)
 {
-    addClientResource(client, new seatRes(getSeat(), client, id, version));
+    new seatRes(*iroSeat(), *client, id, version);
 }
 
 /////////////////////////
 seat::seat()
 {
-    wl_global_create(getWlDisplay(), &wl_seat_interface, 1, this, &bindSeat);
+    wl_global_create(iroWlDisplay(), &wl_seat_interface, 1, this, &bindSeat);
 
-    keyboard_ = new keyboard(this);
-    pointer_ = new pointer(this);
+    keyboard_ = new keyboard(*this);
+    pointer_ = new pointer(*this);
 }
 
 seat::~seat()
@@ -67,7 +67,7 @@ void seat::resizeShellSurface(seatRes* res, shellSurfaceRes* shellSurface, unsig
 }
 
 //////////////////////////
-seatRes::seatRes(seat* s, wl_client* client, unsigned int id, unsigned int version) : resource(client, id, &wl_seat_interface, &seatImplementation, version), seat_(s)
+seatRes::seatRes(seat& s, wl_client& client, unsigned int id, unsigned int version) : resource(client, id, &wl_seat_interface, &seatImplementation, version), seat_(s)
 {
     wl_seat_send_capabilities(wlResource_, wl_seat_capability::WL_SEAT_CAPABILITY_KEYBOARD | wl_seat_capability::WL_SEAT_CAPABILITY_POINTER);
 }
@@ -81,7 +81,7 @@ void seatRes::createPointer(unsigned int id)
 {
     if(!pointer_)
     {
-        pointer_ = new pointerRes(this, getWlClient(), id);
+        pointer_ = new pointerRes(*this, getWlClient(), id);
     }
     else
     {
@@ -93,7 +93,7 @@ void seatRes::createKeyboard(unsigned int id)
 {
     if(!keyboard_)
     {
-        keyboard_ = new keyboardRes(this, getWlClient(), id);
+        keyboard_ = new keyboardRes(*this, getWlClient(), id);
     }
     else
     {

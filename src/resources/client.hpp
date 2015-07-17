@@ -7,9 +7,9 @@ class client
 {
 protected:
     friend compositor;
-    client(wl_client* wlc);
+    client(wl_client& wlc);
 
-    wl_client* wlClient_ = nullptr;
+    wl_client& wlClient_;
 
     std::vector<resource*> resources_;
     seatRes* seat_ = nullptr;
@@ -17,9 +17,9 @@ protected:
 public:
     ~client();
 
-    void addResource(resource* res);
-    void removeResource(resource* res);
+    void addResource(resource& res);
+    bool removeResource(resource& res);
 
-    seatRes* getSeatRes() const { return seat_; }
-    wl_client* getWlClient() const { return wlClient_; }
+    seatRes* iroSeatRes() const { return seat_; }
+    wl_client& getWlClient() const { return wlClient_; }
 };

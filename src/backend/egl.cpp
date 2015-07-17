@@ -91,12 +91,12 @@ eglContext::eglContext(EGLNativeDisplayType display)
         return;
     }
 
-    eglBindWaylandDisplayWL(display_, getWlDisplay());
+    eglBindWaylandDisplayWL(display_, iroWlDisplay());
 }
 
 eglContext::~eglContext()
 {
-    //eglUnbindWaylandDisplayWL(display_, getCompositor()->getWlDisplay());
+    //eglUnbindWaylandDisplayWL(display_, iroCompositor()->iroWlDisplay());
 
     eglMakeCurrent(display_, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     eglDestroyContext(display_, context_);

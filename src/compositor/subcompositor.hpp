@@ -15,5 +15,5 @@ public:
 class subcompositorRes : public resource
 {
 public:
-    subcompositorRes(wl_client* client, unsigned int id, unsigned int version);
+    subcompositorRes(wl_client& client, unsigned int id, unsigned int version);
 };

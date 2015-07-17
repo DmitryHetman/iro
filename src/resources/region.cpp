@@ -25,7 +25,7 @@ const struct wl_region_interface regionImplementation
 
 ////////////////////////////////////////7
 
-regionRes::regionRes(wl_client* client, unsigned int id) : resource(client, id, &wl_region_interface, &regionImplementation)
+regionRes::regionRes(wl_client& client, unsigned int id) : resource(client, id, &wl_region_interface, &regionImplementation)
 {
 }
 

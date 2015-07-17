@@ -19,7 +19,7 @@ public:
 class shellRes : public resource
 {
 public:
-    shellRes(wl_client* client, unsigned int id, unsigned int version);
+    shellRes(wl_client& client, unsigned int id, unsigned int version);
 
     resourceType getType() const { return resourceType::shell; }
 };

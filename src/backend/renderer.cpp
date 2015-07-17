@@ -91,7 +91,7 @@ renderer::renderer()
 
     std::string version;
     version.append((const char*) glGetString(GL_VERSION));
-    iroLog << "glVersion: " << version << std::endl;
+    iroDebug("glVersion: ", version);
 
     //init cursor texture
     glActiveTexture(GL_TEXTURE0);
@@ -146,7 +146,7 @@ bool renderer::drawCursor(pointer* p)
     }
     else
     {
-        rect2f geometry(p->getPosition(), vec2ui(50, 50));
+        rect2f geometry(p->getPosition(), vec2ui(20, 20));
         texProgram_.use(geometry, defaultCursorTex_, bufferFormat::rgb32);
         return 1;
     }

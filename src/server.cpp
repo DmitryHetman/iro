@@ -1,6 +1,8 @@
 #include <server.hpp>
 #include <compositor/compositor.hpp>
 
+#include <log.hpp>
+
 #include <string>
 #include <iostream>
 #include <ostream>
@@ -12,24 +14,28 @@
 
 server* server::object = nullptr;
 std::ofstream iroStreamLog_;
-std::ostream& iroLog = iroStreamLog_;
 
-server* getServer()
+std::ostream* debugStream = &iroStreamLog_;
+//std::ostream* debugStream = &std::cout;
+std::ostream* warningStream = &std::cout;
+std::ostream* errorStream = &std::cerr;
+
+server* iroServer()
 {
     return server::getObject();
 }
 
 unsigned int getTime()
 {
-    if(!getServer()) return 0;
-    return getServer()->getTime();
+    if(!iroServer()) return 0;
+    return iroServer()->getTime();
 }
 
 /////////////////////////////////////////////7
 void signalHandler(int sig)
 {
-    iroLog << "recieved signal " << sig << std::endl;
-    getServer()->exit();
+    iroError("recieved signal number ", sig, ". Exiting");
+    iroServer()->exit();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////

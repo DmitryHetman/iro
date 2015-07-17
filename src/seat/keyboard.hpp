@@ -11,10 +11,10 @@ class keyboard : public nonCopyable
 protected:
     friend seat;
 
-    seat* seat_;
+    seat& seat_;
     keyboardRes* grab_ = nullptr;
 
-    keyboard(seat* s);
+    keyboard(seat& s);
     ~keyboard();
 
 public:
@@ -32,15 +32,16 @@ class keyboardRes : public resource
 {
 protected:
     friend seatRes;
+    keyboardRes(seatRes& sr, wl_client& client, unsigned int id);
 
-    seatRes* seatRes_;
+    seatRes& seatRes_;
 
-    keyboardRes(seatRes* sr, wl_client* client, unsigned int id);
 public:
-    seatRes* getSeatRes() const { return seatRes_; }
+    seatRes& getSeatRes() const { return seatRes_; }
 
-    seat* getSeat() const;
-    keyboard* getKeyboard() const;
+    seat& getSeat() const;
+    keyboard& getKeyboard() const;
 
+    //res
     resourceType getType() const { return resourceType::keyboard; }
 };
