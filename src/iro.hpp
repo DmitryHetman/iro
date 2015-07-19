@@ -59,6 +59,7 @@ class kmsOutput;
 
 class ttyHandler;
 class inputHandler;
+class sessionHandler;
 
 class event;
 class pointerButtonEvent;

@@ -105,11 +105,11 @@ void output::render()
     glFinish();
     swapBuffers();
 
-    iroDebug("time for frame in ms: ", t.getElapsedTime().asMilliseconds());
+    iroLog("time for frame in ms: ", t.getElapsedTime().asMilliseconds());
 
     for(auto* surf : mappedSurfaces_)
     {
-        //surf->frameDone();
+        surf->frameDone();
     }
 }
 

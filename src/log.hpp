@@ -8,9 +8,9 @@ extern std::ostream* warningStream;
 extern std::ostream* debugStream;
 extern std::ostream* errorStream;
 
-template<typename ... Args> void iroDebug(Args&& ... args)
+template<typename ... Args> void iroLog(Args&& ... args)
 {
-    #ifdef IRO_DEBUG
+    #ifdef IRO_LOG
         printVars(*debugStream, args ...);
         *debugStream << std::endl;
     #endif // IRO_DEBUG

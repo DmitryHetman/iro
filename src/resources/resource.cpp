@@ -29,7 +29,7 @@ resource::resource(wl_client& client, unsigned int id, const struct wl_interface
 
 resource::~resource()
 {
-    iroDebug("destructing resource ",this, " with id ", getID()," of wl_client ", &getWlClient());
+    iroLog("destructing resource ",this, " with id ", getID()," of wl_client ", &getWlClient());
 
     getClient().removeResource(*this);
     destructionCallback_();
@@ -42,7 +42,7 @@ void resource::destroy()
 
 void resource::create(wl_client& client, unsigned int id, const struct wl_interface* interface, const void* implementation, unsigned int version)
 {
-    iroDebug("new resource ",this, " with id ", id, " and type ", (interface) ? interface->name : "<unknown>", ", version ", version, " for wl_client ", &client);
+    iroLog("new resource ",this, " with id ", id, " and type ", (interface) ? interface->name : "<unknown>", ", version ", version, " for wl_client ", &client);
 
     wlResource_ = wl_resource_create(&client, interface, version, id);
     if(!wlResource_)

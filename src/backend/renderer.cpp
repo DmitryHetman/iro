@@ -92,7 +92,7 @@ renderer::renderer()
 
     std::string version;
     version.append((const char*) glGetString(GL_VERSION));
-    iroDebug("glVersion: ", version);
+    iroLog("glVersion: ", version);
 
     //init cursor texture
     glActiveTexture(GL_TEXTURE0);

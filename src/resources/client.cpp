@@ -26,13 +26,13 @@ struct wl_listener onClientDestroy =
 //////////////////////////////////////////////////////////
 client::client(wl_client& wlc) : wlClient_(wlc)
 {
-    iroDebug("creating client ", this, " for wl_client ", &wlc);
+    iroLog("creating client ", this, " for wl_client ", &wlc);
     wl_client_add_destroy_listener(&wlc, &onClientDestroy);
 }
 
 client::~client()
 {
-    iroDebug("destructing client ", this, " with wl_client ", &getWlClient(), ", there are ", resources_.size(), " resources left");
+    iroLog("destructing client ", this, " with wl_client ", &getWlClient(), ", there are ", resources_.size(), " resources left");
     iroCompositor()->unregisterClient(*this);
 }
 

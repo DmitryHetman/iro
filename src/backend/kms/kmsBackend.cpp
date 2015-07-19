@@ -4,6 +4,7 @@
 #include <backend/egl.hpp>
 #include <backend/tty.hpp>
 #include <backend/renderer.hpp>
+#include <backend/session.hpp>
 
 #include <util/misc.hpp>
 
@@ -57,6 +58,8 @@ int drmEvent(int fd, unsigned int mask, void* data)
 ///////////////////////////////////////////////////////////////////////////
 kmsBackend::kmsBackend()
 {
+    session_ = new sessionHandler();
+
     tty_ = new ttyHandler();
     tty_->beforeEnter(memberCallback(&kmsBackend::onEnter, this));
     tty_->beforeLeave(memberCallback(&kmsBackend::onLeave, this));
@@ -69,14 +72,6 @@ kmsBackend::kmsBackend()
         throw std::runtime_error("cant open device");
         return;
     }
-
-    /*
-    if(drmSetMaster(fd_) != 0)
-    {
-        throw std::runtime_error("cant become master");
-        return;
-    }
-    */
 
     gbmDevice_ = gbm_create_device(fd_);
     if(!gbmDevice_)
@@ -137,10 +132,20 @@ kmsBackend::kmsBackend()
 
     eglContext_ = new eglContext((EGLNativeDisplayType)gbmDevice_);
 
-    outputs_.push_back(new kmsOutput(*this, 0));
-    onEnter();
+    const unsigned int numOutputs = 1; //TODO
+    for(unsigned int i(0); i < numOutputs; i++)
+    {
+        kmsOutput* out = new kmsOutput(*this, 0);
+        outputs_.push_back(out);
+    }
 
-    renderer_ = new renderer();
+    renderer_ = new renderer(); //must be initialized after, because it needs a valid eglContext (is made current by outoput)
+
+    for(output* out : outputs_)
+    {
+        ((kmsOutput*)out)->setCrtc();
+        out->refresh();
+    }
 }
 
 kmsBackend::~kmsBackend()
@@ -149,7 +154,7 @@ kmsBackend::~kmsBackend()
         delete out;
 
     drmModeSetCrtc(fd_, drmSavedCrtc_->crtc_id, drmSavedCrtc_->buffer_id, drmSavedCrtc_->x, drmSavedCrtc_->y, &drmConnector_->connector_id, 1, &drmSavedCrtc_->mode);
-    //drmDropMaster(fd_);
+    drmDropMaster(fd_);
 
     if(eglContext_) delete eglContext_;
     if(tty_) delete tty_;
@@ -158,13 +163,6 @@ kmsBackend::~kmsBackend()
 
 void kmsBackend::onEnter()
 {
-    /*
-    if(drmSetMaster(fd_) != 0)
-    {
-        iroWarning("cant become drm master");
-    }
-    */
-
     for(auto* out : outputs_)
     {
         kmsOutput* kout = (kmsOutput*) out;
@@ -175,13 +173,6 @@ void kmsBackend::onEnter()
 
 void kmsBackend::onLeave()
 {
-    /*
-    if(drmDropMaster(fd_) != 0)
-    {
-        iroWarning("cant drop drm master");
-    }
-    */
-
     drmModeSetCrtc(fd_, drmSavedCrtc_->crtc_id, drmSavedCrtc_->buffer_id, drmSavedCrtc_->x, drmSavedCrtc_->y, &drmConnector_->connector_id, 1, &drmSavedCrtc_->mode);
 }
 

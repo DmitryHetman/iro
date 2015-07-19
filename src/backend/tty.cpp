@@ -28,6 +28,14 @@ void ttySignalhandler(int signal)
 
 ttyHandler::ttyHandler() : focus_(0)
 {
+    const char* number = getenv("XDG_VTNR");
+    if(!number)
+    {
+        throw std::runtime_error("tty::tty: XDG_VTNR not set");
+        return;
+    }
+
+    /*
     //tty0
     int tty0FD = open("/dev/tty0", O_RDWR | O_CLOEXEC);
     if(tty0FD < 0)
@@ -43,19 +51,10 @@ ttyHandler::ttyHandler() : focus_(0)
     }
 
     close(tty0FD);
+    */
 
     ////
-    //save current
-    vt_stat state;
-    if(ioctl(fd_, VT_GETSTATE, &state) == -1)
-    {
-        throw std::runtime_error("could not get current tty");
-        return;
-    }
-
-    savedNumber_ = state.v_active;
-
-    //number_ = 3;
+    number_ = std::stoi(number);
 
     //open own tty
     std::string ttyString;
@@ -64,7 +63,15 @@ ttyHandler::ttyHandler() : focus_(0)
 
     if((fd_ = open(ttyString.c_str(), O_RDWR | O_NOCTTY | O_CLOEXEC)) < 0)
     {
-        throw std::runtime_error("could not open own tty");
+        throw std::runtime_error("could not open " + ttyString);
+        return;
+    }
+
+    //save current
+    vt_stat state;
+    if(ioctl(fd_, VT_GETSTATE, &state) == -1)
+    {
+        throw std::runtime_error("could not get current tty");
         return;
     }
 
@@ -104,7 +111,7 @@ ttyHandler::ttyHandler() : focus_(0)
 
 ttyHandler::~ttyHandler()
 {
-    iroDebug("reset tty");
+    iroLog("reset tty");
 
     //activate?
 
@@ -116,7 +123,7 @@ ttyHandler::~ttyHandler()
     ioctl(fd_, KDSETMODE, KD_TEXT);
 
     //switch back to old one
-    ioctl(fd_, VT_ACTIVATE, savedNumber_);
+    //ioctl(fd_, VT_ACTIVATE, savedNumber_);
 
     //close fd
     close(fd_);

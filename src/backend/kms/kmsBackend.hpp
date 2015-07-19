@@ -4,6 +4,7 @@
 #include <backend/backend.hpp>
 #include <backend/output.hpp>
 #include <backend/egl.hpp>
+#include <backend/session.hpp>
 
 #include <gbm.h>
 #include <drm.h>
@@ -15,6 +16,7 @@ kmsBackend* getKMSBackend();
 class kmsBackend : public backend
 {
 protected:
+    sessionHandler* session_ = nullptr;
     ttyHandler* tty_ = nullptr;
     inputHandler* input_ = nullptr;
 
