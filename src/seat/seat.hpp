@@ -4,13 +4,27 @@
 #include <resources/resource.hpp>
 
 ////////////////////////////////
+enum class seatMode : unsigned char
+{
+    normal,
+    resize,
+    move,
+    dnd
+};
+
 class seat
 {
 protected:
     pointer* pointer_;
     keyboard* keyboard_;
 
-    shellSurfaceRes* grab_ = nullptr;
+    seatMode mode_ = seatMode::normal;
+
+    union
+    {
+        struct { shellSurfaceRes* grab_; unsigned int resizeEdges_ = 0; }; //resize and resize
+        struct { }; //dnd
+    };
 
 public:
     seat();
@@ -19,10 +33,13 @@ public:
     pointer* getPointer() const { return pointer_; }
     keyboard* getKeyboard() const { return keyboard_; }
 
+    void cancelGrab();
     void resizeShellSurface(seatRes* res, shellSurfaceRes* shellSurf, unsigned int edges);
     void moveShellSurface(seatRes* res, shellSurfaceRes* shellSurf);
 
+    seatMode getMode() const { return mode_; }
     shellSurfaceRes* getGrab() const { return grab_; }
+    unsigned int getResizeEdges() const { return (mode_ == seatMode::resize) ? resizeEdges_ : 0; }
 };
 
 ////////////////////////////////
@@ -41,13 +58,11 @@ public:
     void createPointer(unsigned int id);
     void createKeyboard(unsigned int id);
 
-    void unsetPointer();
-    void unsetKeyboard();
-
     pointerRes* getPointerRes() const { return pointer_; }
     keyboardRes* getKeyboardRes() const { return keyboard_; }
 
     seat& getSeat() const { return seat_; }
 
-    virtual resourceType getType() const { return resourceType::seat; }
+    //res
+    virtual resourceType getType() const override { return resourceType::seat; }
 };

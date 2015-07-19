@@ -5,7 +5,6 @@
 
 #include <util/vec.hpp>
 
-//user data of subsurface is the corresponding surface. Use then getSubsurfac() to get a subsurfaceRes object
 class subsurfaceRes : public resource
 {
 protected:

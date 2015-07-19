@@ -4,6 +4,7 @@
 #include <resources/subsurface.hpp>
 #include <resources/buffer.hpp>
 #include <resources/region.hpp>
+#include <resources/callback.hpp>
 #include <backend/output.hpp>
 #include <backend/backend.hpp>
 #include <seat/seat.hpp>
@@ -86,6 +87,9 @@ surfaceRes::surfaceRes(wl_client& client, unsigned int id) : resource(client, id
 surfaceRes::~surfaceRes()
 {
     unsetRole();
+
+    if(commited_.attached) commited_.attached->destroy();
+    if(pending_.attached) pending_.attached->destroy();
 }
 
 void surfaceRes::setShellSurface(unsigned int id)
@@ -106,7 +110,7 @@ void surfaceRes::setSubsurface(unsigned int id, surfaceRes* parent)
     parent->addChild(*this);
 }
 
-void surfaceRes::setCursorRole(vec2ui hotspot)
+void surfaceRes::setCursor(vec2i hotspot)
 {
     unsetRole();
 
@@ -125,9 +129,9 @@ void surfaceRes::unsetRole()
         subsurface_->getParent().removeChild(*this);
         subsurface_->destroy();
     }
-    else if(role_ == surfaceRole::cursor && iroSeat()->getPointer()->getCursor() == this)
+    else if(role_ == surfaceRole::cursor && iroPointer()->getCursor() == this)
     {
-        iroSeat()->getPointer()->setCursor(nullptr, vec2ui(0, 0));
+        iroPointer()->resetCursor();
     }
 
     role_ = surfaceRole::none;
@@ -161,7 +165,17 @@ bool surfaceRes::isChild(surfaceRes* surf) const
 
 void surfaceRes::registerFrameCallback(unsigned int id)
 {
+    callback_ = new callbackRes(getWlClient(), id);
+}
 
+void surfaceRes::frameDone()
+{
+    if(callback_)
+    {
+        wl_callback_send_done(&callback_->getWlResource(), iroTime());
+        callback_->destroy();
+        callback_ = nullptr;
+    }
 }
 
 void surfaceRes::commit()
@@ -193,7 +207,12 @@ void surfaceRes::commit()
 
 vec2i surfaceRes::getPosition() const
 {
-    return vec2i();
+    vec2i ret;
+
+    if(role_ == surfaceRole::shell)
+        ret += shellSurface_->getToplevelPosition();
+
+    return ret;
 }
 
 rect2i surfaceRes::getExtents() const

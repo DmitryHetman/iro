@@ -4,12 +4,17 @@
 #include <resources/resource.hpp>
 
 #include <util/nonCopyable.hpp>
+#include <util/rect.hpp>
 #include <util/vec.hpp>
 
 #include <vector>
 
 output* outputAt(int x, int y);
 output* outputAt(vec2i pos);
+
+std::vector<output*> outputsAt(int x, int y, int w, int h);
+std::vector<output*> outputsAt(vec2i pos, vec2i size);
+std::vector<output*> outputsAt(rect2i ext);
 
 class output : public nonCopyable
 {
@@ -20,6 +25,8 @@ protected:
 
     wl_event_source* drawEventSource_;
     wl_global* global_;
+
+    vec2i position_;
 
     friend int outputRedraw(void* data);
     virtual void render();
@@ -33,15 +40,18 @@ public:
     void mapSurface(surfaceRes* surf);
     void unmapSurface(surfaceRes* surf);
 
+    surfaceRes* getSurfaceAt(vec2i pos);
+    rect2i getExtents() const { return rect2i(getPosition(), getSize()); }
+
+    //virtual
     virtual void refresh();
 
-    surfaceRes* getSurfaceAt(vec2i pos);
-
-    virtual void swapBuffers() = 0;
-    virtual void makeEglCurrent() = 0;
+    virtual void swapBuffers();
+    virtual void makeEglCurrent();
+    virtual void* getEglSurface() const { return nullptr; }; //EGLSurface == void*
 
     virtual vec2ui getSize() const = 0;
-    virtual vec2i getPosition() const { return vec2i(); }
+    virtual vec2i getPosition() const;
 };
 
 //////////////////

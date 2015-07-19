@@ -75,16 +75,27 @@ int inputHandler::inputEvent()
             case LIBINPUT_EVENT_POINTER_MOTION:
             {
                 struct libinput_event_pointer* ev = libinput_event_get_pointer_event(event);
+
                 double x = libinput_event_pointer_get_dx(ev);
                 double y = libinput_event_pointer_get_dy(ev);
-                vec2ui pos = iroSeat()->getPointer()->getPosition() + vec2ui(x,y);
-                iroSeat()->getPointer()->sendMove(pos.x, pos.y);
+                vec2ui pos = iroPointer()->getPosition() + vec2ui(x,y);
+                iroPointer()->sendMove(pos.x, pos.y);
                 break;
             }
             case LIBINPUT_EVENT_POINTER_MOTION_ABSOLUTE:
             {
                 struct libinput_event_pointer* ev = libinput_event_get_pointer_event(event);
-                iroSeat()->getPointer()->sendMove(libinput_event_pointer_get_absolute_x(ev), libinput_event_pointer_get_absolute_y(ev));
+
+                iroPointer()->sendMove(libinput_event_pointer_get_absolute_x(ev), libinput_event_pointer_get_absolute_y(ev));
+                break;
+            }
+            case LIBINPUT_EVENT_POINTER_BUTTON:
+            {
+                struct libinput_event_pointer* ev = libinput_event_get_pointer_event(event);
+                unsigned int pressed = libinput_event_pointer_get_button_state(ev);
+
+                if(pressed)iroPointer()->sendButtonPress(libinput_event_pointer_get_button(ev));
+                else iroPointer()->sendButtonRelease(libinput_event_pointer_get_button(ev));
 
                 break;
             }

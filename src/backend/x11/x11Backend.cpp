@@ -5,17 +5,14 @@
 #include <seat/keyboard.hpp>
 #include <seat/pointer.hpp>
 
-#include <wayland-server-core.h>
+#include <log.hpp>
 
 #include <backend/egl.hpp>
 #include <backend/renderer.hpp>
 
-#define explicit dont_use_cxx_explicit
-#include <xcb/xkb.h>
-#undef explicit
-
 #include <X11/Xlib-xcb.h>
 #include <xcb/xcb_icccm.h>
+#include <wayland-server-core.h>
 
 #include <string.h>
 #include <dlfcn.h>
@@ -161,31 +158,31 @@ int x11Backend::eventLoop(int fd, unsigned int mask)
             case XCB_BUTTON_PRESS:
             {
                 xcb_button_press_event_t* ev = (xcb_button_press_event_t*) event;
-                iroSeat()->getPointer()->sendButtonPress(ev->detail);
+                iroPointer()->sendButtonPress(ev->detail);
                 break;
             }
             case XCB_BUTTON_RELEASE:
             {
                 xcb_button_release_event_t* ev = (xcb_button_release_event_t*) event;
-                iroSeat()->getPointer()->sendButtonRelease(ev->detail);
+                iroPointer()->sendButtonRelease(ev->detail);
                 break;
             }
             case XCB_MOTION_NOTIFY:
             {
                 xcb_motion_notify_event_t* ev = (xcb_motion_notify_event_t*) event;
-                iroSeat()->getPointer()->sendMove(ev->event_x, ev->event_y);
+                iroPointer()->sendMove(ev->event_x, ev->event_y);
                 break;
             }
             case XCB_KEY_PRESS:
             {
                 xcb_key_press_event_t* ev = (xcb_key_press_event_t*) event;
-                iroSeat()->getKeyboard()->sendKeyPress(ev->detail);
+                iroKeyboard()->sendKeyPress(ev->detail);
                 break;
             }
             case XCB_KEY_RELEASE:
             {
                 xcb_key_press_event_t* ev = (xcb_key_press_event_t*) event;
-                iroSeat()->getKeyboard()->sendKeyRelease(ev->detail);
+                iroKeyboard()->sendKeyRelease(ev->detail);
                 break;
             }
             case XCB_FOCUS_IN:
@@ -312,16 +309,6 @@ x11Output::x11Output(const x11Backend& backend, unsigned int id) : output(id)
 x11Output::~x11Output()
 {
     xcb_destroy_window(getXBackend()->getXConnection(), xWindow_);
-}
-
-void x11Output::makeEglCurrent()
-{
-    eglMakeCurrent(iroEglContext()->getDisplay(), eglWindow_, eglWindow_, iroEglContext()->getContext());
-}
-
-void x11Output::swapBuffers()
-{
-    eglSwapBuffers(iroEglContext()->getDisplay(), eglWindow_);
 }
 
 vec2ui x11Output::getSize() const

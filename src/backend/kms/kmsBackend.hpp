@@ -11,6 +11,7 @@
 
 kmsBackend* getKMSBackend();
 
+//backend
 class kmsBackend : public backend
 {
 protected:
@@ -49,6 +50,7 @@ public:
     int getFD() const { return fd_; }
 };
 
+//output
 class kmsOutput : public output
 {
 protected:
@@ -56,18 +58,21 @@ protected:
     {
         gbm_bo* buffer = nullptr;
         unsigned int fb = 0;
+
+        bool valid(){ return (buffer != nullptr && fb != 0); }
     };
 
 protected:
     gbm_surface* gbmSurface_ = nullptr;
-    bool flipping_ = 0;
     EGLSurface eglSurface_;
 
     bool set = 0;
+    bool flipping_ = 0;
 
     fb fbs_[2];
     unsigned char frontBuffer_ = 0;
 
+    /////
     void releaseFB(fb& obj);
     void createFB(fb& obj);
 
@@ -77,12 +82,11 @@ public:
     kmsOutput(const kmsBackend& kms, unsigned int id);
     ~kmsOutput();
 
-    unsigned int getFB() const { return fbs_[frontBuffer_].fb; }
-
-    void makeEglCurrent();
-    void swapBuffers();
-
     void wasFlipped();
+    void setCrtc();
 
-    vec2ui getSize() const;
+    //output
+    virtual void swapBuffers() override;
+    virtual vec2ui getSize() const override;
+    virtual EGLSurface getEglSurface() const override { return eglSurface_; }
 };

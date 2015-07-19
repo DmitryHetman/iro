@@ -1,11 +1,14 @@
 #include <seat/pointer.hpp>
 
 #include <seat/seat.hpp>
+#include <seat/event.hpp>
 #include <resources/surface.hpp>
 #include <resources/client.hpp>
 #include <resources/shellSurface.hpp>
 #include <backend/backend.hpp>
 #include <backend/output.hpp>
+
+#include <log.hpp>
 
 #include <wayland-server-protocol.h>
 
@@ -15,16 +18,18 @@ void pointerSetCursor(wl_client* client, wl_resource* resource, unsigned int ser
     pointerRes* res = (pointerRes*) wl_resource_get_user_data(resource);
     pointer& p = res->getPointer();
 
-    if(p.getGrab() != res)
+    if(p.getActiveRes() != res)
         return;
 
     surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(surface);
-    p.setCursor(surf, vec2ui(hotspot_x, hotspot_y));
+    surf->setCursor(vec2i(hotspot_x,hotspot_y));
+
+    p.setCursor(*surf);
 }
 void pointerRelease(wl_client* client, wl_resource* resource)
 {
-    pointerRes* res = (pointerRes*) wl_resource_get_user_data(resource);
-    res->destroy();
+    pointerRes* pt = (pointerRes*) wl_resource_get_user_data(resource);
+    pt->destroy();
 }
 
 const struct wl_pointer_interface pointerImplementation
@@ -34,127 +39,186 @@ const struct wl_pointer_interface pointerImplementation
 };
 
 ////////////////////////////////////777
-pointer::pointer(seat& s) : seat_(s), grab_(nullptr)
+pointer::pointer(seat& s) : seat_(s)
 {
 }
 
 pointer::~pointer()
 {
+}
 
+void pointer::setActive(surfaceRes* surf)
+{
+    //send leave
+    if(over_)
+    {
+        if(!over_->getClient().getPointerRes())
+            iroWarning("pointer::sendActive: ", "Left surface without associated pointerRes");
+
+        else
+        {
+            pointerFocusEvent* ev = new pointerFocusEvent(0, over_);
+            wl_pointer_send_leave(&over_->getClient().getPointerRes()->getWlResource(), iroNextSerial(), &over_->getWlResource());
+            iroRegisterEvent(*ev);
+        }
+    }
+
+    //send enter
+    if(surf)
+    {
+        if(!surf->getClient().getPointerRes())
+            iroWarning("pointer::sendActive: ", "Entered surface without associated pointerRes");
+
+        else
+        {
+            pointerFocusEvent* ev = new pointerFocusEvent(1, surf);
+            wl_pointer_send_leave(&surf->getClient().getPointerRes()->getWlResource(), iroNextSerial(), &surf->getWlResource());
+            iroRegisterEvent(*ev);
+        }
+    }
+
+    focusCallback_(over_, surf);
+    over_ = surf;
+}
+
+void pointer::sendMove(vec2i pos)
+{
+    vec2i delta = pos - position_;
+    position_ = pos;
+
+    moveCallback_(pos);
+
+    /* TODO
+    output* overOut = outputAt(x,y);
+    if(!overOut)return;
+    */
+
+    output* overOut = iroBackend()->getOutputs()[0];
+    overOut->refresh();
+
+    if(getSeat().getMode() == seatMode::normal)
+    {
+        surfaceRes* surf = overOut->getSurfaceAt(position_);
+        if(surf != over_)
+        {
+            setActive(surf);
+        }
+
+        if(!getActiveRes())
+            return;
+
+        auto v = getPositionWl();
+        wl_pointer_send_motion(&getActiveRes()->getWlResource(), iroTime(), v.x, v.y);
+    }
+
+    else if(getSeat().getMode() == seatMode::move)
+    {
+        if(!getSeat().getGrab())
+        {
+            iroWarning("pointer::sendMove: ", "seat in move mode without any grab surface. Resetting");
+            getSeat().cancelGrab();
+        }
+        else
+        {
+            getSeat().getGrab()->move(delta);
+        }
+    }
+
+    else if(getSeat().getMode() == seatMode::resize)
+    {
+        if(!getSeat().getGrab())
+        {
+            iroWarning("pointer::sendMove: ", "seat in resize mode without any grab surface. Resetting");
+            getSeat().cancelGrab();
+        }
+        else
+        {
+            int w = 0, h = 0;
+            unsigned int edges = getSeat().getResizeEdges();
+
+            if(edges & WL_SHELL_SURFACE_RESIZE_BOTTOM)
+                h = position_.y - over_->getPosition().y;
+
+            else if(edges & WL_SHELL_SURFACE_RESIZE_TOP)
+                h = over_->getExtents().bottom() - position_.y;
+
+            if(edges & WL_SHELL_SURFACE_RESIZE_RIGHT)
+                w = position_.x - over_->getPosition().y;
+
+            else if(edges & WL_SHELL_SURFACE_RESIZE_LEFT)
+                w = over_->getExtents().right() - position_.x;
+
+            if(w < 0) w = 0;
+            if(h < 0) h = 0;
+
+            wl_shell_surface_send_configure(&getSeat().getGrab()->getWlResource(), getSeat().getResizeEdges(), w, h);
+        }
+    }
 }
 
 void pointer::sendMove(int x, int y)
 {
-    vec2i delta = vec2ui(x,y) - position_;
-    position_.x = x;
-    position_.y = y;
-
-/*
-    output* overOut = outputAt(x,y);
-    if(!overOut)return;
-        */
-
-    output* overOut = iroBackend()->getOutputs()[0];
-
-    overOut->refresh();
-
-
-    if(state_ == pointerState::normal)
-    {
-        //surface enter, leave
-        surfaceRes* surf = overOut->getSurfaceAt(position_);
-        if(surf != over_)
-        {
-            grab_ = nullptr;
-            if(over_)
-            {
-                if(!over_->getClient().iroSeatRes())
-                {
-                    std::cout << "w1" << std::endl;
-                    return;
-                }
-
-                pointerRes* pres = over_->getClient().iroSeatRes()->getPointerRes();
-                wl_pointer_send_leave(&pres->getWlResource(), wl_display_next_serial(iroWlDisplay()), &over_->getWlResource());
-            }
-            if(surf)
-            {
-                if(!surf->getClient().iroSeatRes())
-                {
-                    std::cout << "w2" << std::endl;
-                    return;
-                }
-
-                wl_fixed_t fx = wl_fixed_from_int(x - surf->getPosition().x);
-                wl_fixed_t fy = wl_fixed_from_int(y - surf->getPosition().x);
-
-                pointerRes* pres = surf->getClient().iroSeatRes()->getPointerRes();
-                wl_pointer_send_enter(&pres->getWlResource(), wl_display_next_serial(iroWlDisplay()), &surf->getWlResource(), fx, fy);
-
-                grab_ = pres;
-            }
-            over_ = surf;
-        }
-
-        if(!grab_ || !over_)
-            return;
-
-        wl_fixed_t fx = wl_fixed_from_int(x - over_->getPosition().x);
-        wl_fixed_t fy = wl_fixed_from_int(y - over_->getPosition().x);
-        wl_pointer_send_motion(&grab_->getWlResource(), getTime(), fx, fy);
-    }
-    else if(state_ == pointerState::move)
-    {
-        iroSeat().getGrab()->move(delta);
-    }
-    else if(state_ == pointerState::resize)
-    {
-        int w = 0, h = 0;
-
-        if(resizeEdges_ & WL_SHELL_SURFACE_RESIZE_BOTTOM)
-            h = position_.y - over_->getPosition().y;
-        else if(resizeEdges_ & WL_SHELL_SURFACE_RESIZE_TOP)
-            h = over_->getExtents().bottom() - position_.y;
-
-        if(resizeEdges_ & WL_SHELL_SURFACE_RESIZE_RIGHT)
-            w = position_.x - over_->getPosition().y;
-        else if(resizeEdges_ & WL_SHELL_SURFACE_RESIZE_LEFT)
-            w = over_->getExtents().right() - position_.x;
-
-        wl_shell_surface_send_configure(&iroSeat().getGrab()->getWlResource(), resizeEdges_, w, h);
-    }
+   sendMove(vec2i(x,y));
 }
 
 void pointer::sendButtonPress(unsigned int button)
 {
-    if(!grab_)
+    if(!getActiveRes())
         return;
 
-    wl_pointer_send_button(&grab_->getWlResource(), wl_display_next_serial(iroWlDisplay()), getTime(), button, 1);
+    pointerButtonEvent* ev = new pointerButtonEvent(1, button, &getActiveRes()->getClient());
+    wl_pointer_send_button(&getActiveRes()->getWlResource(), iroNextSerial(), iroTime(), button, 1);
+    iroRegisterEvent(*ev);
+
+    buttonPressCallback_(button);
 
     //keyboard focus
 }
 
 void pointer::sendButtonRelease(unsigned int button)
 {
-    if(!grab_)
+    if(!getActiveRes())
         return;
 
-    wl_pointer_send_button(&grab_->getWlResource(), wl_display_next_serial(iroWlDisplay()), getTime(), button, 0);
+    pointerButtonEvent* ev = new pointerButtonEvent(0, button, &getActiveRes()->getClient());
+    wl_pointer_send_button(&getActiveRes()->getWlResource(), iroNextSerial(), iroTime(), button, 0);
+    iroRegisterEvent(*ev);
+
+    buttonReleaseCallback_(button);
 }
 
-void pointer::sendScroll(unsigned int axis, double value)
+void pointer::sendAxis(unsigned int axis, double value)
 {
-    if(!grab_)
+    if(!getActiveRes())
         return;
 
-    wl_pointer_send_axis(&grab_->getWlResource(), getTime(), axis, value);
+    wl_pointer_send_axis(&getActiveRes()->getWlResource(), iroTime(), axis, value);
+    axisCallback_(axis, value);
 }
 
-void pointer::setCursor(surfaceRes* surf, vec2ui hotspot)
+void pointer::setCursor(surfaceRes& surf)
 {
-    surf->setCursorRole(hotspot);
-    cursor_ = surf;
+    if(surf.getRole() != surfaceRole::cursor)
+    {
+        iroWarning("pointer::setCursor: tried to set cursor to a surface without cursor role");
+    }
+
+    cursor_ = &surf;
+}
+
+void pointer::resetCursor()
+{
+    cursor_ = nullptr;
+}
+
+vec2i pointer::getPositionWl() const
+{
+    return vec2i(wl_fixed_from_int(position_.x), wl_fixed_from_int(position_.y));
+}
+
+pointerRes* pointer::getActiveRes() const
+{
+    return (over_) ? over_->getClient().getPointerRes() : nullptr;
 }
 
 //////////////////////////////////////

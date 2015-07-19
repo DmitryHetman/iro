@@ -26,6 +26,6 @@ public:
     renderer();
     virtual ~renderer();
 
-    bool render(surfaceRes* surface, vec2ui pos = vec2ui(0,0));
-    bool drawCursor(pointer* p);
+    bool render(surfaceRes& surface, vec2i pos = vec2i(0,0));
+    bool drawCursor(pointer& p);
 };

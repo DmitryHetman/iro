@@ -6,6 +6,7 @@
 #include <util/nonCopyable.hpp>
 
 #include <unordered_map>
+#include <vector>
 
 ///////////////////////////////////////////
 class compositor : public nonCopyable
@@ -19,6 +20,7 @@ protected:
     subcompositor* subcompositor_ = nullptr;
 
     std::unordered_map<wl_client*, client*> clients_;
+    std::unordered_map<unsigned int, event*> sentEvents_; //memory leak! delete old events every now and then
 
     static compositor* object;
 
@@ -37,11 +39,11 @@ public:
     wl_event_loop* iroWlEventLoop() const;
 
     unsigned int getNumberClients() const { return clients_.size(); }
+    client& getClient(wl_client& wlc); //getOrCreate -> always returns a valid client, reference
+    void unregisterClient(client& c);
 
-    client& getClient(wl_client& wlc);
-
-    void registerClient(client* c);
-    void unregisterClient(client* c);
+    event* getEvent(unsigned int serial) const; //gets sent event for a given serial
+    void registerEvent(event& ev); //registers event for the CURRENT wl_display serial -> first send event with iroNextSerial() THEN register it
 
     static compositor* getObject(){ return object; }
 };

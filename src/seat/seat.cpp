@@ -3,6 +3,8 @@
 #include <seat/keyboard.hpp>
 #include <seat/pointer.hpp>
 
+#include <log.hpp>
+
 #include <wayland-server-protocol.h>
 
 #include <stdexcept>
@@ -41,29 +43,39 @@ seat::seat()
 
     keyboard_ = new keyboard(*this);
     pointer_ = new pointer(*this);
+
+    pointer_->onButtonRelease([=](unsigned int button){
+                                if(mode_ != seatMode::normal)
+                                    cancelGrab();
+                             });
 }
 
 seat::~seat()
 {
-    delete keyboard_;
-    delete pointer_;
+    if(keyboard_)delete keyboard_;
+    if(pointer_) delete pointer_;
 }
 
 void seat::moveShellSurface(seatRes* res, shellSurfaceRes* shellSurface)
 {
+    mode_ = seatMode::move;
     grab_ = shellSurface;
-
-    pointer_->state_ = pointerState::move;
-    pointer_->grab_ = res->getPointerRes();
 }
 
 void seat::resizeShellSurface(seatRes* res, shellSurfaceRes* shellSurface, unsigned int edges)
 {
-    grab_ = shellSurface;
+    mode_ = seatMode::resize;
 
-    pointer_->state_ = pointerState::resize;
-    pointer_->grab_ = res->getPointerRes();
-    pointer_->resizeEdges_ = edges;
+    grab_ = shellSurface;
+    resizeEdges_ = edges;
+}
+
+void seat::cancelGrab()
+{
+    if(mode_ == seatMode::normal)
+        iroWarning("seat::cancelGrab: ", "seat is already in normal mode");
+
+    mode_ = seatMode::normal;
 }
 
 //////////////////////////
@@ -82,10 +94,11 @@ void seatRes::createPointer(unsigned int id)
     if(!pointer_)
     {
         pointer_ = new pointerRes(*this, getWlClient(), id);
+        pointer_->onDestruct([=]{ pointer_ = nullptr; });
     }
     else
     {
-        std::cout << "created 2nd pointer WARNING" << std::endl;
+        iroWarning("seatRes::createPointer: ", "tried to create second pointerRes");
     }
 }
 
@@ -94,19 +107,10 @@ void seatRes::createKeyboard(unsigned int id)
     if(!keyboard_)
     {
         keyboard_ = new keyboardRes(*this, getWlClient(), id);
+        keyboard_->onDestruct([=]{ keyboard_ = nullptr; });
     }
     else
     {
-        std::cout << "created 2nd keyboard WARNING" << std::endl;
+        iroWarning("seatRes::createKeyboard: ", "tried to create second keyboardRes");
     }
-}
-
-void seatRes::unsetPointer()
-{
-    pointer_ = nullptr;
-}
-
-void seatRes::unsetKeyboard()
-{
-    keyboard_ = nullptr;
 }

@@ -8,7 +8,7 @@ extern std::ostream* warningStream;
 extern std::ostream* debugStream;
 extern std::ostream* errorStream;
 
-template<typename ... Args> void iroDebug(Args ... args)
+template<typename ... Args> void iroDebug(Args&& ... args)
 {
     #ifdef IRO_DEBUG
         printVars(*debugStream, args ...);
@@ -16,14 +16,14 @@ template<typename ... Args> void iroDebug(Args ... args)
     #endif // IRO_DEBUG
 }
 
-template<typename ... Args> void iroWarning(Args ... args)
+template<typename ... Args> void iroWarning(Args&& ... args)
 {
     printVars(*warningStream, "warning: ", args ...);
     *warningStream << std::endl;
 }
 
 
-template<typename ... Args> void iroError(Args ... args)
+template<typename ... Args> void iroError(Args&& ... args)
 {
     printVars(*errorStream, "error: ", args ...);
     *errorStream << std::endl;

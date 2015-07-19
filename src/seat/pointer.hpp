@@ -3,52 +3,63 @@
 #include <iro.hpp>
 #include <resources/resource.hpp>
 
+#include <util/nonCopyable.hpp>
 #include <util/vec.hpp>
-
-enum class pointerState
-{
-    normal,
-    resize,
-    move
-};
+#include <util/callback.hpp>
 
 class pointer : public nonCopyable
 {
 protected:
-    friend seat;
+    friend seat; //manages pointer
     pointer(seat& s);
     ~pointer();
 
     seat& seat_;
 
-    pointerRes* grab_ = nullptr;
+    //grab_ contains the pointerRes for the over_ surface
     surfaceRes* over_ = nullptr;
-
-    pointerState state_ = pointerState::normal;
-    union
-    {
-        unsigned int resizeEdges_ = 0;
-    };
-
     vec2i position_;
 
+    //if this is == nullptr, the default cursor will be used
     surfaceRes* cursor_ = nullptr;
+
+    callback<void(vec2i pos)> moveCallback_;
+    callback<void(unsigned int button)> buttonPressCallback_;
+    callback<void(unsigned int button)> buttonReleaseCallback_;
+    callback<void(unsigned int axis, double value)> axisCallback_;
+
+    callback<void(surfaceRes*, surfaceRes*)> focusCallback_;
+
+    //helper func for sendMove
+    void setActive(surfaceRes* res);
 
 public:
     void sendMove(int x, int y);
+    void sendMove(vec2i pos);
+
     void sendButtonPress(unsigned int button);
     void sendButtonRelease(unsigned int button);
-    void sendScroll(unsigned int axis, double value);
+    void sendAxis(unsigned int axis, double value);
 
-    pointerRes* getGrab() const { return grab_; }
+    surfaceRes* getOver() const { return over_; }
+    pointerRes* getActiveRes() const;
 
-    pointerState getState() const { return state_; }
-    seat& iroSeat() const { return seat_; }
+    seat& getSeat() const { return seat_; }
 
-    void setCursor(surfaceRes* surf, vec2ui hotspot);
+    void setCursor(surfaceRes& surf);
+    void resetCursor();
     surfaceRes* getCursor() const { return cursor_; }
 
     vec2i getPosition() const { return position_; }
+    vec2i getPositionWl() const;
+
+    //cbs
+    connection& onMove(std::function<void(vec2i)> func){ return moveCallback_.add(func); }
+    connection& onButtonPress(std::function<void(unsigned int button)> func){ return buttonPressCallback_.add(func); }
+    connection& onButtonRelease(std::function<void(unsigned int button)> func){ return buttonReleaseCallback_.add(func); }
+    connection& onAxis(std::function<void(unsigned int axis, double value)> func){ return axisCallback_.add(func); }
+
+    connection& onFocusChange(std::function<void(surfaceRes*, surfaceRes*)> func){ return focusCallback_.add(func); }
 };
 ////////////////////////
 class pointerRes : public resource
@@ -65,5 +76,5 @@ public:
     seat& getSeat() const;
     pointer& getPointer() const;
 
-    resourceType getType() const { return resourceType::pointer; }
+    virtual resourceType getType() const override { return resourceType::pointer; }
 };

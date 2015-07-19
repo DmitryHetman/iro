@@ -1,6 +1,7 @@
 #include <backend/renderer.hpp>
 #include <resources/surface.hpp>
 #include <resources/buffer.hpp>
+#include <resources/shellSurface.hpp>
 #include <seat/pointer.hpp>
 #include <log.hpp>
 
@@ -117,36 +118,44 @@ renderer::~renderer()
     glDeleteTextures(1, &defaultCursorTex_);
 }
 
-bool renderer::render(surfaceRes* surface, vec2ui pos)
+bool renderer::render(surfaceRes& surface, vec2i pos)
 {
-    if(!surface || surface->getRole() == surfaceRole::none || !surface->getCommited().attached)
+    if(surface.getRole() == surfaceRole::none || !surface.getCommited().attached)
     {
+        iroWarning("renderer::render: ", "invalid surface state");
         return 0;
     }
 
-    bufferRes* buff = surface->getCommited().attached;
+    bufferRes* buff = surface.getCommited().attached;
     if(!buff->initialized())
     {
         if(!buff->init())
+        {
+            iroWarning("renderer::render: ", "could not init bufferRes");
             return 0;
+        }
     }
 
-    rect2f geometry(surface->getCommited().offset, buff->getSize() * surface->getCommited().scale);
+    rect2f geometry(surface.getCommited().offset, buff->getSize() * surface.getCommited().scale);
     geometry.position += pos;
+
+    if(surface.getRole() == surfaceRole::shell)
+        geometry.position += surface.getShellSurface()->getToplevelPosition();
+
     texProgram_.use(geometry, buff->getTexture(), buff->getFormat());
 
     return 1;
 }
 
-bool renderer::drawCursor(pointer* p)
+bool renderer::drawCursor(pointer& p)
 {
-    if(p->getCursor())
+    if(p.getCursor())
     {
-        return render(p->getCursor(), p->getPosition());
+        return render(*p.getCursor(), p.getPosition());
     }
     else
     {
-        rect2f geometry(p->getPosition(), vec2ui(20, 20));
+        rect2f geometry(p.getPosition(), vec2ui(20, 20));
         texProgram_.use(geometry, defaultCursorTex_, bufferFormat::rgb32);
         return 1;
     }

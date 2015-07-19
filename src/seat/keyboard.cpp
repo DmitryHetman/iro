@@ -1,12 +1,15 @@
 #include <seat/keyboard.hpp>
-
 #include <seat/seat.hpp>
+#include <resources/surface.hpp>
+#include <resources/client.hpp>
+
 #include <wayland-server-protocol.h>
 
 ///////////////////////////////////////
 void keyboardRelease(wl_client* client, wl_resource* resource)
 {
-
+    keyboardRes* kb = (keyboardRes*) wl_resource_get_user_data(resource);
+    kb->destroy();
 }
 
 const struct wl_keyboard_interface keyboardImplementation
@@ -15,7 +18,7 @@ const struct wl_keyboard_interface keyboardImplementation
 };
 
 ///////////////////////////////////
-keyboard::keyboard(seat& s) : seat_(s), grab_(nullptr)
+keyboard::keyboard(seat& s) : seat_(s), focus_(nullptr)
 {
 }
 
@@ -25,29 +28,41 @@ keyboard::~keyboard()
 
 void keyboard::sendKeyPress(unsigned int key)
 {
-    if(!grab_)
+    if(!getActiveRes())
         return;
 
-    wl_keyboard_send_key(&grab_->getWlResource(), wl_display_next_serial(iroWlDisplay()), getTime(), key, 1);
+    wl_keyboard_send_key(&getActiveRes()->getWlResource(), iroNextSerial(), iroTime(), key, 1);
+    keyPressCallback_(key);
 }
 
 void keyboard::sendKeyRelease(unsigned int key)
 {
-    if(!grab_)
+    if(!getActiveRes())
         return;
 
-    wl_keyboard_send_key(&grab_->getWlResource(), wl_display_next_serial(iroWlDisplay()), getTime(), key, 0);
+    wl_keyboard_send_key(&getActiveRes()->getWlResource(), iroNextSerial(), iroTime(), key, 0);
+    keyReleaseCallback_(key);
 }
 
-void keyboard::sendFocus(keyboardRes* newGrab)
+void keyboard::sendFocus(surfaceRes* newFocus)
 {
-    if(grab_)
+    if(getActiveRes())
     {
-        //focus release
+        wl_keyboard_send_leave(&getActiveRes()->getWlResource(), iroNextSerial(), &focus_->getWlResource());
     }
-    grab_ = newGrab;
 
-    //focus gain
+    focusCallback_(focus_, newFocus);
+    focus_ = newFocus;
+
+    if(getActiveRes())
+    {
+        wl_keyboard_send_enter(&getActiveRes()->getWlResource(), iroNextSerial(), &focus_->getWlResource(), nullptr);
+    }
+}
+
+keyboardRes* keyboard::getActiveRes() const
+{
+    return (focus_) ? focus_->getClient().getKeyboardRes() : nullptr;
 }
 
 /////////////////////////

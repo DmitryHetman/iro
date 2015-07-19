@@ -60,6 +60,13 @@ class kmsOutput;
 class ttyHandler;
 class inputHandler;
 
+class event;
+class pointerButtonEvent;
+class pointerFocusEvent;
+class keyboardKeyEvent;
+class keyboardFocusEvent;
+
+
 enum class backendType : unsigned char;
 enum class bufferFormat : unsigned char;
 enum class bufferType : unsigned char;
@@ -70,6 +77,8 @@ compositor* iroCompositor();
 subcompositor* getSubcompositor();
 backend* iroBackend();
 seat* iroSeat();
+pointer* iroPointer();
+keyboard* iroKeyboard();
 shell* iroShell();
 eglContext* iroEglContext();
 
@@ -79,7 +88,11 @@ inputHandler* getInputHandler();
 wl_display* iroWlDisplay();
 wl_event_loop* iroWlEventLoop();
 
-unsigned int getTime();
+unsigned int iroNextSerial();
+event* iroGetEvent(unsigned int serial);
+void iroRegisterEvent(event& ev);
+
+unsigned int iroTime();
 
 //todo
 class dataSource;

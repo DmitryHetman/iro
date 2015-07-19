@@ -25,7 +25,7 @@ server* iroServer()
     return server::getObject();
 }
 
-unsigned int getTime()
+unsigned int iroTime()
 {
     if(!iroServer()) return 0;
     return iroServer()->getTime();

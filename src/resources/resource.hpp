@@ -2,7 +2,7 @@
 
 #include <iro.hpp>
 #include <util/nonCopyable.hpp>
-#include <log.hpp>
+#include <util/callback.hpp>
 
 enum class resourceType : unsigned char
 {
@@ -35,6 +35,7 @@ class resource : public nonCopyable
 {
 protected:
     wl_resource* wlResource_ = nullptr;
+    callback<void()> destructionCallback_;
 
     resource() = default;
     resource(wl_client& client, unsigned int id, const wl_interface* interface, const void* implementation, unsigned int version = 1);
@@ -53,6 +54,8 @@ public:
     wl_resource& getWlResource() const { return *wlResource_; }
     wl_client& getWlClient() const;
     client& getClient() const;
+
+    connection& onDestruct(std::function<void()> func){ return destructionCallback_.add(func); }
 
     //restype
     virtual resourceType getType() const { return resourceType::unknown; };

@@ -23,6 +23,7 @@ protected:
 
     timer timer_;
 
+
     static server* object;
 
 public:
@@ -43,6 +44,7 @@ public:
     compositor* iroCompositor() const { return compositor_; }
 
     const serverSettings& getSettings() const { return settings_; }
+
 
     static server* getObject(){ return object; }
 };

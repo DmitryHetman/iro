@@ -1,6 +1,6 @@
 #include <resources/client.hpp>
 #include <compositor/compositor.hpp>
-
+#include <seat/seat.hpp>
 #include <log.hpp>
 
 #include <wayland-server-core.h>
@@ -26,22 +26,19 @@ struct wl_listener onClientDestroy =
 //////////////////////////////////////////////////////////
 client::client(wl_client& wlc) : wlClient_(wlc)
 {
+    iroDebug("creating client ", this, " for wl_client ", &wlc);
     wl_client_add_destroy_listener(&wlc, &onClientDestroy);
 }
 
 client::~client()
 {
-    iroCompositor()->unregisterClient(this);
+    iroDebug("destructing client ", this, " with wl_client ", &getWlClient(), ", there are ", resources_.size(), " resources left");
+    iroCompositor()->unregisterClient(*this);
 }
 
 void client::addResource(resource& res)
 {
     resources_.push_back(&res);
-
-    if(res.getType() == resourceType::seat)
-    {
-        seat_ = (seatRes*) &resources_.back();
-    }
 }
 
 bool client::removeResource(resource& res)
@@ -53,6 +50,30 @@ bool client::removeResource(resource& res)
         return 1;
     }
 
-    iroWarning("resource that should be removed was not found");
+    iroWarning("client::removeResource: resource ", &res, " was not found");
     return 0;
+}
+
+seatRes* client::getSeatRes() const
+{
+    if(!seat_)
+    {
+        for(auto* r : resources_)
+        {
+            if(r->getType() == resourceType::seat)
+                seat_ = (seatRes*) r;
+        }
+    }
+
+    return seat_;
+}
+
+pointerRes* client::getPointerRes() const
+{
+    return (getSeatRes() != nullptr) ? seat_->getPointerRes() : nullptr;
+}
+
+keyboardRes* client::getKeyboardRes() const
+{
+    return (seat_ != nullptr) ? seat_->getKeyboardRes() : nullptr;
 }

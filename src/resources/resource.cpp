@@ -29,7 +29,10 @@ resource::resource(wl_client& client, unsigned int id, const struct wl_interface
 
 resource::~resource()
 {
+    iroDebug("destructing resource ",this, " with id ", getID()," of wl_client ", &getWlClient());
+
     getClient().removeResource(*this);
+    destructionCallback_();
 }
 
 void resource::destroy()
@@ -39,11 +42,12 @@ void resource::destroy()
 
 void resource::create(wl_client& client, unsigned int id, const struct wl_interface* interface, const void* implementation, unsigned int version)
 {
-    iroDebug("new resource ",this, " with id ", id, " and type ", interface->name, ", version ", version, " for client ", &client);
+    iroDebug("new resource ",this, " with id ", id, " and type ", (interface) ? interface->name : "<unknown>", ", version ", version, " for wl_client ", &client);
 
     wlResource_ = wl_resource_create(&client, interface, version, id);
     if(!wlResource_)
     {
+        //todo: really throw here?? its a runtime function
         std::string error = "failed to create resource for " + std::string(interface->name) + ", id " + std::to_string(id) + ", version " + std::to_string(version);
         throw std::runtime_error(error);
         return;

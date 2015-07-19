@@ -40,14 +40,11 @@ inputHandler* getInputHandler()
 ///////////////////////////////////////////////////////////////////////////
 void drmPageFlipEvent(int fd, unsigned int frame, unsigned int sec, unsigned int usec, void *data)
 {
-    iroDebug("flip event");
     ((kmsOutput*)data)->wasFlipped();
 }
 
 int drmEvent(int fd, unsigned int mask, void* data)
 {
-    iroDebug("drm event");
-
     drmEventContext ev;
     memset(&ev, 0, sizeof(ev));
     ev.version = DRM_EVENT_CONTEXT_VERSION;
@@ -73,11 +70,13 @@ kmsBackend::kmsBackend()
         return;
     }
 
+    /*
     if(drmSetMaster(fd_) != 0)
     {
         throw std::runtime_error("cant become master");
         return;
     }
+    */
 
     gbmDevice_ = gbm_create_device(fd_);
     if(!gbmDevice_)
@@ -146,11 +145,11 @@ kmsBackend::kmsBackend()
 
 kmsBackend::~kmsBackend()
 {
-    delete outputs_[0];
-    outputs_.erase(outputs_.begin());
+    for(auto* out : outputs_)
+        delete out;
 
     drmModeSetCrtc(fd_, drmSavedCrtc_->crtc_id, drmSavedCrtc_->buffer_id, drmSavedCrtc_->x, drmSavedCrtc_->y, &drmConnector_->connector_id, 1, &drmSavedCrtc_->mode);
-    drmDropMaster(fd_);
+    //drmDropMaster(fd_);
 
     if(eglContext_) delete eglContext_;
     if(tty_) delete tty_;
@@ -159,23 +158,29 @@ kmsBackend::~kmsBackend()
 
 void kmsBackend::onEnter()
 {
+    /*
     if(drmSetMaster(fd_) != 0)
     {
-        iroDebug("cant become drm master");
+        iroWarning("cant become drm master");
     }
+    */
 
-    kmsOutput* out = (kmsOutput*) outputs_[0];
-    drmModeSetCrtc(fd_, drmEncoder_->crtc_id, out->getFB(), 0, 0, &drmConnector_->connector_id, 1, &drmMode_);
-
-    outputs_[0]->refresh();
+    for(auto* out : outputs_)
+    {
+        kmsOutput* kout = (kmsOutput*) out;
+        kout->setCrtc();
+        kout->refresh();
+    }
 }
 
 void kmsBackend::onLeave()
 {
+    /*
     if(drmDropMaster(fd_) != 0)
     {
-        iroDebug("cant drop drm master");
+        iroWarning("cant drop drm master");
     }
+    */
 
     drmModeSetCrtc(fd_, drmSavedCrtc_->crtc_id, drmSavedCrtc_->buffer_id, drmSavedCrtc_->x, drmSavedCrtc_->y, &drmConnector_->connector_id, 1, &drmSavedCrtc_->mode);
 }
@@ -188,7 +193,7 @@ void kmsOutput::render()
     output::render();
 }
 
-////////////////////77
+////////////////////////////////////////////////////////////////////////////////////
 kmsOutput::kmsOutput(const kmsBackend& kms, unsigned int id) : output(id)
 {
     eglContext* egl = kms.getEglContext();
@@ -215,18 +220,6 @@ kmsOutput::kmsOutput(const kmsBackend& kms, unsigned int id) : output(id)
         throw std::runtime_error("cant make egl Context current on kms output");
         return;
     }
-
-    ////////////////////////////
-    glViewport(0, 0, (GLint) width, (GLint) height);
-    glClearColor(1, 1, 1, 1);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glFinish();
-    ////////////////////////////
-
-    //eglSwapBuffers(egl->getDisplay(), eglSurface_);
-
-    //fbs_[0].buffer = gbm_surface_lock_front_buffer(gbmSurface_);
-    //drmModeAddFB(kms.getFD(), width, height, 24, 32, gbm_bo_get_stride(fbs_[0].buffer), gbm_bo_get_handle(fbs_[0].buffer).u32, &fbs_[0].fb);
 }
 
 kmsOutput::~kmsOutput()
@@ -235,6 +228,17 @@ kmsOutput::~kmsOutput()
     releaseFB(fbs_[1]);
 
     gbm_surface_destroy(gbmSurface_);
+}
+
+void kmsOutput::setCrtc()
+{
+    set = 0;
+
+    if(fbs_[frontBuffer_].valid())
+    {
+        drmModeSetCrtc(getKMSBackend()->getFD(), getKMSBackend()->getDRMEncoder()->crtc_id, fbs_[frontBuffer_].fb, 0, 0, &getKMSBackend()->getDRMConnector()->connector_id, 1, &getKMSBackend()->getDRMMode());
+        set = 1;
+    }
 }
 
 void kmsOutput::createFB(fb& obj)
@@ -248,7 +252,7 @@ void kmsOutput::createFB(fb& obj)
 
     drmModeAddFB(getKMSBackend()->getFD(), width, height, 24, 32, stride, handle, &obj.fb);
 
-    if(!set)drmModeSetCrtc(getKMSBackend()->getFD(), getKMSBackend()->getDRMEncoder()->crtc_id, obj.fb, 0, 0, &getKMSBackend()->getDRMConnector()->connector_id, 1, &getKMSBackend()->getDRMMode());
+    if(!set) drmModeSetCrtc(getKMSBackend()->getFD(), getKMSBackend()->getDRMEncoder()->crtc_id, obj.fb, 0, 0, &getKMSBackend()->getDRMConnector()->connector_id, 1, &getKMSBackend()->getDRMMode());
     set = 1;
 }
 
@@ -273,24 +277,15 @@ void kmsOutput::swapBuffers()
         drmModePageFlip(getKMSBackend()->getFD(), getKMSBackend()->getDRMEncoder()->crtc_id, fbs_[frontBuffer_].fb, DRM_MODE_PAGE_FLIP_EVENT, this);
 
         flipping_ = 1;
-
-        iroDebug("flipped kms buffer");
     }
 }
 
 void kmsOutput::wasFlipped()
 {
-    iroDebug("was flipped");
-
     frontBuffer_ ^= 1;
     flipping_ = 0;
 
     releaseFB(fbs_[frontBuffer_]);
-}
-
-void kmsOutput::makeEglCurrent()
-{
-    eglMakeCurrent(iroEglContext()->getDisplay(), eglSurface_, eglSurface_, iroEglContext()->getContext());
 }
 
 vec2ui kmsOutput::getSize() const

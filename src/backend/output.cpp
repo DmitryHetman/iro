@@ -6,6 +6,8 @@
 #include <resources/surface.hpp>
 #include <seat/seat.hpp>
 
+#include <log.hpp>
+
 #include <util/time.hpp>
 
 #define GL_GLEXT_PROTOTYPES
@@ -22,20 +24,45 @@ int outputRedraw(void* data)
     return 1;
 }
 
+//
+output* outputAt(int x, int y)
+{
+    return outputAt(vec2i(x,y));
+}
+
 output* outputAt(vec2i pos)
 {
-    for(auto out : iroBackend()->getOutputs())
+    for(auto* out : iroBackend()->getOutputs())
     {
-        if(rect2i(out->getPosition(), out->getSize()).contains(pos))
+        if(out->getExtents().contains(pos))
             return out;
     }
 
     return nullptr;
 }
 
-output* outputAt(int x, int y)
+//
+std::vector<output*> outputsAt(int x, int y, int w, int h)
 {
-    return outputAt(vec2i(x,y));
+    return outputsAt(rect2i(x,y,w,h));
+}
+
+std::vector<output*> outputsAt(vec2i pos, vec2i size)
+{
+    return outputsAt(rect2i(pos, size));
+}
+
+std::vector<output*> outputsAt(rect2i ext)
+{
+    std::vector<output*> ret;
+
+    for(auto* out : iroBackend()->getOutputs())
+    {
+        if(out->getExtents().intersects(ext))
+            ret.push_back(out);
+    }
+
+    return ret;
 }
 
 //////////////////////////////
@@ -64,21 +91,26 @@ void output::render()
 
     makeEglCurrent();
 
-    glClearColor(0.8, 0.8, 0.3, 1);
+    glClearColor(1, 1, 1, 1);
     glClear(GL_COLOR_BUFFER_BIT);
 
 
-    for(auto surf : mappedSurfaces_)
+    for(auto* surf : mappedSurfaces_)
     {
-        iroBackend()->getRenderer()->render(surf);
+        iroBackend()->getRenderer()->render(*surf);
     }
 
-    iroBackend()->getRenderer()->drawCursor(iroSeat()->getPointer());
+    iroBackend()->getRenderer()->drawCursor(*iroSeat()->getPointer());
 
     glFinish();
     swapBuffers();
 
     iroDebug("time for frame in ms: ", t.getElapsedTime().asMilliseconds());
+
+    for(auto* surf : mappedSurfaces_)
+    {
+        //surf->frameDone();
+    }
 }
 
 void output::refresh()
@@ -112,6 +144,22 @@ surfaceRes* output::getSurfaceAt(vec2i pos)
     return nullptr;
 }
 
+void output::swapBuffers()
+{
+    if(getEglSurface())
+        eglSwapBuffers(iroEglContext()->getDisplay(), getEglSurface());
+}
+
+void output::makeEglCurrent()
+{
+    if(getEglSurface())
+        eglMakeCurrent(iroEglContext()->getDisplay(), getEglSurface(), getEglSurface(), iroEglContext()->getContext());
+}
+
+vec2i output::getPosition() const
+{
+    return position_;
+}
 
 ///////////////////////7
 outputRes::outputRes(output& out, wl_client& client, unsigned int id, unsigned int version) : resource(client, id, &wl_output_interface, nullptr, version), output_(out)

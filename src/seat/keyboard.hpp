@@ -4,28 +4,40 @@
 #include <resources/resource.hpp>
 
 #include <util/nonCopyable.hpp>
+#include <util/callback.hpp>
 
 //////////////////////////////////////////
 class keyboard : public nonCopyable
 {
 protected:
-    friend seat;
-
-    seat& seat_;
-    keyboardRes* grab_ = nullptr;
-
+    friend seat; //manages keyboard
     keyboard(seat& s);
     ~keyboard();
+
+    seat& seat_;
+    surfaceRes* focus_ = nullptr;
+
+    //callbacks
+    callback<void(unsigned int)> keyPressCallback_;
+    callback<void(unsigned int)> keyReleaseCallback_;
+
+    callback<void(surfaceRes*, surfaceRes*)> focusCallback_;
 
 public:
     void sendKeyPress(unsigned int key);
     void sendKeyRelease(unsigned int key);
 
-    void sendFocus(keyboardRes* newGrab);
+    void sendFocus(surfaceRes* newFocus);
+    surfaceRes* getFocus() const { return focus_; }
+    keyboardRes* getActiveRes() const;
 
-    bool hasGrab() const { return (grab_ == nullptr); }
+    seat& getSeat() const { return seat_; }
 
-    keyboardRes* getGrab() const { return grab_; }
+    //cbs
+    connection& onKeyPress(std::function<void(unsigned int key)> func){ return keyPressCallback_.add(func); }
+    connection& onKeyRelease(std::function<void(unsigned int key)> func){ return keyReleaseCallback_.add(func); }
+
+    connection& onFocus(std::function<void(surfaceRes* old, surfaceRes*)> func){ return focusCallback_.add(func); }
 };
 //////////////////////////////////////////
 class keyboardRes : public resource
@@ -43,5 +55,5 @@ public:
     keyboard& getKeyboard() const;
 
     //res
-    resourceType getType() const { return resourceType::keyboard; }
+    virtual resourceType getType() const override { return resourceType::keyboard; }
 };

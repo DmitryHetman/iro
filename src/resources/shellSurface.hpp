@@ -32,7 +32,7 @@ protected:
 
     union //different states
     {
-        vec2i toplevelPosition_;
+        vec2i toplevelPosition_ = vec2i(0,0);
         output* fullscreenOutput_;
     };
 
@@ -54,7 +54,7 @@ public:
 
     shellSurfaceState getState() const { return state_; }
 
-    vec2i getToplevelPosition() const { return state_ == shellSurfaceState::toplevel ? toplevelPosition_ : vec2i(); }
+    vec2i getToplevelPosition() const { return state_ == shellSurfaceState::toplevel ? toplevelPosition_ : vec2i(0,0); }
     output* getFullscreenOutput() const { return state_ == shellSurfaceState::fullscreen ? fullscreenOutput_ : nullptr; }
 
     //resource

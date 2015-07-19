@@ -48,7 +48,7 @@ protected:
     {
         shellSurfaceRes* shellSurface_;
         subsurfaceRes* subsurface_;
-        vec2ui cursorHotspot_;
+        vec2i cursorHotspot_;
     };
 
     std::vector<surfaceRes*> children_;
@@ -58,19 +58,18 @@ public:
     surfaceRes(wl_client& client, unsigned int id);
     ~surfaceRes();
 
-    surfaceState& getCommited() { return commited_; }
     const surfaceState& getCommited() const { return commited_; }
-
     surfaceState& getPending() { return pending_; }
     const surfaceState& getPending() const { return pending_; }
 
     void registerFrameCallback(unsigned int id);
+    void frameDone();
 
     void commit();
 
     void setSubsurface(unsigned int id, surfaceRes* parent);
     void setShellSurface(unsigned int id);
-    void setCursorRole(vec2ui hotspot);
+    void setCursor(vec2i hotspot);
     void unsetRole();
 
     void addChild(surfaceRes& child);

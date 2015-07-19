@@ -42,6 +42,18 @@ seat* iroSeat()
     return iroCompositor()->getSeat();
 }
 
+pointer* iroPointer()
+{
+    if(!iroSeat()) return nullptr;
+    return iroSeat()->getPointer();
+}
+
+keyboard* iroKeyboard()
+{
+    if(!iroSeat()) return nullptr;
+    return iroSeat()->getKeyboard();
+}
+
 shell* iroShell()
 {
     if(!iroCompositor()) return nullptr;
@@ -58,6 +70,22 @@ wl_event_loop* iroWlEventLoop()
 {
     if(!iroCompositor()) return nullptr;
     return iroCompositor()->iroWlEventLoop();
+}
+
+unsigned int iroNextSerial()
+{
+    return (iroWlDisplay()) ? wl_display_next_serial(iroWlDisplay()) : 0;
+}
+
+event* iroGetEvent(unsigned int serial)
+{
+    return (iroCompositor()) ? iroCompositor()->getEvent(serial) : nullptr;
+}
+
+void iroRegisterEvent(event& ev)
+{
+    if(iroCompositor())iroCompositor()->registerEvent(ev);
+    else iroWarning("iroRegisterEvent: no initialized compositor");
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -138,19 +166,36 @@ wl_event_loop* compositor::iroWlEventLoop() const
 
 client& compositor::getClient(wl_client& wlc)
 {
-    if(!clients_[&wlc])
+    if(clients_[&wlc] == nullptr)
+    {
         clients_[&wlc] = new client(wlc);
+    }
 
     return *clients_[&wlc];
 }
 
-void compositor::unregisterClient(client* c)
+void compositor::unregisterClient(client& c)
 {
-    auto it = clients_.find(&c->getWlClient());
+    auto it = clients_.find(&c.getWlClient());
     if(it != clients_.end())
     {
         clients_.erase(it->first);
     }
+}
+
+event* compositor::getEvent(unsigned int serial) const
+{
+    auto it = sentEvents_.find(serial);
+    if(it != sentEvents_.end())
+    {
+        return it->second;
+    }
+    return nullptr;
+}
+
+void compositor::registerEvent(event& ev)
+{
+    sentEvents_[wl_display_get_serial(wlDisplay_)] = &ev;
 }
 
 ////////////////////////////////////

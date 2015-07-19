@@ -15,10 +15,8 @@ template < class > class callback;
 class callbackBase
 {
 public:
-    virtual void remove(connection* con) = 0;
+    virtual void remove(const connection& con) = 0;
 };
-
-
 
 //connection//////////////////////////////////////////
 class connection : public nonCopyable
@@ -27,19 +25,19 @@ protected:
     template<class T> friend class callback;
 
     callbackBase& callback_;
-    bool connected_;
-
-    void wasRemoved(){ connected_ = 0; }
+    bool onlyOnce_ = 0;
 
 public:
-    connection(callbackBase& call) : callback_(call) { connected_ = 1; }
+    connection(callbackBase& call, bool onlyOnce = 0) : callback_(call), onlyOnce_(onlyOnce) {}
     virtual ~connection(){}
 
-    connection(const connection&& mover) noexcept : callback_(mover.callback_), connected_(mover.connected_) {} //for callback
-    connection& operator=(const connection&& mover) noexcept { callback_ = mover.callback_; connected_ = mover.connected_; return *this; } //for callback
+    connection(const connection&& mover) noexcept : callback_(mover.callback_), onlyOnce_(mover.onlyOnce_) {} //for callback
+    connection& operator=(const connection&& mover) noexcept { callback_ = mover.callback_; onlyOnce_ = mover.onlyOnce_; return *this; } //for callback
 
-    void destroy(){ callback_.remove(this); } //will delete this object implicitly
-    bool isConnected() const { return connected_; };
+    bool onlyOnce() const { return onlyOnce_; };
+    void setOnlyOnce(bool s = 1){ onlyOnce_ = 1; }
+
+    void destroy(){ callback_.remove(*this); } //will delete this object implicitly
 };
 
 
@@ -75,9 +73,9 @@ public:
     };
 
     //adds new callback and return connection for removing of the callback
-    connection& add(const std::function<Ret(Args ...)>& func)
+    connection& add(const std::function<Ret(Args ...)>& func, bool onlyOnce = 0)
     {
-        connection conn(*this);
+        connection conn(*this, onlyOnce);
 
         callbacks_.push_back(std::make_pair(std::move(conn), func));
 
@@ -85,13 +83,12 @@ public:
     };
 
     //removes a callback identified by its connection. Functions (std::function) can't be compared => we need connections
-    void remove(connection* con)
+    void remove(const connection& con)
     {
         for(unsigned int i(0); i < callbacks_.size(); i++)
         {
-            if(callbacks_[i].first == con)
+            if(&callbacks_[i].first == &con)
             {
-                callbacks_[i].first.wasRemoved();
                 callbacks_.erase(callbacks_.begin() + i);
                 return;
             }
@@ -105,6 +102,8 @@ public:
         for(unsigned int i(0); i < callbacks_.size(); i++)
         {
             ret.push_back(callbacks_[i].second(a ...));
+            if(callbacks_[i].first.onlyOnce())
+                remove(callbacks_[i].first);
         }
         return ret;
     };
@@ -136,10 +135,6 @@ protected:
 public:
     ~callback()
     {
-        for(unsigned int i(0); i < callbacks_.size(); i++)
-        {
-            callbacks_[i].first.wasRemoved();
-        }
     }
 
 
@@ -156,22 +151,20 @@ public:
         return *this;
     };
 
-    connection& add(const std::function<void(Args...)>& func)
+    connection& add(const std::function<void(Args...)>& func, bool onlyOnce = 0)
     {
-        connection conn(*this);
+        connection conn(*this, onlyOnce);
 
         callbacks_.push_back(std::make_pair(std::move(conn), func));
-
         return callbacks_.back().first;
     };
 
-    void remove(connection* con)
+    void remove(const connection& con)
     {
         for(unsigned int i(0); i < callbacks_.size(); i++)
         {
-            if(&(callbacks_[i].first) == con)
+            if(&callbacks_[i].first == &con)
             {
-                callbacks_[i].first.wasRemoved();
                 callbacks_.erase(callbacks_.begin() + i);
                 return;
             }
@@ -183,6 +176,8 @@ public:
         for(unsigned int i(0); i < callbacks_.size(); i++)
         {
             callbacks_[i].second(a ...);
+            if(callbacks_[i].first.onlyOnce())
+                remove(callbacks_[i].first);
         }
     };
 
