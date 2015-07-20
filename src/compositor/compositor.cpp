@@ -134,9 +134,13 @@ compositor::compositor()
 
 
     if(x11Backend::available())
+    {
         backend_ = new x11Backend();
+    }
     else
+    {
         backend_ = new kmsBackend();
+    }
 
     subcompositor_ = new subcompositor();
     shell_ = new shell();

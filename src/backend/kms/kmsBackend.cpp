@@ -153,12 +153,12 @@ kmsBackend::~kmsBackend()
     for(auto* out : outputs_)
         delete out;
 
-    drmModeSetCrtc(fd_, drmSavedCrtc_->crtc_id, drmSavedCrtc_->buffer_id, drmSavedCrtc_->x, drmSavedCrtc_->y, &drmConnector_->connector_id, 1, &drmSavedCrtc_->mode);
-    drmDropMaster(fd_);
+    if(drmSavedCrtc_)drmModeSetCrtc(fd_, drmSavedCrtc_->crtc_id, drmSavedCrtc_->buffer_id, drmSavedCrtc_->x, drmSavedCrtc_->y, &drmConnector_->connector_id, 1, &drmSavedCrtc_->mode);
 
+    if(wlEventSource_) wl_event_source_remove(wlEventSource_);
     if(eglContext_) delete eglContext_;
     if(tty_) delete tty_;
-    if(gbmDevice_)gbm_device_destroy(gbmDevice_);
+    if(gbmDevice_) gbm_device_destroy(gbmDevice_);
 }
 
 void kmsBackend::onEnter()

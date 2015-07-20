@@ -10,6 +10,7 @@ class sessionHandler
 protected:
     std::string seat_;
     std::string session_;
+    std::string sessionPath_;
 
     DBusConnection* dbus_ = nullptr;
     wl_event_source* dbusEventSource_ = nullptr;

@@ -104,8 +104,7 @@ x11Backend::x11Backend()
 
 x11Backend::~x11Backend()
 {
-    wl_event_source_remove(wlEventSource_);
-
+    if(wlEventSource_)wl_event_source_remove(wlEventSource_);
     if(eglContext_) delete eglContext_;
     if(xDisplay_) XCloseDisplay(xDisplay_);
 }
