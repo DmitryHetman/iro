@@ -1,10 +1,10 @@
 #include <backend/kms/kmsBackend.hpp>
 #include <backend/kms/input.hpp>
 #include <compositor/compositor.hpp>
-#include <backend/egl.hpp>
 #include <backend/tty.hpp>
 #include <backend/renderer.hpp>
 #include <backend/session.hpp>
+#include <backend/egl.hpp>
 
 #include <util/misc.hpp>
 
@@ -26,16 +26,22 @@ kmsBackend* getKMSBackend()
     return dynamic_cast<kmsBackend*>(iroBackend());
 }
 
-ttyHandler* getTTYHandler()
+ttyHandler* iroTTYHandler()
 {
     if(!getKMSBackend()) return nullptr;
     return getKMSBackend()->getTTYHandler();
 }
 
-inputHandler* getInputHandler()
+inputHandler* iroInputHandler()
 {
     if(!getKMSBackend()) return nullptr;
     return getKMSBackend()->getInputHandler();
+}
+
+sessionHandler* iroSessionHandler()
+{
+    if(!getKMSBackend()) return nullptr;
+    return getKMSBackend()->getSessionHandler();
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -58,39 +64,45 @@ int drmEvent(int fd, unsigned int mask, void* data)
 ///////////////////////////////////////////////////////////////////////////
 kmsBackend::kmsBackend()
 {
+    std::cout << "0" << std::endl;
+
     session_ = new sessionHandler();
 
-    tty_ = new ttyHandler();
-    tty_->beforeEnter(memberCallback(&kmsBackend::onEnter, this));
-    tty_->beforeLeave(memberCallback(&kmsBackend::onLeave, this));
+    tty_ = new ttyHandler(*session_);
+    tty_->beforeEnter(memberCallback(&kmsBackend::onTTYEnter, this));
+    tty_->beforeLeave(memberCallback(&kmsBackend::onTTYLeave, this));
 
-    input_ = new inputHandler();
+    input_ = new inputHandler(*session_);
 
-    fd_ = open("/dev/dri/card0", O_RDWR);
-    if(!fd_)
+    std::string path = "/dev/dri/card0";
+    drm_ = session_->takeDevice(path);
+
+    if(!drm_ || !drm_->fd)
     {
-        throw std::runtime_error("cant open device");
+        throw std::runtime_error("kmsBackend::kmsBackend: cant take drm device at " + path);
         return;
     }
+    drm_->onPause(memberCallback(&kmsBackend::onDRMPause, this));
+    drm_->onResume(memberCallback(&kmsBackend::onDRMResume, this));
 
-    gbmDevice_ = gbm_create_device(fd_);
+    gbmDevice_ = gbm_create_device(drm_->fd);
     if(!gbmDevice_)
     {
-        throw std::runtime_error("cant create gbm device");
+        throw std::runtime_error("kmsBackend::kmsBackend: cant create gbm device");
         return;
     }
 
     int i;
-    drmModeRes* resources = drmModeGetResources(fd_);
+    drmModeRes* resources = drmModeGetResources(drm_->fd);
     if (!resources)
     {
-        throw std::runtime_error("drmModeGetResources failed");
+        throw std::runtime_error("kmsBackend::kmsBackend: drmModeGetResources failed");
         return;
     }
 
     for (i = 0; i < resources->count_connectors; i++)
     {
-        drmConnector_ = drmModeGetConnector(fd_, resources->connectors[i]);
+        drmConnector_ = drmModeGetConnector(drm_->fd, resources->connectors[i]);
         if (!drmConnector_)
             continue;
 
@@ -102,13 +114,13 @@ kmsBackend::kmsBackend()
 
     if (i == resources->count_connectors)
     {
-        throw std::runtime_error("no active connector found");
+        throw std::runtime_error("kmsBackend::kmsBackend: no active connector found");
         return;
     }
 
     for (i = 0; i < resources->count_encoders; i++)
     {
-        drmEncoder_ = drmModeGetEncoder(fd_, resources->encoders[i]);
+        drmEncoder_ = drmModeGetEncoder(drm_->fd, resources->encoders[i]);
 
         if (!drmEncoder_)
             continue;
@@ -121,16 +133,16 @@ kmsBackend::kmsBackend()
 
     drmMode_ = drmConnector_->modes[0];
 
-    drmSavedCrtc_ = drmModeGetCrtc(fd_, drmEncoder_->crtc_id);
+    drmSavedCrtc_ = drmModeGetCrtc(drm_->fd, drmEncoder_->crtc_id);
     if(!drmSavedCrtc_)
     {
-        throw std::runtime_error("cant save crtc");
+        throw std::runtime_error("kmsBackend::kmsBackend: cant save crtc");
         return;
     }
 
-    drmEventSource_ = wl_event_loop_add_fd(iroWlEventLoop(), fd_, WL_EVENT_READABLE, drmEvent, this);
+    drmEventSource_ = wl_event_loop_add_fd(iroWlEventLoop(), drm_->fd, WL_EVENT_READABLE, drmEvent, this);
 
-    eglContext_ = new eglContext((EGLNativeDisplayType)gbmDevice_);
+    eglContext_ = new eglContext(gbmDevice_);
 
     const unsigned int numOutputs = 1; //TODO
     for(unsigned int i(0); i < numOutputs; i++)
@@ -153,15 +165,20 @@ kmsBackend::~kmsBackend()
     for(auto* out : outputs_)
         delete out;
 
-    if(drmSavedCrtc_)drmModeSetCrtc(fd_, drmSavedCrtc_->crtc_id, drmSavedCrtc_->buffer_id, drmSavedCrtc_->x, drmSavedCrtc_->y, &drmConnector_->connector_id, 1, &drmSavedCrtc_->mode);
+    if(drmSavedCrtc_)drmModeSetCrtc(drm_->fd, drmSavedCrtc_->crtc_id, drmSavedCrtc_->buffer_id, drmSavedCrtc_->x, drmSavedCrtc_->y, &drmConnector_->connector_id, 1, &drmSavedCrtc_->mode);
 
     if(wlEventSource_) wl_event_source_remove(wlEventSource_);
     if(eglContext_) delete eglContext_;
-    if(tty_) delete tty_;
     if(gbmDevice_) gbm_device_destroy(gbmDevice_);
+    if(tty_) delete tty_;
+    if(session_)
+    {
+        if(drm_) session_->releaseDevice(*drm_);
+        delete session_;
+    }
 }
 
-void kmsBackend::onEnter()
+void kmsBackend::onTTYEnter()
 {
     for(auto* out : outputs_)
     {
@@ -171,17 +188,24 @@ void kmsBackend::onEnter()
     }
 }
 
-void kmsBackend::onLeave()
+void kmsBackend::onTTYLeave()
 {
-    drmModeSetCrtc(fd_, drmSavedCrtc_->crtc_id, drmSavedCrtc_->buffer_id, drmSavedCrtc_->x, drmSavedCrtc_->y, &drmConnector_->connector_id, 1, &drmSavedCrtc_->mode);
+    drmModeSetCrtc(drm_->fd, drmSavedCrtc_->crtc_id, drmSavedCrtc_->buffer_id, drmSavedCrtc_->x, drmSavedCrtc_->y, &drmConnector_->connector_id, 1, &drmSavedCrtc_->mode);
 }
 
-void kmsOutput::render()
+void kmsBackend::onDRMPause()
 {
-    if(flipping_)
-        return;
 
-    output::render();
+}
+
+void kmsBackend::onDRMResume()
+{
+
+}
+
+int kmsBackend::getFD() const
+{
+    return (drm_) ? drm_->fd : -1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -221,6 +245,14 @@ kmsOutput::~kmsOutput()
     gbm_surface_destroy(gbmSurface_);
 }
 
+void kmsOutput::render()
+{
+    if(flipping_)
+        return;
+
+    output::render();
+}
+
 void kmsOutput::setCrtc()
 {
     set = 0;
@@ -258,7 +290,7 @@ void kmsOutput::releaseFB(fb& obj)
 
 void kmsOutput::swapBuffers()
 {
-    if(!flipping_ && getKMSBackend() && getTTYHandler()->focus())
+    if(!flipping_ && getKMSBackend() && iroTTYHandler()->focus())
     {
         eglSwapBuffers(iroEglContext()->getDisplay(), eglSurface_);
 

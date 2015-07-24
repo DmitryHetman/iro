@@ -3,8 +3,6 @@
 #include <iro.hpp>
 #include <backend/backend.hpp>
 #include <backend/output.hpp>
-#include <backend/egl.hpp>
-#include <backend/session.hpp>
 
 #include <gbm.h>
 #include <drm.h>
@@ -20,7 +18,7 @@ protected:
     ttyHandler* tty_ = nullptr;
     inputHandler* input_ = nullptr;
 
-    int fd_;
+    device* drm_ = nullptr;
 
     gbm_device* gbmDevice_ = nullptr;
 
@@ -32,16 +30,21 @@ protected:
 
     wl_event_source* drmEventSource_ = nullptr;
 
-    void onEnter();
-    void onLeave();
+    void onTTYEnter();
+    void onTTYLeave();
+
+    void onDRMPause();
+    void onDRMResume();
 
 public:
     kmsBackend();
     ~kmsBackend();
 
-    backendType getType() const { return backendType::kms; }
+    virtual backendType getType() const override { return backendType::kms; }
+
     ttyHandler* getTTYHandler() const { return tty_; }
     inputHandler* getInputHandler() const { return input_; }
+    sessionHandler* getSessionHandler() const { return session_; }
 
     gbm_device* getGBMDevice() const { return gbmDevice_; }
     drmModeConnector* getDRMConnector() const { return drmConnector_; }
@@ -49,7 +52,7 @@ public:
     const drmModeModeInfo& getDRMMode() const { return drmMode_; }
     drmModeModeInfo& getDRMMode() { return drmMode_; }
 
-    int getFD() const { return fd_; }
+    int getFD() const;
 };
 
 //output
@@ -66,7 +69,7 @@ protected:
 
 protected:
     gbm_surface* gbmSurface_ = nullptr;
-    EGLSurface eglSurface_;
+    void* eglSurface_; //EGLSurface
 
     bool set = 0;
     bool flipping_ = 0;
@@ -78,7 +81,7 @@ protected:
     void releaseFB(fb& obj);
     void createFB(fb& obj);
 
-    void render();
+    virtual void render() override;
 
 public:
     kmsOutput(const kmsBackend& kms, unsigned int id);
@@ -90,5 +93,5 @@ public:
     //output
     virtual void swapBuffers() override;
     virtual vec2ui getSize() const override;
-    virtual EGLSurface getEglSurface() const override { return eglSurface_; }
+    virtual void* getEglSurface() const override { return eglSurface_; }
 };

@@ -61,6 +61,8 @@ class ttyHandler;
 class inputHandler;
 class sessionHandler;
 
+class device;
+
 class event;
 class pointerButtonEvent;
 class pointerFocusEvent;
@@ -82,9 +84,9 @@ pointer* iroPointer();
 keyboard* iroKeyboard();
 shell* iroShell();
 eglContext* iroEglContext();
-
-ttyHandler* getTTYHandler();
-inputHandler* getInputHandler();
+ttyHandler* iroTTYHandler();
+inputHandler* iroInputHandler();
+sessionHandler* iroSessionHandler();
 
 wl_display* iroWlDisplay();
 wl_event_loop* iroWlEventLoop();

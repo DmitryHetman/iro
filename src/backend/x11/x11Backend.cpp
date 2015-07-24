@@ -175,13 +175,13 @@ int x11Backend::eventLoop(int fd, unsigned int mask)
             case XCB_KEY_PRESS:
             {
                 xcb_key_press_event_t* ev = (xcb_key_press_event_t*) event;
-                iroKeyboard()->sendKeyPress(ev->detail);
+                iroKeyboard()->sendKeyPress(ev->detail - 8);
                 break;
             }
             case XCB_KEY_RELEASE:
             {
                 xcb_key_press_event_t* ev = (xcb_key_press_event_t*) event;
-                iroKeyboard()->sendKeyRelease(ev->detail);
+                iroKeyboard()->sendKeyRelease(ev->detail - 8);
                 break;
             }
             case XCB_FOCUS_IN:

@@ -15,11 +15,11 @@ protected:
     void enteredTTY();
     void leftTTY();
 
-    bool focus_;
+    bool focus_ = 0;
 
     unsigned int number_;
 
-    int fd_;
+    int fd_ = 0;
 
     callback<void()> beforeEnter_;
     callback<void()> beforeLeave_;
@@ -28,7 +28,7 @@ protected:
     callback<void()> afterLeave_;
 
 public:
-    ttyHandler();
+    ttyHandler(sessionHandler& handler);
     ~ttyHandler();
 
     bool focus() const { return focus_; }

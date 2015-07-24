@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+struct gbm_device;
+
 class eglContext : public nonCopyable
 {
 protected:
@@ -19,7 +21,7 @@ protected:
     std::vector<std::string> extensions_;
 
 public:
-    eglContext(EGLNativeDisplayType display);
+    eglContext(void* display);
     virtual ~eglContext();
 
     EGLDisplay getDisplay() const { return display_; }

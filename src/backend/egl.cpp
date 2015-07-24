@@ -12,9 +12,9 @@ PFNEGLCREATEIMAGEKHRPROC eglContext::eglCreateImageKHR = nullptr;
 PFNEGLDESTROYIMAGEKHRPROC eglContext::eglDestroyImageKHR = nullptr;
 
 ///////////////////////////////////////////////////////////
-eglContext::eglContext(EGLNativeDisplayType display)
+eglContext::eglContext(void* display)
 {
-    display_ = eglGetDisplay(display);
+    display_ = eglGetDisplay((EGLNativeDisplayType)display);
     if(!display_)
     {
         throw std::runtime_error("could not get egl display");

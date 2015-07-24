@@ -2,8 +2,11 @@
 #include <seat/seat.hpp>
 #include <resources/surface.hpp>
 #include <resources/client.hpp>
+#include <server.hpp>
 
 #include <wayland-server-protocol.h>
+
+#include <linux/input.h>
 
 ///////////////////////////////////////
 void keyboardRelease(wl_client* client, wl_resource* resource)
@@ -28,6 +31,14 @@ keyboard::~keyboard()
 
 void keyboard::sendKeyPress(unsigned int key)
 {
+    std::cout << "key: " << key << " " << KEY_ESC << std::endl;
+
+    if(key == KEY_ESC)
+    {
+        iroServer()->exit();
+        return;
+    }
+
     if(!getActiveRes())
         return;
 

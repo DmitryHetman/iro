@@ -1,4 +1,5 @@
 #include <backend/tty.hpp>
+#include <backend/session.hpp>
 #include <log.hpp>
 
 //C
@@ -19,15 +20,16 @@
 
 void ttySignalhandler(int signal)
 {
-    ttyHandler* handler = getTTYHandler();
+    ttyHandler* handler = iroTTYHandler();
     if(!handler) return;
 
     if(signal == SIGUSR1) handler->enteredTTY();
     else if(signal == SIGUSR2) handler->leftTTY();
 }
 
-ttyHandler::ttyHandler() : focus_(0)
+ttyHandler::ttyHandler(sessionHandler& handler)
 {
+    /*
     const char* number = getenv("XDG_VTNR");
     if(!number)
     {
@@ -35,7 +37,6 @@ ttyHandler::ttyHandler() : focus_(0)
         return;
     }
 
-    /*
     //tty0
     int tty0FD = open("/dev/tty0", O_RDWR | O_CLOEXEC);
     if(tty0FD < 0)
@@ -54,7 +55,7 @@ ttyHandler::ttyHandler() : focus_(0)
     */
 
     ////
-    number_ = std::stoi(number);
+    number_ = handler.getVTNumber();
 
     //open own tty
     std::string ttyString;

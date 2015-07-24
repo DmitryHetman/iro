@@ -25,6 +25,6 @@ protected:
     int udevEvent();
 
 public:
-    inputHandler();
+    inputHandler(sessionHandler& h);
     ~inputHandler();
 };

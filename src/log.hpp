@@ -18,6 +18,8 @@ template<typename ... Args> void iroLog(Args&& ... args)
 
 template<typename ... Args> void iroWarning(Args&& ... args)
 {
+    iroLog("warning: ", args ...);
+
     printVars(*warningStream, "warning: ", args ...);
     *warningStream << std::endl;
 }
@@ -25,6 +27,8 @@ template<typename ... Args> void iroWarning(Args&& ... args)
 
 template<typename ... Args> void iroError(Args&& ... args)
 {
+    iroLog("error: ", args ...);
+
     printVars(*errorStream, "error: ", args ...);
     *errorStream << std::endl;
 }

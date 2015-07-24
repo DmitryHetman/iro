@@ -49,13 +49,6 @@ protected:
     std::vector< std::pair<connection, std::function<Ret(Args ...)>> > callbacks_;
 
 public:
-    ~callback()
-    {
-        for(unsigned int i(0); i < callbacks_.size(); i++)
-        {
-            callbacks_[i].first.wasRemoved();
-        }
-    }
 
     //adds an callback by += operator
     callback<Ret(Args...)>& operator+=(const std::function<Ret(Args...)>& func)
@@ -133,11 +126,6 @@ protected:
     std::vector< std::pair<connection, std::function<void(Args ...)>> > callbacks_;
 
 public:
-    ~callback()
-    {
-    }
-
-
     callback<void(Args...)>& operator+=(const std::function<void(Args...)>& func)
     {
         add(func);
