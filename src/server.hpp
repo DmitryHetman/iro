@@ -5,16 +5,19 @@
 #include <util/nonCopyable.hpp>
 #include <util/time.hpp>
 
+#include <string>
+
+
 struct serverSettings
 {
-    int argc;
-    const char** argv;
+    std::string log;
 };
 
 class server : public nonCopyable
 {
 protected:
     compositor* compositor_ = nullptr;
+    sessionManager* sessionManager_ = nullptr;
 
     serverSettings settings_;
 
@@ -41,7 +44,8 @@ public:
     unsigned int getTime() const { return timer_.getElapsedTime().asMilliseconds(); }
     timeDuration getDuration() const { return timer_.getElapsedTime(); }
 
-    compositor* iroCompositor() const { return compositor_; }
+    compositor* getCompositor() const { return compositor_; }
+    sessionManager* getSessionManager() const { return sessionManager_; }
 
     const serverSettings& getSettings() const { return settings_; }
 

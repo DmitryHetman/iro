@@ -14,7 +14,6 @@ kmsBackend* getKMSBackend();
 class kmsBackend : public backend
 {
 protected:
-    sessionHandler* session_ = nullptr;
     ttyHandler* tty_ = nullptr;
     inputHandler* input_ = nullptr;
 
@@ -44,7 +43,6 @@ public:
 
     ttyHandler* getTTYHandler() const { return tty_; }
     inputHandler* getInputHandler() const { return input_; }
-    sessionHandler* getSessionHandler() const { return session_; }
 
     gbm_device* getGBMDevice() const { return gbmDevice_; }
     drmModeConnector* getDRMConnector() const { return drmConnector_; }

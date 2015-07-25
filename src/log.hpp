@@ -4,15 +4,17 @@
 #include <util/misc.hpp>
 
 ////////////
+extern std::ostream* logStream;
 extern std::ostream* warningStream;
-extern std::ostream* debugStream;
 extern std::ostream* errorStream;
 
 template<typename ... Args> void iroLog(Args&& ... args)
 {
     #ifdef IRO_LOG
-        printVars(*debugStream, args ...);
-        *debugStream << std::endl;
+        if(!logStream) return;
+
+        printVars(*logStream, args ...);
+        *logStream << std::endl;
     #endif // IRO_DEBUG
 }
 

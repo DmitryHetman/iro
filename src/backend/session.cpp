@@ -7,9 +7,10 @@
 #include <systemd/sd-login.h>
 #include <unistd.h>
 #include <sys/eventfd.h>
-
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <pwd.h>
 
 #include <stdexcept>
 #include <iostream>
@@ -17,7 +18,7 @@
 //device
 void device::release()
 {
-    iroSessionHandler()->releaseDevice(*this);
+    iroSessionManager()->releaseDevice(*this);
 }
 
 //error
@@ -72,7 +73,7 @@ bool checkDBusErrorWarn(DBusError& err)
 ////
 int dbusDispatch(int fd, uint32_t mask, void* data)
 {
-   sessionHandler* sh = (sessionHandler*)data;
+   sessionManager* sh = (sessionManager*)data;
 
    while(1)
    {
@@ -242,7 +243,7 @@ void cbSessionRemoved(DBusMessage* msg)
 {
     const char* name;
     const char* obj;
-    if(!dbus_message_get_args(msg, nullptr, DBUS_TYPE_STRING, &name, DBUS_TYPE_OBJECT_PATH, &obj, DBUS_TYPE_INVALID) || std::string(name) != iroSessionHandler()->getSession())
+    if(!dbus_message_get_args(msg, nullptr, DBUS_TYPE_STRING, &name, DBUS_TYPE_OBJECT_PATH, &obj, DBUS_TYPE_INVALID) || std::string(name) != iroSessionManager()->getSession())
         return;
 
     iroLog("dbus session was removed");
@@ -313,14 +314,14 @@ error0:
 
 void cbDevicePaused(DBusMessage* msg)
 {
-    if(iroSessionHandler())
-        iroSessionHandler()->devicePaused(msg);
+    if(iroSessionManager())
+        iroSessionManager()->devicePaused(msg);
 }
 
 void cbDeviceResumed(DBusMessage* msg)
 {
-    if(iroSessionHandler())
-        iroSessionHandler()->deviceResumed(msg);
+    if(iroSessionManager())
+        iroSessionManager()->deviceResumed(msg);
 }
 
 DBusHandlerResult dbusFilter(DBusConnection* connection, DBusMessage* msg, void* data)
@@ -371,7 +372,7 @@ bool dbusAddMatchSignal(DBusConnection* conn, const std::string& sender, const s
 }
 
 /////////////////////////////////////////
-sessionHandler::sessionHandler()
+sessionManager::sessionManager()
 {
     //systemd
     char* session = nullptr;
@@ -482,7 +483,7 @@ sessionHandler::sessionHandler()
     iroLog("Took Session Control");
 }
 
-sessionHandler::~sessionHandler()
+sessionManager::~sessionManager()
 {
     if(dbus_)
     {
@@ -490,7 +491,7 @@ sessionHandler::~sessionHandler()
         DBusMessage* m;
         if (!(m = dbus_message_new_method_call("org.freedesktop.login1", sessionPath_.c_str(), "org.freedesktop.login1.Session", "ReleaseControl")))
         {
-            iroLog("sessionHandler::~sessionHandler: dbus_message_new_method_call for release control failed");
+            iroLog("sessionManager::~sessionManager: dbus_message_new_method_call for release control failed");
         }
 
         dbus_connection_send(dbus_, m, nullptr);
@@ -513,7 +514,7 @@ sessionHandler::~sessionHandler()
     }
 }
 
-device* sessionHandler::takeDevice(const std::string& path)
+device* sessionManager::takeDevice(const std::string& path)
 {
     device* ret = new device;
 
@@ -524,7 +525,7 @@ device* sessionHandler::takeDevice(const std::string& path)
     struct stat st;
     if(stat(path.c_str(), &st) < 0 || !S_ISCHR(st.st_mode))
     {
-        iroWarning("sessionHandler::takeDevice: failed to get stat struct for path");
+        iroWarning("sessionManager::takeDevice: failed to get stat struct for path");
         return nullptr;
     }
 
@@ -534,14 +535,14 @@ device* sessionHandler::takeDevice(const std::string& path)
     DBusMessage* msg;
     if(!(msg = dbus_message_new_method_call("org.freedesktop.login1", sessionPath_.c_str(), "org.freedesktop.login1.Session", "TakeDevice")))
     {
-        iroWarning("sessionHandler::takeDevice: dbus_message_new_method_call failed");
+        iroWarning("sessionManager::takeDevice: dbus_message_new_method_call failed");
         dbus_message_unref(msg);
         return nullptr;
     }
 
     if(!dbus_message_append_args(msg, DBUS_TYPE_UINT32, &majr, DBUS_TYPE_UINT32, &minr, DBUS_TYPE_INVALID))
     {
-        iroWarning("sessionHandler::takeDevice: dbus_message_append_args failed");
+        iroWarning("sessionManager::takeDevice: dbus_message_append_args failed");
         dbus_message_unref(msg);
         return nullptr;
     }
@@ -549,7 +550,7 @@ device* sessionHandler::takeDevice(const std::string& path)
     DBusMessage *reply;
     if(!(reply = dbus_connection_send_with_reply_and_block(dbus_, msg, -1, nullptr)))
     {
-        iroWarning("sessionHandler::takeDevice: dbus_connection_send_with_reply_and_block failed");
+        iroWarning("sessionManager::takeDevice: dbus_connection_send_with_reply_and_block failed");
         dbus_message_unref(msg);
         return nullptr;
     }
@@ -558,7 +559,7 @@ device* sessionHandler::takeDevice(const std::string& path)
     dbus_bool_t paused;
     if(!dbus_message_get_args(reply, nullptr, DBUS_TYPE_UNIX_FD, &fd, DBUS_TYPE_BOOLEAN, &paused, DBUS_TYPE_INVALID))
     {
-        iroWarning("sessionHandler::takeDevice: dbus_message_get_args failed");
+        iroWarning("sessionManager::takeDevice: dbus_message_get_args failed");
         dbus_message_unref(reply);
         dbus_message_unref(msg);
         return nullptr;
@@ -567,7 +568,7 @@ device* sessionHandler::takeDevice(const std::string& path)
     int fl;
     if((fl = fcntl(fd, F_GETFL)) < 0 || fcntl(fd, F_SETFD, fl | FD_CLOEXEC) < 0)
     {
-        iroWarning("sessionHandler::takeDevice: invalid fd");
+        iroWarning("sessionManager::takeDevice: invalid fd");
         close(fd);
         dbus_message_unref(reply);
         dbus_message_unref(msg);
@@ -585,17 +586,17 @@ device* sessionHandler::takeDevice(const std::string& path)
     return ret;
 }
 
-void sessionHandler::releaseDevice(device& dev)
+void sessionManager::releaseDevice(device& dev)
 {
     releaseDevice(dev.fd);
 }
 
-void sessionHandler::releaseDevice(int devFD)
+void sessionManager::releaseDevice(int devFD)
 {
     struct stat st;
     if(fstat(devFD, &st) < 0 || !S_ISCHR(st.st_mode))
     {
-        iroWarning("sessionHandler::releaseDevice: failed to get stat struct for devFD");
+        iroWarning("sessionManager::releaseDevice: failed to get stat struct for devFD");
         return;
     }
 
@@ -613,14 +614,14 @@ void sessionHandler::releaseDevice(int devFD)
             DBusMessage* msg;
             if (!(msg = dbus_message_new_method_call("org.freedesktop.login1", sessionPath_.c_str(), "org.freedesktop.login1.Session", "ReleaseDevice")))
             {
-                iroWarning("sessionHandler::releaseDevice: dbus_message_new_method_call failed");
+                iroWarning("sessionManager::releaseDevice: dbus_message_new_method_call failed");
                 dbus_message_unref(msg);
                 return;
             }
 
             if(!dbus_message_append_args(msg, DBUS_TYPE_UINT32, &majr, DBUS_TYPE_UINT32, &minr, DBUS_TYPE_INVALID))
             {
-                iroWarning("sessionHandler::releaseDevice: dbus_message_append_args failed");
+                iroWarning("sessionManager::releaseDevice: dbus_message_append_args failed");
                 dbus_message_unref(msg);
                 return;
             }
@@ -635,17 +636,17 @@ void sessionHandler::releaseDevice(int devFD)
         }
     }
 
-    if(!found) iroWarning("sessionHandler::releaseDevice: device not found");
+    if(!found) iroWarning("sessionManager::releaseDevice: device not found");
 }
 
-void sessionHandler::devicePaused(DBusMessage* msg)
+void sessionManager::devicePaused(DBusMessage* msg)
 {
     const char* type;
     unsigned int majr, minr;
 
     if(!dbus_message_get_args(msg, nullptr, DBUS_TYPE_UINT32, &majr, DBUS_TYPE_UINT32, &minr, DBUS_TYPE_STRING, &type, DBUS_TYPE_INVALID))
     {
-        iroWarning("sessionHandler::devicePaused: dbus_message_get_args failed");
+        iroWarning("sessionManager::devicePaused: dbus_message_get_args failed");
         return;
     }
 
@@ -655,14 +656,14 @@ void sessionHandler::devicePaused(DBusMessage* msg)
         DBusMessage* m;
         if (!(m = dbus_message_new_method_call("org.freedesktop.login1", sessionPath_.c_str(), "org.freedesktop.login1.Session", "PauseDeviceComplete")))
         {
-            iroWarning("sessionHandler::devicePaused: dbus_message_new_method_call failed");
+            iroWarning("sessionManager::devicePaused: dbus_message_new_method_call failed");
             return;
         }
 
 
         if (!dbus_message_append_args(m, DBUS_TYPE_UINT32, &majr, DBUS_TYPE_UINT32, &minr, DBUS_TYPE_INVALID))
         {
-            iroWarning("sessionHandler::devicePaused: dbus_message_append_args failed");
+            iroWarning("sessionManager::devicePaused: dbus_message_append_args failed");
             return;
         }
 
@@ -676,7 +677,7 @@ void sessionHandler::devicePaused(DBusMessage* msg)
     {
         if(fstat(dev->fd, &st) < 0 || !S_ISCHR(st.st_mode))
         {
-            iroWarning("sessionHandler::devicePaused: failed to get stat struct for device fd");
+            iroWarning("sessionManager::devicePaused: failed to get stat struct for device fd");
             continue;
         }
 
@@ -691,15 +692,15 @@ void sessionHandler::devicePaused(DBusMessage* msg)
         }
     }
 
-    if(!found) iroWarning("sessionHandler::devicePaused: device not found");
+    if(!found) iroWarning("sessionManager::devicePaused: device not found");
 }
 
-void sessionHandler::deviceResumed(DBusMessage* msg)
+void sessionManager::deviceResumed(DBusMessage* msg)
 {
     unsigned int majr, minr;
     if(!dbus_message_get_args(msg, nullptr, DBUS_TYPE_UINT32, &majr, DBUS_TYPE_UINT32, &minr, DBUS_TYPE_INVALID))
     {
-        iroWarning("sessionHandler::deviceResumed: dbus_message_get_args failed");
+        iroWarning("sessionManager::deviceResumed: dbus_message_get_args failed");
         return;
     }
 
@@ -709,7 +710,7 @@ void sessionHandler::deviceResumed(DBusMessage* msg)
     {
         if(fstat(dev->fd, &st) < 0 || !S_ISCHR(st.st_mode))
         {
-            iroWarning("sessionHandler::deviceResumed: failed to get stat struct for device fd");
+            iroWarning("sessionManager::deviceResumed: failed to get stat struct for device fd");
             continue;
         }
 
@@ -724,5 +725,53 @@ void sessionHandler::deviceResumed(DBusMessage* msg)
         }
     }
 
-    if(!found) iroWarning("sessionHandler::deviceResumed: device not found");
+    if(!found) iroWarning("sessionManager::deviceResumed: device not found");
+}
+
+
+//pam
+int pamConversation(int msg_count, const struct pam_message** messages, struct pam_response** responses, void* data)
+{
+	return PAM_SUCCESS;
+}
+
+pamHandler::pamHandler()
+{
+    pamConv_.conv = &pamConversation;
+    pamConv_.appdata_ptr = this;
+
+    passwd* pwd = getpwuid(getuid());
+    if(!pwd)
+    {
+        throw std::runtime_error("pamHandler::pamHandler: getpwuid failed");
+        return;
+    }
+
+    if(pam_start("login", pwd->pw_name, &pamConv_, &pam_) != PAM_SUCCESS)
+    {
+        throw std::runtime_error("pamHandler::pamHandler: pam_start failed");
+        return;
+    }
+
+    std::string ttyname = ""; //todo
+    if(pam_set_item(pam_, PAM_TTY, ttyname.c_str()) != PAM_SUCCESS)
+    {
+        throw std::runtime_error("pamHandler::pamHandler: pam_set_item for TTY failed");
+        return;
+    }
+
+    if(pam_open_session(pam_, 0) != PAM_SUCCESS)
+    {
+        throw std::runtime_error("pamHandler::pamHandler: pam_open_session failed");
+        return;
+    }
+}
+
+pamHandler::~pamHandler()
+{
+    if(pam_)
+    {
+        pam_close_session(pam_, 0);
+        pam_end(pam_, 0);
+    }
 }

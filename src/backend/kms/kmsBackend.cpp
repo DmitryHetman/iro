@@ -38,12 +38,6 @@ inputHandler* iroInputHandler()
     return getKMSBackend()->getInputHandler();
 }
 
-sessionHandler* iroSessionHandler()
-{
-    if(!getKMSBackend()) return nullptr;
-    return getKMSBackend()->getSessionHandler();
-}
-
 ///////////////////////////////////////////////////////////////////////////
 void drmPageFlipEvent(int fd, unsigned int frame, unsigned int sec, unsigned int usec, void *data)
 {
@@ -66,16 +60,14 @@ kmsBackend::kmsBackend()
 {
     std::cout << "0" << std::endl;
 
-    session_ = new sessionHandler();
-
-    tty_ = new ttyHandler(*session_);
+    tty_ = new ttyHandler(*iroSessionManager());
     tty_->beforeEnter(memberCallback(&kmsBackend::onTTYEnter, this));
     tty_->beforeLeave(memberCallback(&kmsBackend::onTTYLeave, this));
 
-    input_ = new inputHandler(*session_);
+    input_ = new inputHandler(*iroSessionManager());
 
     std::string path = "/dev/dri/card0";
-    drm_ = session_->takeDevice(path);
+    drm_ = iroSessionManager()->takeDevice(path);
 
     if(!drm_ || !drm_->fd)
     {
@@ -171,11 +163,7 @@ kmsBackend::~kmsBackend()
     if(eglContext_) delete eglContext_;
     if(gbmDevice_) gbm_device_destroy(gbmDevice_);
     if(tty_) delete tty_;
-    if(session_)
-    {
-        if(drm_) session_->releaseDevice(*drm_);
-        delete session_;
-    }
+    if(drm_) iroSessionManager()->releaseDevice(*drm_);
 }
 
 void kmsBackend::onTTYEnter()

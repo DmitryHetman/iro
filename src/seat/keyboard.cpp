@@ -3,6 +3,7 @@
 #include <resources/surface.hpp>
 #include <resources/client.hpp>
 #include <server.hpp>
+#include <log.hpp>
 
 #include <wayland-server-protocol.h>
 
@@ -31,7 +32,7 @@ keyboard::~keyboard()
 
 void keyboard::sendKeyPress(unsigned int key)
 {
-    std::cout << "key: " << key << " " << KEY_ESC << std::endl;
+    iroLog("Key ", key, " Pressed");
 
     if(key == KEY_ESC)
     {
@@ -48,6 +49,8 @@ void keyboard::sendKeyPress(unsigned int key)
 
 void keyboard::sendKeyRelease(unsigned int key)
 {
+    iroLog("Key ", key, " Released");
+
     if(!getActiveRes())
         return;
 

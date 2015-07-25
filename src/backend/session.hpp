@@ -12,7 +12,7 @@
 //device
 class device
 {
-friend class sessionHandler;
+friend class sessionManager;
 
 protected:
     callback<void(const device&)> pauseCallback_;
@@ -33,7 +33,7 @@ public:
 };
 
 //sessionHandler
-class sessionHandler
+class sessionManager
 {
 friend void cbDevicePaused(DBusMessage*);
 friend void cbDeviceResumed(DBusMessage*);
@@ -55,8 +55,8 @@ protected:
     void deviceResumed(DBusMessage* msg);
 
 public:
-    sessionHandler();
-    ~sessionHandler();
+    sessionManager();
+    ~sessionManager();
 
     DBusConnection* getDBusConnection() const { return dbus_; }
     unsigned int getVTNumber() const { return vt_; }
@@ -68,4 +68,17 @@ public:
     device* takeDevice(const std::string& path);
     void releaseDevice(device& dev);
     void releaseDevice(int devFD);
+};
+
+class pamHandler
+{
+protected:
+    pam_conv pamConv_;
+    pam_handle_t* pam_ = nullptr;
+
+public:
+    pamHandler();
+    ~pamHandler();
+
+
 };

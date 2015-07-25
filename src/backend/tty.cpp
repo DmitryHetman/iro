@@ -27,7 +27,7 @@ void ttySignalhandler(int signal)
     else if(signal == SIGUSR2) handler->leftTTY();
 }
 
-ttyHandler::ttyHandler(sessionHandler& handler)
+ttyHandler::ttyHandler(sessionManager& handler)
 {
     /*
     const char* number = getenv("XDG_VTNR");

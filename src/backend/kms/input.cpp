@@ -12,7 +12,7 @@
 
 int openRestricted(const char* path, int flags, void *data)
 {
-    sessionHandler* hdl = (sessionHandler*) data;
+    sessionManager* hdl = (sessionManager*) data;
 
 	device* dev = hdl->takeDevice(path);
 	return (dev) ? dev->fd : -1;
@@ -20,11 +20,9 @@ int openRestricted(const char* path, int flags, void *data)
 
 void closeRestricted(int fd, void* data)
 {
-    sessionHandler* hdl = (sessionHandler*) data;
+    sessionManager* hdl = (sessionManager*) data;
 
-    std::cout << "b1" << std::endl;
     hdl->releaseDevice(fd);
-    std::cout << "b2" << std::endl;
 }
 
 const libinput_interface libinputImplementation =
@@ -47,17 +45,15 @@ int udevEventLoop(int fd, unsigned int mask, void* data)
 }
 
 ///////////////////////////////////////////////
-inputHandler::inputHandler(sessionHandler& handler)
+inputHandler::inputHandler(sessionManager& handler)
 {
     udev_ = udev_new();
-    std::cout << "1" << std::endl;
     udevMonitor_ = udev_monitor_new_from_netlink(udev_, "udev");
     udev_monitor_filter_add_match_subsystem_devtype(udevMonitor_, "drm", nullptr);
     udev_monitor_filter_add_match_subsystem_devtype(udevMonitor_, "input", nullptr);
     udev_monitor_enable_receiving(udevMonitor_);
     wl_event_loop_add_fd(iroWlEventLoop(), udev_monitor_get_fd(udevMonitor_), WL_EVENT_READABLE, udevEventLoop, this);
 
-    std::cout << "2" << std::endl;
     input_ = libinput_udev_create_context(&libinputImplementation, &handler, udev_);
     libinput_udev_assign_seat(input_, handler.getSeat().c_str());
     inputEventSource_ = wl_event_loop_add_fd(iroWlEventLoop(), libinput_get_fd(input_), WL_EVENT_READABLE, inputEventLoop, this);

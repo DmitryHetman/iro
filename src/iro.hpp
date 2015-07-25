@@ -2,6 +2,9 @@
 
 #define WL_HIDE_DEPRECATED
 
+namespace util {};
+using namespace util;
+
 struct wl_display;
 struct wl_event_loop;
 struct wl_global;
@@ -59,7 +62,7 @@ class kmsOutput;
 
 class ttyHandler;
 class inputHandler;
-class sessionHandler;
+class sessionManager;
 
 class device;
 
@@ -77,6 +80,7 @@ enum class resourceType : unsigned char;
 
 server* iroServer();
 compositor* iroCompositor();
+sessionManager* iroSessionManager();
 subcompositor* getSubcompositor();
 backend* iroBackend();
 seat* iroSeat();
@@ -86,7 +90,6 @@ shell* iroShell();
 eglContext* iroEglContext();
 ttyHandler* iroTTYHandler();
 inputHandler* iroInputHandler();
-sessionHandler* iroSessionHandler();
 
 wl_display* iroWlDisplay();
 wl_event_loop* iroWlEventLoop();

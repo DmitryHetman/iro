@@ -28,7 +28,7 @@ protected:
     callback<void()> afterLeave_;
 
 public:
-    ttyHandler(sessionHandler& handler);
+    ttyHandler(sessionManager& handler);
     ~ttyHandler();
 
     bool focus() const { return focus_; }
