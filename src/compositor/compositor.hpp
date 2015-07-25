@@ -14,7 +14,6 @@ class compositor : public nonCopyable
 protected:
     wl_display* wlDisplay_ = nullptr;
 
-    backend* backend_ = nullptr;
     shell* shell_ = nullptr;
     seat* seat_ = nullptr;
     subcompositor* subcompositor_ = nullptr;
@@ -30,7 +29,6 @@ public:
 
     int run();
 
-    backend* getBackend() const { return backend_; }
     shell* getShell() const { return shell_; }
     seat* getSeat() const { return seat_; }
     subcompositor* getSubcompositor() const { return subcompositor_; }

@@ -2,6 +2,9 @@
 #include <compositor/compositor.hpp>
 #include <backend/session.hpp>
 
+#include <backend/x11/x11Backend.hpp>
+#include <backend/kms/kmsBackend.hpp>
+
 #include <log.hpp>
 
 #include <string>
@@ -11,6 +14,7 @@
 
 #include <wayland-server-core.h>
 #include <signal.h>
+#include <unistd.h>
 
 
 server* server::object = nullptr;
@@ -29,6 +33,12 @@ sessionManager* iroSessionManager()
 {
     if(!iroServer()) return nullptr;
     return iroServer()->getSessionManager();
+}
+
+backend* iroBackend()
+{
+    if(!iroServer()) return nullptr;
+    return iroServer()->getBackend();
 }
 
 unsigned int iroTime()
@@ -56,10 +66,34 @@ server::~server()
 
     if(compositor_) delete compositor_;
     if(sessionManager_) delete sessionManager_;
+    if(backend_) delete backend_;
 }
 
 bool server::init(const serverSettings& settings)
 {
+    bool onX11 = x11Backend::available();
+    bool privileged = 0;
+
+    if(!onX11)
+    {
+        if(geteuid() == 0)
+        {
+            //root
+            privileged = 1;
+        }
+
+        try
+        {
+            sessionManager_ = new sessionManager();
+        }
+        catch(const std::exception& err)
+        {
+            iroError(err.what());
+            return 0;
+        }
+    }
+
+
     if(settings.log.empty() || settings.log == "no")
     {
         logStream = nullptr;
@@ -88,13 +122,19 @@ bool server::init(const serverSettings& settings)
 
     try
     {
-        //sessionManager_ = new sessionManager();
         compositor_ = new compositor();
+        if(x11Backend::available())
+        {
+            backend_ = new x11Backend();
+        }
+        else
+        {
+            backend_ = new kmsBackend();
+        }
     }
     catch(const std::exception& error)
     {
-        std::cerr << error.what() << std::endl;
-        delete compositor_;
+        iroError(error.what());
         return 0;
     }
 

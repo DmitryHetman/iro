@@ -13,12 +13,11 @@ int main(int argc, const char** argv)
     server ori;
 
     serverSettings settings;
-    settings.log = "iro.log";
 
     {
         argParser parser;
 
-        parser.addStringVar("log", settings.log, "set the log type {<filename>; cout; no}", "core", "-lf");
+        parser.addStringVar("log", settings.log, "set the log type {<filename>; cout; no}", "core", "");
 
         unsigned char ret = parser.parse(argc, argv);
         if(ret & argParser::helpCalled || ret & argParser::malformedToken)

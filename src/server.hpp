@@ -10,14 +10,16 @@
 
 struct serverSettings
 {
-    std::string log;
+    std::string log = "iro.log";
+    bool login = 0;
 };
 
 class server : public nonCopyable
 {
 protected:
-    compositor* compositor_ = nullptr;
     sessionManager* sessionManager_ = nullptr;
+    backend* backend_ = nullptr;
+    compositor* compositor_ = nullptr;
 
     serverSettings settings_;
 
@@ -46,6 +48,7 @@ public:
 
     compositor* getCompositor() const { return compositor_; }
     sessionManager* getSessionManager() const { return sessionManager_; }
+    backend* getBackend() const { return backend_; }
 
     const serverSettings& getSettings() const { return settings_; }
 

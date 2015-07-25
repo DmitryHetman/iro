@@ -30,12 +30,6 @@ subcompositor* getSubcompositor()
     return iroCompositor()->getSubcompositor();
 }
 
-backend* iroBackend()
-{
-    if(!iroCompositor()) return nullptr;
-    return iroCompositor()->getBackend();
-}
-
 seat* iroSeat()
 {
     if(!iroCompositor()) return nullptr;
@@ -133,14 +127,7 @@ compositor::compositor()
     object = this;
 
 
-    if(x11Backend::available())
-    {
-        backend_ = new x11Backend();
-    }
-    else
-    {
-        backend_ = new kmsBackend();
-    }
+
 
     subcompositor_ = new subcompositor();
     shell_ = new shell();
@@ -154,7 +141,6 @@ compositor::~compositor()
     if(subcompositor_) delete subcompositor_;
     if(shell_) delete shell_;
     if(seat_) delete seat_;
-    if(backend_) delete backend_;
 }
 
 int compositor::run()

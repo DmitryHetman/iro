@@ -72,13 +72,17 @@ class pointerFocusEvent;
 class keyboardKeyEvent;
 class keyboardFocusEvent;
 
+class iroModule;
+class iroShell;
+class iroShellExtension;
+
 
 enum class backendType : unsigned char;
 enum class bufferFormat : unsigned char;
 enum class bufferType : unsigned char;
 enum class resourceType : unsigned char;
 
-server* iroServer();
+iro* getIro();
 compositor* iroCompositor();
 sessionManager* iroSessionManager();
 subcompositor* getSubcompositor();
