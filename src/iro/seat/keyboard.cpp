@@ -1,9 +1,9 @@
 #include <iro/seat/keyboard.hpp>
 #include <iro/seat/seat.hpp>
-#include <iro/resources/surface.hpp>
-#include <iro/resources/client.hpp>
+#include <iro/compositor/surface.hpp>
+#include <iro/compositor/client.hpp>
 #include <iro/iro.hpp>
-#include <iro/log.hpp>
+#include <iro/util/log.hpp>
 
 #include <wayland-server-protocol.h>
 

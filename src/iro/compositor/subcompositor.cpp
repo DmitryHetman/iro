@@ -1,6 +1,6 @@
 #include <iro/compositor/subcompositor.hpp>
 
-#include <iro/resources/surface.hpp>
+#include <iro/compositor/surface.hpp>
 #include <iro/compositor/compositor.hpp>
 
 #include <wayland-server-protocol.h>

@@ -1,6 +1,6 @@
 #include <iro/backend/tty.hpp>
 #include <iro/backend/session.hpp>
-#include <iro/log.hpp>
+#include <iro/util/log.hpp>
 
 //C
 #include <stdio.h>

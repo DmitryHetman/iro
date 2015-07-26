@@ -1,10 +1,10 @@
 #include <iro/iro.hpp>
 #include <iro/compositor/compositor.hpp>
-#include <iro/shell/shell.hpp>
+#include <iro/compositor/shell.hpp>
 #include <iro/backend/session.hpp>
-#include <iro/backend/x11/x11Backend.hpp>
-#include <iro/backend/kms/kmsBackend.hpp>
-#include <iro/log.hpp>
+#include <iro/backend/x11Backend.hpp>
+#include <iro/backend/kmsBackend.hpp>
+#include <iro/util/log.hpp>
 
 #include <string>
 #include <iostream>

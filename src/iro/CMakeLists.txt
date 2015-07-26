@@ -1,7 +1,20 @@
 #sources
+set (CMAKE_POSITION_INDEPENDENT_CODE TRUE)
+
 set(src
 	compositor/compositor.cpp
 	compositor/subcompositor.cpp
+	compositor/callback.cpp
+	compositor/region.cpp
+	compositor/resource.cpp
+	compositor/surface.cpp
+	compositor/subsurface.cpp
+	compositor/buffer.cpp
+	compositor/shellSurface.cpp
+	compositor/client.cpp
+	compositor/xdg-surface.cpp
+	compositor/shell.cpp
+	compositor/xdg-shell.cpp
 
 	backend/egl.cpp
 	backend/tty.cpp
@@ -9,33 +22,21 @@ set(src
 	backend/renderer.cpp
 	backend/output.cpp
 	backend/session.cpp
-	backend/x11/x11Backend.cpp
-	backend/kms/kmsBackend.cpp
-	backend/kms/input.cpp
+	backend/x11Backend.cpp
+	backend/kmsBackend.cpp
+	backend/input.cpp
 
-	shell/shell.cpp
-	shell/xdg-shell.cpp
-
-	shader/shader.cpp
-
-	resources/callback.cpp
-	resources/region.cpp
-	resources/resource.cpp
-	resources/surface.cpp
-	resources/subsurface.cpp
-	resources/buffer.cpp
-	resources/shellSurface.cpp
-	resources/client.cpp
-	resources/xdg-surface.cpp
+	util/shader.cpp
+	util/iroModule.cpp
 
 	seat/seat.cpp
 	seat/keyboard.cpp
 	seat/pointer.cpp
 
 	iro.cpp
-	iroModule.cpp
 )
 
+#deps
 find_package(Wayland REQUIRED)
 find_package(libinput REQUIRED)
 find_package(X11 REQUIRED)
@@ -50,6 +51,7 @@ find_package(X11_XCB REQUIRED)
 find_package(PAM REQUIRED)
 
 include_directories( 
+	${nyutil_include}
 	${WAYLAND_SERVER_INCLUDE_DIRS}
 	${GBM_INCLUDE_DIRS}
 	${DRM_INCLUDE_DIRS}
@@ -66,15 +68,15 @@ include_directories(
 	${PAM_INCLUDE_DIR}
 )
 
-include(Wayland)
-wayland_add_protocol_server(proto-xdg-shell "${CMAKE_SOURCE_DIR}/proto/xdg-shell.xml" xdg-shell)
-list(APPEND src ${proto-xdg-shell})
+#proto
+add_subdirectory(proto)
 
-add_library(iro STATIC ${src})
+#iro
+add_library(iro SHARED ${src})
 target_compile_features(iro PRIVATE cxx_range_for)
 
 target_link_libraries(iro
-	~/Programming/linux/lib/libnyutil.so
+	${nyutil_lib}
 	${WAYLAND_SERVER_LIBRARIES}
   	${LIBINPUT_LIBRARIES}
    	${UDEV_LIBRARIES}
@@ -89,11 +91,25 @@ target_link_libraries(iro
 	${X11_XCB_LIBRARIES}
 	${XCB_ICCCM_LIBRARY}
 	${PAM_LIBRARIES}
+
 )
 
-add_executable(main main.cpp)
-target_compile_features(main PRIVATE cxx_range_for)
-target_link_libraries(main iro ~/Programming/linux/lib/libnyutil.so)
+if(NOT ${NYUTIL_FOUND})
+	add_dependencies(iro nyutilTarget)
+endif()
+
+install(TARGETS iro DESTINATION lib)
+
+#main
+add_executable(iroCompositor main.cpp)
+target_compile_features(iroCompositor PRIVATE cxx_range_for)
+target_link_libraries(iroCompositor iro ${nyutil_lib})
+
+if(NOT ${NYUTIL_FOUND})
+	add_dependencies(iroCompositor nyutilTarget)
+endif()
+
+install(TARGETS iroCompositor DESTINATION bin)
 
 
 

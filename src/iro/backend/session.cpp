@@ -1,5 +1,5 @@
 #include <iro/backend/session.hpp>
-#include <iro/log.hpp>
+#include <iro/util/log.hpp>
 #include <iro/iro.hpp>
 
 #include <wayland-server-core.h>
