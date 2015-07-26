@@ -3,10 +3,10 @@
 
 #include <iro/backend/egl.hpp>
 #include <iro/backend/renderer.hpp>
-#include <iro/resources/surface.hpp>
+#include <iro/compositor/surface.hpp>
 #include <iro/seat/seat.hpp>
 
-#include <iro/log.hpp>
+#include <iro/util/log.hpp>
 
 #include <nyutil/time.hpp>
 

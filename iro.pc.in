@@ -4,6 +4,6 @@ libdir=${prefix}/lib
 
 Name: iro
 Description: simple wayland compositor
-Version: @IROUTIL_VMAJOR@.@IROUTIL_VMINOR@
+Version: @IRO_VMAJOR@.@IRO_VMINOR@
 Libs: -L${libdir} -liro
-Cflags: -I${includedir}/iro
+Cflags: -I${includedir}

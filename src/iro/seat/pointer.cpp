@@ -2,13 +2,13 @@
 
 #include <iro/seat/seat.hpp>
 #include <iro/seat/event.hpp>
-#include <iro/resources/surface.hpp>
-#include <iro/resources/client.hpp>
-#include <iro/resources/shellSurface.hpp>
+#include <iro/compositor/surface.hpp>
+#include <iro/compositor/client.hpp>
+#include <iro/compositor/shellSurface.hpp>
 #include <iro/backend/backend.hpp>
 #include <iro/backend/output.hpp>
 
-#include <iro/log.hpp>
+#include <iro/util/log.hpp>
 
 #include <wayland-server-protocol.h>
 

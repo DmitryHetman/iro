@@ -1,17 +1,17 @@
 #include <iro/compositor/compositor.hpp>
 #include <iro/compositor/subcompositor.hpp>
-#include <iro/shell/shell.hpp>
+#include <iro/compositor/shell.hpp>
 
-#include <iro/resources/surface.hpp>
-#include <iro/resources/region.hpp>
-#include <iro/resources/client.hpp>
+#include <iro/compositor/surface.hpp>
+#include <iro/compositor/region.hpp>
+#include <iro/compositor/client.hpp>
 
 #include <iro/seat/seat.hpp>
-#include <iro/log.hpp>
+#include <iro/util/log.hpp>
 
 #include <iro/backend/backend.hpp>
-#include <iro/backend/x11/x11Backend.hpp>
-#include <iro/backend/kms/kmsBackend.hpp>
+#include <iro/backend/x11Backend.hpp>
+#include <iro/backend/kmsBackend.hpp>
 
 #include <wayland-server-protocol.h>
 

@@ -1,9 +1,9 @@
 #include <iro/backend/renderer.hpp>
-#include <iro/resources/surface.hpp>
-#include <iro/resources/buffer.hpp>
-#include <iro/resources/shellSurface.hpp>
+#include <iro/compositor/surface.hpp>
+#include <iro/compositor/buffer.hpp>
+#include <iro/compositor/shellSurface.hpp>
 #include <iro/seat/pointer.hpp>
-#include <iro/log.hpp>
+#include <iro/util/log.hpp>
 
 #define GL_GLEXT_PROTOTYPES
 #include <GLES2/gl2.h>

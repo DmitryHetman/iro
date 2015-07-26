@@ -3,7 +3,7 @@
 #include <iro/seat/keyboard.hpp>
 #include <iro/seat/pointer.hpp>
 
-#include <iro/log.hpp>
+#include <iro/util/log.hpp>
 
 #include <wayland-server-protocol.h>
 

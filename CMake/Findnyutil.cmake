@@ -1,0 +1,17 @@
+# Find UDEV
+#
+# NYUTIL_INCLUDE_DIRS
+# NYUTIL_LIBRARIES
+# NYUTIL_DEFINITIONS
+# NYUTIL_FOUND
+
+find_package(PkgConfig)
+pkg_check_modules(PC_UDEV QUIET libudev)
+find_library(NYUTIL_LIBRARIES NAMES nyutil HINTS ${PC_NYUTIL_LIBRARY_DIRS})
+find_path(NYUTIL_INCLUDE_DIRS nyutil.hpp HINTS ${PC_NYUTIL_INCLUDE_DIRS})
+
+set(NYUTIL_DEFINITIONS ${PC_NYUTIL_CFLAGS_OTHER})
+
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(NYUTIL DEFAULT_MSG NYUTIL_INCLUDE_DIRS NYUTIL_LIBRARIES)
+mark_as_advanced(NYUTIL_INCLUDE_DIRS NYUTIL_LIBRARIES)
