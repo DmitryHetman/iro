@@ -1,0 +1,9 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+includedir=${prefix}/include
+libdir=${prefix}/lib
+
+Name: iro
+Description: simple wayland compositor
+Version: @IROUTIL_VMAJOR@.@IROUTIL_VMINOR@
+Libs: -L${libdir} -liro
+Cflags: -I${includedir}/iro
