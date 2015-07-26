@@ -2,10 +2,10 @@
 #include <iro/iro.hpp>
 #include <iro/resources/surface.hpp>
 #include <iro/resources/shellSurface.hpp>
+#include <iro/log.hpp>
 
 #include <wayland-server-protocol.h>
 
-#include <iro/log.hpp>
 
 //shell
 void shelliroShellSurface(wl_client* client, wl_resource* resource, unsigned int id, wl_resource* surface)

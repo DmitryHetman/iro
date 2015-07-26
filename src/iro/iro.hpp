@@ -16,7 +16,7 @@ struct iroSettings
     bool login = 0;
 };
 
-class iro : public nonCopyable, public iroModuleLoader
+class iro : public nonCopyable, public moduleLoader
 {
 private:
     //setup util
@@ -64,6 +64,9 @@ public:
     backend* getBackend() const { return backend_; }
 
     const iroSettings& getSettings() const { return settings_; }
+
+    //module
+    iroModule* loadModule(const std::string& modName) override;
 
 
     static iro* getObject(){ return object; }

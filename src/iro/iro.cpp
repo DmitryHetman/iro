@@ -191,6 +191,24 @@ void iro::loadModules(bool loginShell)
     }
 }
 
+//loader
+iroModule* iro::loadModule(const std::string& modName)
+{
+    module* mod = moduleLoader::loadModule(modName);
+    if(mod)
+    {
+        iroModule* ret = dynamic_cast<iroModule*>(mod);
+        if(!ret)
+        {
+            moduleLoader::unloadModule(*mod);
+            return nullptr;
+        }
+        return ret;
+    }
+
+    return nullptr;
+}
+
 iroShellModule* iro::loadShellModule(const std::string& modName)
 {
         iroModule* mod = loadModule(modName);

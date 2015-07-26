@@ -36,10 +36,3 @@ class iroShellExtension : public iroModule
 {
 
 };
-
-//iroModuleLoader
-class iroModuleLoader : public moduleLoader
-{
-public:
-    virtual iroModule* loadModule(const std::string& modName) override; //loads every iroModule
-};

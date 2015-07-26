@@ -1,5 +1,5 @@
 #sources
-set(lib_src
+set(src
 	compositor/compositor.cpp
 	compositor/subcompositor.cpp
 
@@ -33,6 +33,7 @@ set(lib_src
 	seat/pointer.cpp
 
 	iro.cpp
+	iroModule.cpp
 )
 
 find_package(Wayland REQUIRED)
@@ -46,6 +47,7 @@ find_package(GLESv2 REQUIRED)
 find_package(Dbus REQUIRED)
 find_package(Systemd REQUIRED)
 find_package(X11_XCB REQUIRED)
+find_package(PAM REQUIRED)
 
 include_directories( 
 	${WAYLAND_SERVER_INCLUDE_DIRS}
@@ -61,13 +63,14 @@ include_directories(
 	${SYSTEMD_INCLUDE_DIR}
 	${X11_XCB_INCLUDE_DIR}
 	${XCB_ICCCM_INCLUDE_DIR}
+	${PAM_INCLUDE_DIR}
 )
 
 include(Wayland)
 wayland_add_protocol_server(proto-xdg-shell "${CMAKE_SOURCE_DIR}/proto/xdg-shell.xml" xdg-shell)
 list(APPEND src ${proto-xdg-shell})
 
-add_library(iro ${src})
+add_library(iro STATIC ${src})
 target_compile_features(iro PRIVATE cxx_range_for)
 
 target_link_libraries(iro
@@ -85,11 +88,12 @@ target_link_libraries(iro
 	${DRM_LIBRARIES}
 	${X11_XCB_LIBRARIES}
 	${XCB_ICCCM_LIBRARY}
+	${PAM_LIBRARIES}
 )
 
-add_executable(iro_prog main.cpp)
-target_compile_features(iro_prog PRIVATE cxx_range_for)
-target_link_libraries(iro_prog iro)
+add_executable(main main.cpp)
+target_compile_features(main PRIVATE cxx_range_for)
+target_link_libraries(main iro ~/Programming/linux/lib/libnyutil.so)
 
 
 
