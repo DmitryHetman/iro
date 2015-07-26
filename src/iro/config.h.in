@@ -1,0 +1,2 @@
+#define IRO_VMajor @IRO_MAJOR@
+#define IRO_VMinor @IRO_MINOR@
