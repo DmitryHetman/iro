@@ -6,6 +6,17 @@ set(IRO_VMINOR 1)
 
 include(ExternalProject)
 
+#set rpath
+SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE) 
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+LIST(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/lib" isSystemDir)
+IF("${isSystemDir}" STREQUAL "-1")
+   SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+ENDIF("${isSystemDir}" STREQUAL "-1")
+
+#include dirs
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/src")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/src")
@@ -37,7 +48,7 @@ add_custom_target(uninstall COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_D
 
 
 #nyutil
-find_package(nyutil)
+find_package(NYUTIL)
 
 if(NYUTIL_FOUND)
 	set(nyutil_lib ${NYUTIL_LIBRARIES})
@@ -67,6 +78,8 @@ endif()
 
 #subdirs
 add_subdirectory(src/iro)
+add_subdirectory(src/modules)
 
+#install include
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/iro" DESTINATION include/iro)
 
