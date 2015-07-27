@@ -20,8 +20,8 @@ protected:
     pointer* pointer_;
     keyboard* keyboard_;
 
+    event* modeEvent_ = nullptr; //event that brand seat in current state, if normal state its == nullptr
     seatMode mode_ = seatMode::normal;
-
     union
     {
         struct { shellSurfaceRes* grab_; unsigned int resizeEdges_ = 0; }; //resize and resize
@@ -36,8 +36,8 @@ public:
     keyboard* getKeyboard() const { return keyboard_; }
 
     void cancelGrab();
-    void resizeShellSurface(seatRes* res, shellSurfaceRes* shellSurf, unsigned int edges);
-    void moveShellSurface(seatRes* res, shellSurfaceRes* shellSurf);
+    void resizeShellSurface(unsigned int serial, seatRes* res, shellSurfaceRes* shellSurf, unsigned int edges);
+    void moveShellSurface(unsigned int serial, seatRes* res, shellSurfaceRes* shellSurf);
 
     seatMode getMode() const { return mode_; }
     shellSurfaceRes* getGrab() const { return grab_; }

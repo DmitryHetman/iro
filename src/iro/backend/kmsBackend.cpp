@@ -2,7 +2,7 @@
 #include <iro/backend/input.hpp>
 #include <iro/compositor/compositor.hpp>
 #include <iro/backend/tty.hpp>
-#include <iro/backend/renderer.hpp>
+#include <iro/backend/glRenderer.hpp>
 #include <iro/backend/session.hpp>
 #include <iro/backend/egl.hpp>
 
@@ -143,7 +143,7 @@ kmsBackend::kmsBackend()
         outputs_.push_back(out);
     }
 
-    renderer_ = new renderer(); //must be initialized after, because it needs a valid eglContext (is made current by outoput)
+    renderer_ = new glRenderer(*eglContext_); //must be initialized after, because it needs a valid eglContext (is made current by outoput)
 
     for(output* out : outputs_)
     {

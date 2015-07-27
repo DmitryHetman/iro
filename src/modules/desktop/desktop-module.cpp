@@ -15,6 +15,7 @@ desktopShell module;
 //implementation
 bool desktopShell::onLoad(iro& obj)
 {
+    std::cout << "iro-desktop-shell loaded" << std::endl;
     return 1;
 }
 

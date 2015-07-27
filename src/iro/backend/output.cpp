@@ -4,15 +4,13 @@
 #include <iro/backend/egl.hpp>
 #include <iro/backend/renderer.hpp>
 #include <iro/compositor/surface.hpp>
+#include <iro/compositor/shell.hpp>
 #include <iro/seat/seat.hpp>
 
 #include <iro/util/log.hpp>
+#include <iro/util/iroModule.hpp>
 
 #include <nyutil/time.hpp>
-
-#define GL_GLEXT_PROTOTYPES
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
 
 #include <wayland-server-protocol.h>
 
@@ -87,30 +85,31 @@ output::~output()
 
 void output::render()
 {
+    renderer* machine = iroBackend()->getRenderer();
+    if(!machine)
+    {
+        iroWarning("output::render: no valid renderer");
+        return;
+    }
+
     timer t;
 
-    makeEglCurrent();
+    machine->beginDraw(*this);
 
-    glClearColor(1, 1, 1, 1);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-
+    iroShell()->getModule()->render(machine);
     for(auto* surf : mappedSurfaces_)
     {
-        iroBackend()->getRenderer()->render(*surf);
+        if(!iroBackend()->getRenderer()->render(*surf))
+            iroWarning("output::render: failed to render mapped surface ", surf);
     }
 
-    iroBackend()->getRenderer()->drawCursor(*iroSeat()->getPointer());
+    if(!iroBackend()->getRenderer()->drawCursor(*iroSeat()->getPointer()))
+        iroWarning("output::render: failed to draw cursor");
 
-    glFinish();
-    swapBuffers();
+    machine->endDraw(*this);
 
-    iroLog("time for frame in ms: ", t.getElapsedTime().asMilliseconds());
-
-    for(auto* surf : mappedSurfaces_)
-    {
-        surf->frameDone();
-    }
+    iroLog("output::render: frametime ", t.getElapsedTime().asMilliseconds()," ms");
+    for(auto* surf : mappedSurfaces_) surf->frameDone();
 }
 
 void output::refresh()
@@ -146,14 +145,8 @@ surfaceRes* output::getSurfaceAt(vec2i pos)
 
 void output::swapBuffers()
 {
-    if(getEglSurface())
+    if(getEglSurface() && iroEglContext())
         eglSwapBuffers(iroEglContext()->getDisplay(), getEglSurface());
-}
-
-void output::makeEglCurrent()
-{
-    if(getEglSurface())
-        eglMakeCurrent(iroEglContext()->getDisplay(), getEglSurface(), getEglSurface(), iroEglContext()->getContext());
 }
 
 vec2i output::getPosition() const

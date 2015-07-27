@@ -55,6 +55,7 @@ class regionRes;
 
 class eglContext;
 class renderer;
+class glRenderer;
 
 class x11Backend;
 class x11Output;
@@ -100,7 +101,7 @@ inputHandler* iroInputHandler();
 wl_display* iroWlDisplay();
 wl_event_loop* iroWlEventLoop();
 
-unsigned int iroNextSerial();
+unsigned int iroNextSerial(event* ev);
 event* iroGetEvent(unsigned int serial);
 void iroRegisterEvent(event& ev);
 

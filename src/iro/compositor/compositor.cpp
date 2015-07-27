@@ -66,9 +66,11 @@ wl_event_loop* iroWlEventLoop()
     return iroCompositor()->getWlEventLoop();
 }
 
-unsigned int iroNextSerial()
+unsigned int iroNextSerial(event* ev)
 {
-    return (iroWlDisplay()) ? wl_display_next_serial(iroWlDisplay()) : 0;
+    if(iroCompositor() && ev) return iroCompositor()->registerEvent(*ev);
+    else if(iroWlDisplay()) return wl_display_next_serial(iroWlDisplay());
+    else return 0;
 }
 
 event* iroGetEvent(unsigned int serial)
@@ -183,9 +185,16 @@ event* compositor::getEvent(unsigned int serial) const
     return nullptr;
 }
 
-void compositor::registerEvent(event& ev)
+unsigned int compositor::registerEvent(event& ev)
 {
-    sentEvents_[wl_display_get_serial(wlDisplay_)] = &ev;
+    if(sentEvents_.size() > 5000)
+    {
+        //clear it
+    }
+
+    unsigned int ret = wl_display_next_serial(wlDisplay_);
+    sentEvents_[ret] = &ev;
+    return ret;
 }
 
 ////////////////////////////////////

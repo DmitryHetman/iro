@@ -27,7 +27,7 @@ class iroShellModule : public iroModule
 public:
     virtual iroModuleType getType() const override final { return iroModuleType::shell; }
 
-    virtual void render() = 0;
+    virtual void render(renderer* drawer) = 0;
     virtual void renderSurface(surfaceRes& surf) = 0;
 };
 

@@ -4,23 +4,22 @@
 #include <iro/seat/seat.hpp>
 #include <iro/seat/keyboard.hpp>
 #include <iro/seat/pointer.hpp>
-
-#include <iro/util/log.hpp>
-
 #include <iro/backend/egl.hpp>
-#include <iro/backend/renderer.hpp>
+#include <iro/backend/glRenderer.hpp>
+#include <iro/util/log.hpp>
 
 #include <X11/Xlib-xcb.h>
 #include <xcb/xcb_icccm.h>
 #include <wayland-server-core.h>
 
 #include <string.h>
-#include <dlfcn.h>
 #include <stdexcept>
-#include <iostream>
 
-xcb_atom_t atomProtocols = 0;
-xcb_atom_t atomDeleteWindow = 0;
+namespace
+{
+    xcb_atom_t atomProtocols = 0;
+    xcb_atom_t atomDeleteWindow = 0;
+}
 
 int x11EventLoop(int fd, unsigned int mask, void* data);
 
@@ -99,7 +98,7 @@ x11Backend::x11Backend()
 
     xcb_flush(xConnection_);
 
-    renderer_ = new renderer();
+    renderer_ = new glRenderer(*eglContext_);
 }
 
 x11Backend::~x11Backend()
@@ -300,8 +299,7 @@ x11Output::x11Output(const x11Backend& backend, unsigned int id) : output(id)
         return;
     }
 
-    eglMakeCurrent(ctx->getDisplay(), eglWindow_, eglWindow_, ctx->getContext());
-
+    ctx->makeCurrent(*this);
     xcb_map_window(connection, xWindow_);
 }
 

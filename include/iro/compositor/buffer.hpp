@@ -52,4 +52,8 @@ public:
     void* getImage() const { return image_; }
 
     vec2ui getSize() const;
+
+    //res
+    //virtual void destroy() override;
+    virtual resourceType getType() const override { return resourceType::buffer; }
 };

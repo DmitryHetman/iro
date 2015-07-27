@@ -28,6 +28,10 @@ public:
     EGLContext getContext() const { return context_; }
     EGLConfig getConfig() const { return config_; }
 
+    bool makeCurrent(output& out);
+    bool makeNotCurrent();
+    bool isCurrent();
+
     bool hasExtension(const std::string& extension) const;
 
     static PFNEGLBINDWAYLANDDISPLAYWL eglBindWaylandDisplayWL;

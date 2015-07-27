@@ -41,7 +41,7 @@ public:
     wl_event_loop* getWlEventLoop() const;
 
     event* getEvent(unsigned int serial) const; //gets sent event for a given serial
-    void registerEvent(event& ev); //registers event for the CURRENT wl_display serial -> first send event with iroNextSerial() THEN register it
+    unsigned int registerEvent(event& ev); //increases wl_display serial, returns it and registers the event for this serial
 
     static compositor* getObject(){ return object; }
 };

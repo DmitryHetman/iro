@@ -46,7 +46,7 @@ public:
     resource(wl_resource& res);
     virtual ~resource();
 
-    void destroy();
+    virtual void destroy();
 
     unsigned int getID() const;
     unsigned int getVersion() const;

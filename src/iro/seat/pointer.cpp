@@ -58,8 +58,7 @@ void pointer::setActive(surfaceRes* surf)
         else
         {
             pointerFocusEvent* ev = new pointerFocusEvent(0, over_);
-            wl_pointer_send_leave(&over_->getClient().getPointerRes()->getWlResource(), iroNextSerial(), &over_->getWlResource());
-            iroRegisterEvent(*ev);
+            wl_pointer_send_leave(&over_->getClient().getPointerRes()->getWlResource(), iroNextSerial(ev), &over_->getWlResource());
         }
     }
 
@@ -72,8 +71,7 @@ void pointer::setActive(surfaceRes* surf)
         else
         {
             pointerFocusEvent* ev = new pointerFocusEvent(1, surf);
-            wl_pointer_send_leave(&surf->getClient().getPointerRes()->getWlResource(), iroNextSerial(), &surf->getWlResource());
-            iroRegisterEvent(*ev);
+            wl_pointer_send_leave(&surf->getClient().getPointerRes()->getWlResource(), iroNextSerial(ev), &surf->getWlResource());
         }
     }
 
@@ -133,7 +131,15 @@ void pointer::sendMove(vec2i pos)
         }
         else
         {
-            int w = 0, h = 0;
+            //todo!
+
+            if(!over_->getCommited().attached) return;
+
+            int w = over_->getExtents().width();
+            int h = over_->getExtents().height();
+
+            if(!w || !h) return;
+
             unsigned int edges = getSeat().getResizeEdges();
 
             if(edges & WL_SHELL_SURFACE_RESIZE_BOTTOM)
@@ -163,37 +169,36 @@ void pointer::sendMove(int x, int y)
 
 void pointer::sendButtonPress(unsigned int button)
 {
-    if(!getActiveRes())
+    buttonPressCallback_(button);
+
+    if(!getActiveRes() || getSeat().getMode() != seatMode::normal)
         return;
 
     pointerButtonEvent* ev = new pointerButtonEvent(1, button, &getActiveRes()->getClient());
-    wl_pointer_send_button(&getActiveRes()->getWlResource(), iroNextSerial(), iroTime(), button, 1);
-    iroRegisterEvent(*ev);
-
-    buttonPressCallback_(button);
+    wl_pointer_send_button(&getActiveRes()->getWlResource(), iroNextSerial(ev), iroTime(), button, 1);
 
     //keyboard focus
 }
 
 void pointer::sendButtonRelease(unsigned int button)
 {
-    if(!getActiveRes())
+    buttonReleaseCallback_(button);
+
+    if(!getActiveRes() || getSeat().getMode() != seatMode::normal)
         return;
 
     pointerButtonEvent* ev = new pointerButtonEvent(0, button, &getActiveRes()->getClient());
-    wl_pointer_send_button(&getActiveRes()->getWlResource(), iroNextSerial(), iroTime(), button, 0);
-    iroRegisterEvent(*ev);
-
-    buttonReleaseCallback_(button);
+    wl_pointer_send_button(&getActiveRes()->getWlResource(), iroNextSerial(ev), iroTime(), button, 0);
 }
 
 void pointer::sendAxis(unsigned int axis, double value)
 {
-    if(!getActiveRes())
+    axisCallback_(axis, value);
+
+    if(!getActiveRes() || getSeat().getMode() != seatMode::normal)
         return;
 
     wl_pointer_send_axis(&getActiveRes()->getWlResource(), iroTime(), axis, value);
-    axisCallback_(axis, value);
 }
 
 void pointer::setCursor(surfaceRes& surf)

@@ -1,4 +1,5 @@
 #include <iro/backend/egl.hpp>
+#include <iro/backend/output.hpp>
 
 #include <nyutil/misc.hpp>
 
@@ -112,4 +113,21 @@ bool eglContext::hasExtension(const std::string& extension) const
     }
 
     return 0;
+}
+
+bool eglContext::makeCurrent(output& out)
+{
+    if(context_ && display_ && out.getEglSurface()) return eglMakeCurrent(display_, out.getEglSurface(), out.getEglSurface(), context_);
+    else return 0;
+}
+
+bool eglContext::makeNotCurrent()
+{
+    if(display_) return eglMakeCurrent(display_, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    else return 0;
+}
+
+bool eglContext::isCurrent()
+{
+    return (eglGetCurrentContext() == context_);
 }

@@ -1,7 +1,7 @@
 #include <iro/util/iroModule.hpp>
 #include <iostream>
 
-class desktopShell : public iroShellModule
+class loginShell : public iroShellModule
 {
 public:
     virtual bool onLoad(iro& obj) override;
@@ -10,20 +10,21 @@ public:
     virtual void renderSurface(surfaceRes& surf) override;
 };
 
-desktopShell module;
+loginShell module;
 
 //implementation
-bool desktopShell::onLoad(iro& obj)
+bool loginShell::onLoad(iro& obj)
 {
+    std::cout << "iro-login-shell loaded" << std::endl;
     return 1;
 }
 
-void desktopShell::render()
+void loginShell::render()
 {
 
 }
 
-void desktopShell::renderSurface(surfaceRes& surf)
+void loginShell::renderSurface(surfaceRes& surf)
 {
 
 }

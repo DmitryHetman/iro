@@ -20,8 +20,9 @@ void surfaceDestroy(wl_client* client, wl_resource* resource)
 void surfaceAttach(wl_client* client, wl_resource* resource, wl_resource* wlbuffer, int x, int y)
 {
     surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
-    surf->getPending().attached = new bufferRes(*wlbuffer);
-    surf->getPending().offset = vec2i(x, y);
+
+    bufferRes* buff = new bufferRes(*wlbuffer);
+    surf->attach(*buff, vec2i(x,y));
 }
 void surfaceDamage(wl_client* client, wl_resource* resource, int x, int y, int width, int height)
 {
@@ -165,17 +166,19 @@ bool surfaceRes::isChild(surfaceRes* surf) const
 
 void surfaceRes::registerFrameCallback(unsigned int id)
 {
-    callback_ = new callbackRes(getWlClient(), id);
+    callbackRes* cb = new callbackRes(getWlClient(), id);
+    callbacks_.push_back(cb);
 }
 
 void surfaceRes::frameDone()
 {
-    if(callback_)
+    for(auto* cb : callbacks_)
     {
-        wl_callback_send_done(&callback_->getWlResource(), iroTime());
-        callback_->destroy();
-        callback_ = nullptr;
+        wl_callback_send_done(&cb->getWlResource(), iroTime());
+        cb->destroy();
     }
+
+    callbacks_.clear();
 }
 
 void surfaceRes::commit()
@@ -220,5 +223,17 @@ rect2i surfaceRes::getExtents() const
     return rect2i(getPosition(), (commited_.attached) ? commited_.attached->getSize() * commited_.scale : vec2ui(0,0));
 }
 
+void surfaceRes::attach(bufferRes& buff, vec2i pos)
+{
+    std::cout << "attached buffer" << std::endl;
+
+    if(pending_.attached)
+    {
+        delete pending_.attached;
+    }
+
+    pending_.attached = &buff;
+    pending_.offset = pos;
+}
 
 

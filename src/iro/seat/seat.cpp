@@ -2,6 +2,7 @@
 
 #include <iro/seat/keyboard.hpp>
 #include <iro/seat/pointer.hpp>
+#include <iro/seat/event.hpp>
 
 #include <iro/util/log.hpp>
 
@@ -46,7 +47,11 @@ seat::seat()
 
     pointer_->onButtonRelease([=](unsigned int button){
                                 if(mode_ != seatMode::normal)
-                                    cancelGrab();
+                                {
+                                    std::cout << ((pointerButtonEvent*)modeEvent_)->button << " " << button << std::endl;
+                                    if(modeEvent_ && modeEvent_->type == eventType::pointerButton && ((pointerButtonEvent*)modeEvent_)->button == button)
+                                        cancelGrab();
+                                }
                              });
 }
 
@@ -56,16 +61,31 @@ seat::~seat()
     if(pointer_) delete pointer_;
 }
 
-void seat::moveShellSurface(seatRes* res, shellSurfaceRes* shellSurface)
+void seat::moveShellSurface(unsigned int serial, seatRes* res, shellSurfaceRes* shellSurface)
 {
+    event* ev = iroGetEvent(serial);
+    if(!ev)
+    {
+        //error?
+        return;
+    }
+
     mode_ = seatMode::move;
+    modeEvent_ = ev;
     grab_ = shellSurface;
 }
 
-void seat::resizeShellSurface(seatRes* res, shellSurfaceRes* shellSurface, unsigned int edges)
+void seat::resizeShellSurface(unsigned int serial, seatRes* res, shellSurfaceRes* shellSurface, unsigned int edges)
 {
-    mode_ = seatMode::resize;
+    event* ev = iroGetEvent(serial);
+    if(!ev)
+    {
+        //error?
+        return;
+    }
 
+    mode_ = seatMode::resize;
+    modeEvent_ = ev;
     grab_ = shellSurface;
     resizeEdges_ = edges;
 }
@@ -76,6 +96,7 @@ void seat::cancelGrab()
         iroWarning("seat::cancelGrab: ", "seat is already in normal mode");
 
     mode_ = seatMode::normal;
+    modeEvent_ = nullptr;
 }
 
 //////////////////////////

@@ -47,7 +47,6 @@ public:
     virtual void refresh();
 
     virtual void swapBuffers();
-    virtual void makeEglCurrent();
     virtual void* getEglSurface() const { return nullptr; }; //EGLSurface == void*
 
     virtual vec2ui getSize() const = 0;

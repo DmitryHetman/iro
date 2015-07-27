@@ -1,5 +1,6 @@
 #include <iro/seat/keyboard.hpp>
 #include <iro/seat/seat.hpp>
+#include <iro/seat/event.hpp>
 #include <iro/compositor/surface.hpp>
 #include <iro/compositor/client.hpp>
 #include <iro/iro.hpp>
@@ -43,7 +44,9 @@ void keyboard::sendKeyPress(unsigned int key)
     if(!getActiveRes())
         return;
 
-    wl_keyboard_send_key(&getActiveRes()->getWlResource(), iroNextSerial(), iroTime(), key, 1);
+    keyboardKeyEvent* ev = new keyboardKeyEvent(1, key, &getActiveRes()->getClient());
+    wl_keyboard_send_key(&getActiveRes()->getWlResource(), iroNextSerial(ev), iroTime(), key, 1);
+
     keyPressCallback_(key);
 }
 
@@ -54,7 +57,9 @@ void keyboard::sendKeyRelease(unsigned int key)
     if(!getActiveRes())
         return;
 
-    wl_keyboard_send_key(&getActiveRes()->getWlResource(), iroNextSerial(), iroTime(), key, 0);
+    keyboardKeyEvent* ev = new keyboardKeyEvent(0, key, &focus_->getClient());
+    wl_keyboard_send_key(&getActiveRes()->getWlResource(), iroNextSerial(ev), iroTime(), key, 0);
+
     keyReleaseCallback_(key);
 }
 
@@ -62,7 +67,8 @@ void keyboard::sendFocus(surfaceRes* newFocus)
 {
     if(getActiveRes())
     {
-        wl_keyboard_send_leave(&getActiveRes()->getWlResource(), iroNextSerial(), &focus_->getWlResource());
+        keyboardFocusEvent* ev = new keyboardFocusEvent(0, focus_, &focus_->getClient());
+        wl_keyboard_send_leave(&getActiveRes()->getWlResource(), iroNextSerial(ev), &focus_->getWlResource());
     }
 
     focusCallback_(focus_, newFocus);
@@ -70,7 +76,8 @@ void keyboard::sendFocus(surfaceRes* newFocus)
 
     if(getActiveRes())
     {
-        wl_keyboard_send_enter(&getActiveRes()->getWlResource(), iroNextSerial(), &focus_->getWlResource(), nullptr);
+        keyboardFocusEvent* ev = new keyboardFocusEvent(1, focus_, &focus_->getClient());
+        wl_keyboard_send_enter(&getActiveRes()->getWlResource(), iroNextSerial(ev), &focus_->getWlResource(), nullptr);
     }
 }
 

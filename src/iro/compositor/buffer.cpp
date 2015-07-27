@@ -1,6 +1,7 @@
 #include <iro/compositor/buffer.hpp>
 
 #include <iro/backend/egl.hpp>
+#include <iro/util/log.hpp>
 
 #define GL_GLEXT_PROTOTYPES
 #include <GLES2/gl2.h>
@@ -56,6 +57,8 @@ bool bufferRes::fromShmBuffer(wl_shm_buffer* shmBuffer)
 
 bool bufferRes::fromEglBuffer(wl_resource* buffer)
 {
+    std::cout << "from egl" << std::endl;
+
     EGLint format;
 
     eglContext* ctx = iroEglContext();
@@ -129,6 +132,7 @@ vec2ui bufferRes::getSize() const
         ret.y = h;
     }
 
+    iroLog("bufferSize: ", ret);
     return ret;
 }
 

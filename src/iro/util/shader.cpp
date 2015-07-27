@@ -9,19 +9,6 @@
 #include <vector>
 
 
-bool shader::initialized_ = 0;
-shader shader::rgb = shader();
-shader shader::argb = shader();
-
-bool shader::init()
-{
-    initialized_ = 1;
-
-
-    return (argb.loadFromString(sourceVS, argbFS) &
-            rgb.loadFromString(sourceVS, rgbFS));
-}
-
 //shader
 shader::shader()
 {
@@ -29,6 +16,7 @@ shader::shader()
 
 shader::~shader()
 {
+    if(program_) glDeleteProgram(program_);
 }
 
 bool shader::loadFromFile(const std::string& vertexFile, const std::string& fragmentFile)

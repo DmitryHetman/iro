@@ -51,14 +51,4 @@ public:
 
     unsigned int getProgram() const { return program_; }
     void use() const;
-
-protected:
-    static bool initialized_;
-
-public:
-    static bool init();
-    static bool initialized() { return initialized_; }
-
-    static shader argb;
-    static shader rgb;
 };

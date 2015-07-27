@@ -52,7 +52,7 @@ protected:
     };
 
     std::vector<surfaceRes*> children_;
-    callbackRes* callback_ = nullptr;
+    std::vector<callbackRes*> callbacks_;
 
 public:
     surfaceRes(wl_client& client, unsigned int id);
@@ -71,6 +71,8 @@ public:
     void setShellSurface(unsigned int id);
     void setCursor(vec2i hotspot);
     void unsetRole();
+
+    void attach(bufferRes& buff, vec2i pos);
 
     void addChild(surfaceRes& child);
     void removeChild(surfaceRes& child);
