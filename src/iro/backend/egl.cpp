@@ -115,9 +115,9 @@ bool eglContext::hasExtension(const std::string& extension) const
     return 0;
 }
 
-bool eglContext::makeCurrent(output& out)
+bool eglContext::makeCurrent(EGLSurface surf)
 {
-    if(context_ && display_ && out.getEglSurface()) return eglMakeCurrent(display_, out.getEglSurface(), out.getEglSurface(), context_);
+    if(context_ && display_ && surf) return eglMakeCurrent(display_, surf, surf, context_);
     else return 0;
 }
 

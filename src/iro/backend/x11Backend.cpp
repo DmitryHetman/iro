@@ -11,6 +11,7 @@
 #include <X11/Xlib-xcb.h>
 #include <xcb/xcb_icccm.h>
 #include <wayland-server-core.h>
+#include <linux/input.h>
 
 #include <string.h>
 #include <stdexcept>
@@ -156,13 +157,15 @@ int x11Backend::eventLoop(int fd, unsigned int mask)
             case XCB_BUTTON_PRESS:
             {
                 xcb_button_press_event_t* ev = (xcb_button_press_event_t*) event;
-                iroPointer()->sendButtonPress(ev->detail);
+                unsigned int code = (ev->detail == 2 ? BTN_MIDDLE : (ev->detail == 3 ? BTN_RIGHT : ev->detail + BTN_LEFT - 1));
+                iroPointer()->sendButtonPress(code);
                 break;
             }
             case XCB_BUTTON_RELEASE:
             {
                 xcb_button_release_event_t* ev = (xcb_button_release_event_t*) event;
-                iroPointer()->sendButtonRelease(ev->detail);
+                unsigned int code = (ev->detail == 2 ? BTN_MIDDLE : (ev->detail == 3 ? BTN_RIGHT : ev->detail + BTN_LEFT - 1));
+                iroPointer()->sendButtonRelease(code);
                 break;
             }
             case XCB_MOTION_NOTIFY:
@@ -243,6 +246,8 @@ int x11EventLoop(int fd, unsigned int mask, void* data)
 /////////////////////////////
 x11Output::x11Output(const x11Backend& backend, unsigned int id) : output(id)
 {
+    vec2ui size(1400, 800);
+
     xcb_connection_t* connection = backend.getXConnection();
     xcb_screen_t* screen = backend.getXScreen();
 
@@ -258,7 +263,7 @@ x11Output::x11Output(const x11Backend& backend, unsigned int id) : output(id)
 
     xWindow_ = xcb_generate_id(connection);
 
-    xcb_create_window(connection, XCB_COPY_FROM_PARENT, xWindow_, screen->root, 0, 0, 800, 500,10, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, mask, &values);
+    xcb_create_window(connection, XCB_COPY_FROM_PARENT, xWindow_, screen->root, 0, 0, size.x, size.y ,10, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, mask, &values);
     if(!xWindow_)
     {
         throw std::runtime_error("could not create xcb window");
@@ -270,11 +275,11 @@ x11Output::x11Output(const x11Backend& backend, unsigned int id) : output(id)
     //cant be resized
     xcb_size_hints_t sizeHints;
 
-    sizeHints.max_width = 800;
-    sizeHints.max_height = 500;
+    sizeHints.max_width = size.x;
+    sizeHints.max_height = size.y;
 
-    sizeHints.min_width = 800;
-    sizeHints.min_height = 500;
+    sizeHints.min_width = size.x;
+    sizeHints.min_height = size.y;
 
     sizeHints.flags = XCB_ICCCM_SIZE_HINT_P_MIN_SIZE | XCB_ICCCM_SIZE_HINT_P_MAX_SIZE;
 

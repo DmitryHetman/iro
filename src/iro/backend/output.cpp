@@ -14,6 +14,10 @@
 
 #include <wayland-server-protocol.h>
 
+
+const unsigned char maxFps = 60; //todo
+
+//////
 int outputRedraw(void* data)
 {
     output* o = (output*) data;
@@ -67,7 +71,9 @@ std::vector<output*> outputsAt(rect2i ext)
 void bindOutput(wl_client* client, void* data, unsigned int version, unsigned int id)
 {
     output* out = (output*) data;
-    new outputRes(*out, *client, id, version);
+    outputRes* res = new outputRes(*out, *client, id, version);
+
+    out->sendInformation(*res);
 }
 
 //////////////////////////
@@ -85,36 +91,34 @@ output::~output()
 
 void output::render()
 {
-    renderer* machine = iroBackend()->getRenderer();
+    lastRedraw_.reset();
+
+    renderer* machine = iroRenderer();
     if(!machine)
     {
         iroWarning("output::render: no valid renderer");
         return;
     }
 
-    timer t;
+    //timer t;
 
-    machine->beginDraw(*this);
+    iroShell()->render(machine->getDrawContext(*this), mappedSurfaces_);
+    machine->applyOutput(*this);
 
-    iroShell()->getModule()->render(machine);
-    for(auto* surf : mappedSurfaces_)
-    {
-        if(!iroBackend()->getRenderer()->render(*surf))
-            iroWarning("output::render: failed to render mapped surface ", surf);
-    }
-
-    if(!iroBackend()->getRenderer()->drawCursor(*iroSeat()->getPointer()))
-        iroWarning("output::render: failed to draw cursor");
-
-    machine->endDraw(*this);
-
-    iroLog("output::render: frametime ", t.getElapsedTime().asMilliseconds()," ms");
-    for(auto* surf : mappedSurfaces_) surf->frameDone();
+    //iroLog("output::render: frametime ", t.getElapsedTime().asMilliseconds()," ms");
 }
 
 void output::refresh()
 {
-    wl_event_source_timer_update(drawEventSource_, 5);
+    if(!repaintScheduled_)
+    {
+        unsigned int time = (1 / maxFps) - lastRedraw_.getElapsedTime().asMilliseconds(); //framtime - elapsedTime
+        if(time < 0) time = 0;
+
+        wl_event_source_timer_update(drawEventSource_, time);
+    }
+
+    repaintScheduled_ = 1;
 }
 
 void output::mapSurface(surfaceRes* surf)
@@ -143,15 +147,19 @@ surfaceRes* output::getSurfaceAt(vec2i pos)
     return nullptr;
 }
 
-void output::swapBuffers()
-{
-    if(getEglSurface() && iroEglContext())
-        eglSwapBuffers(iroEglContext()->getDisplay(), getEglSurface());
-}
-
 vec2i output::getPosition() const
 {
     return position_;
+}
+
+vec2ui output::getSize() const
+{
+    return size_;
+}
+
+rect2i output::getExtents() const
+{
+    return rect2i(getPosition(), getSize());
 }
 
 ///////////////////////7

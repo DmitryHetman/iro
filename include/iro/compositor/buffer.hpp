@@ -5,55 +5,41 @@
 
 #include <nyutil/nonCopyable.hpp>
 #include <nyutil/vec.hpp>
+#include <ny/surface.hpp>
 
-/////////////////////////////////////////////
-enum class bufferType : unsigned char
+#include <wayland-server-core.h>
+
+bufferRes& bufferForResource(wl_resource& res);
+
+//for wl_container_of
+class bufferResPOD
 {
-    unknown = 0,
-
-    shm,
-    egl
-};
-
-
-//////////////////////////////////////////////
-enum class bufferFormat : unsigned char
-{
-    unknown = 0,
-
-    rgb32,
-    argb32
+public:
+    wl_listener destroyListener;
+    bufferRes* buffer;
 };
 
 ///////////////////////////////////////////////
 class bufferRes : public resource
 {
+
+friend class renderer;
+
 protected:
-    bufferFormat format_ = bufferFormat::unknown;
-    bufferType type_ = bufferType::unknown;
-
-    unsigned int texture_ = 0; //GLTexture
-    void* image_ = nullptr; //EGLImageKHR
-
-    bool fromShmBuffer(wl_shm_buffer* buffer);
-    bool fromEglBuffer(wl_resource* buffer);
+    bufferResPOD pod_;
+    ny::bufferFormat format_ = ny::bufferFormat::unknown;
+    vec2ui size_;
 
 public:
     bufferRes(wl_resource& res);
     virtual ~bufferRes();
 
-    bool init();
-    bool initialized() const { return (texture_ != 0); }
-
-    bufferFormat getFormat() const { return format_; }
-    bufferType getBufferType() const { return type_; }
-
-    unsigned int getTexture() const { return texture_; }
-    void* getImage() const { return image_; }
-
-    vec2ui getSize() const;
+    ny::bufferFormat getFormat() const { return format_; }
+    vec2ui getSize() const { return size_; }
 
     //res
-    //virtual void destroy() override;
     virtual resourceType getType() const override { return resourceType::buffer; }
 };
+
+
+

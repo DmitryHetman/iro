@@ -3,7 +3,8 @@
 
 void regionDestroy(wl_client* client, wl_resource* resource)
 {
-
+    regionRes* r = (regionRes*) wl_resource_get_user_data(resource);
+    r->destroy();
 }
 void regionAdd(wl_client* client, wl_resource* resource, int x, int y, int width, int height)
 {

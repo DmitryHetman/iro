@@ -15,6 +15,9 @@
 //////////////////////////
 void pointerSetCursor(wl_client* client, wl_resource* resource, unsigned int serial, wl_resource* surface, int hotspot_x, int hotspot_y)
 {
+    iroLog("pointerSetCursor");
+    return;
+
     pointerRes* res = (pointerRes*) wl_resource_get_user_data(resource);
     pointer& p = res->getPointer();
 
@@ -41,42 +44,43 @@ const struct wl_pointer_interface pointerImplementation
 ////////////////////////////////////777
 pointer::pointer(seat& s) : seat_(s)
 {
+    over_.onChange(memberCallback(&pointer::changeActiveCB, this));
 }
 
 pointer::~pointer()
 {
 }
 
-void pointer::setActive(surfaceRes* surf)
+void pointer::changeActiveCB(surfaceRes* oldOne, surfaceRes* newOne)
 {
     //send leave
-    if(over_)
+    if(oldOne)
     {
-        if(!over_->getClient().getPointerRes())
+        if(!oldOne->getClient().getPointerRes())
             iroWarning("pointer::sendActive: ", "Left surface without associated pointerRes");
 
         else
         {
-            pointerFocusEvent* ev = new pointerFocusEvent(0, over_);
-            wl_pointer_send_leave(&over_->getClient().getPointerRes()->getWlResource(), iroNextSerial(ev), &over_->getWlResource());
+            pointerFocusEvent* ev = new pointerFocusEvent(0, oldOne);
+            wl_pointer_send_leave(&oldOne->getClient().getPointerRes()->getWlResource(), iroNextSerial(ev), &oldOne->getWlResource());
         }
     }
 
     //send enter
-    if(surf)
+    if(newOne)
     {
-        if(!surf->getClient().getPointerRes())
+        if(!newOne->getClient().getPointerRes())
             iroWarning("pointer::sendActive: ", "Entered surface without associated pointerRes");
 
         else
         {
-            pointerFocusEvent* ev = new pointerFocusEvent(1, surf);
-            wl_pointer_send_leave(&surf->getClient().getPointerRes()->getWlResource(), iroNextSerial(ev), &surf->getWlResource());
+            pointerFocusEvent* ev = new pointerFocusEvent(1, newOne);
+            vec2i pos; //todo
+            wl_pointer_send_enter(&newOne->getClient().getPointerRes()->getWlResource(), iroNextSerial(ev), &newOne->getWlResource(), pos.x, pos.y);
         }
     }
 
-    focusCallback_(over_, surf);
-    over_ = surf;
+    focusCallback_(oldOne, newOne);
 }
 
 void pointer::sendMove(vec2i pos)
@@ -94,24 +98,24 @@ void pointer::sendMove(vec2i pos)
     output* overOut = iroBackend()->getOutputs()[0];
     overOut->refresh();
 
-    if(getSeat().getMode() == seatMode::normal)
+    if(seat_.getMode() == seatMode::normal)
     {
         surfaceRes* surf = overOut->getSurfaceAt(position_);
-        if(surf != over_)
+        if(surf != over_.get())
         {
-            setActive(surf);
+            over_.set(surf);
         }
 
         if(!getActiveRes())
             return;
 
-        auto v = getPositionWl();
-        wl_pointer_send_motion(&getActiveRes()->getWlResource(), iroTime(), v.x, v.y);
+        vec2i vec = getPositionWl();
+        wl_pointer_send_motion(&getActiveRes()->getWlResource(), iroTime(), vec.x, vec.y);
     }
 
-    else if(getSeat().getMode() == seatMode::move)
+    else if(seat_.getMode() == seatMode::move)
     {
-        if(!getSeat().getGrab())
+        if(!seat_.getGrab())
         {
             iroWarning("pointer::sendMove: ", "seat in move mode without any grab surface. Resetting");
             getSeat().cancelGrab();
@@ -122,9 +126,9 @@ void pointer::sendMove(vec2i pos)
         }
     }
 
-    else if(getSeat().getMode() == seatMode::resize)
+    else if(seat_.getMode() == seatMode::resize)
     {
-        if(!getSeat().getGrab())
+        if(!seat_.getGrab())
         {
             iroWarning("pointer::sendMove: ", "seat in resize mode without any grab surface. Resetting");
             getSeat().cancelGrab();
@@ -132,27 +136,29 @@ void pointer::sendMove(vec2i pos)
         else
         {
             //todo!
+            if(!over_.get())
+            {
+                getSeat().cancelGrab();
+            }
 
-            if(!over_->getCommited().attached) return;
-
-            int w = over_->getExtents().width();
-            int h = over_->getExtents().height();
+            int w = over_.get()->getExtents().width();
+            int h = over_.get()->getExtents().height();
 
             if(!w || !h) return;
 
             unsigned int edges = getSeat().getResizeEdges();
 
             if(edges & WL_SHELL_SURFACE_RESIZE_BOTTOM)
-                h = position_.y - over_->getPosition().y;
+                h = position_.y - over_.get()->getPosition().y;
 
             else if(edges & WL_SHELL_SURFACE_RESIZE_TOP)
-                h = over_->getExtents().bottom() - position_.y;
+                h = over_.get()->getExtents().bottom() - position_.y;
 
             if(edges & WL_SHELL_SURFACE_RESIZE_RIGHT)
-                w = position_.x - over_->getPosition().y;
+                w = position_.x - over_.get()->getPosition().y;
 
             else if(edges & WL_SHELL_SURFACE_RESIZE_LEFT)
-                w = over_->getExtents().right() - position_.x;
+                w = over_.get()->getExtents().right() - position_.x;
 
             if(w < 0) w = 0;
             if(h < 0) h = 0;
@@ -169,26 +175,31 @@ void pointer::sendMove(int x, int y)
 
 void pointer::sendButtonPress(unsigned int button)
 {
-    buttonPressCallback_(button);
-
     if(!getActiveRes() || getSeat().getMode() != seatMode::normal)
+    {
+        buttonPressCallback_(button);
         return;
+    }
 
     pointerButtonEvent* ev = new pointerButtonEvent(1, button, &getActiveRes()->getClient());
     wl_pointer_send_button(&getActiveRes()->getWlResource(), iroNextSerial(ev), iroTime(), button, 1);
 
+    buttonPressCallback_(button);
     //keyboard focus
 }
 
 void pointer::sendButtonRelease(unsigned int button)
 {
-    buttonReleaseCallback_(button);
-
     if(!getActiveRes() || getSeat().getMode() != seatMode::normal)
+    {
+        buttonReleaseCallback_(button);
         return;
+    }
 
     pointerButtonEvent* ev = new pointerButtonEvent(0, button, &getActiveRes()->getClient());
     wl_pointer_send_button(&getActiveRes()->getWlResource(), iroNextSerial(ev), iroTime(), button, 0);
+
+    buttonReleaseCallback_(button);
 }
 
 void pointer::sendAxis(unsigned int axis, double value)
@@ -208,12 +219,12 @@ void pointer::setCursor(surfaceRes& surf)
         iroWarning("pointer::setCursor: tried to set cursor to a surface without cursor role");
     }
 
-    cursor_ = &surf;
+    cursor_.set(&surf);
 }
 
 void pointer::resetCursor()
 {
-    cursor_ = nullptr;
+    cursor_.set(nullptr);
 }
 
 vec2i pointer::getPositionWl() const
@@ -223,7 +234,7 @@ vec2i pointer::getPositionWl() const
 
 pointerRes* pointer::getActiveRes() const
 {
-    return (over_) ? over_->getClient().getPointerRes() : nullptr;
+    return (over_.get()) ? over_.get()->getClient().getPointerRes() : nullptr;
 }
 
 //////////////////////////////////////

@@ -7,6 +7,7 @@
 #include <gbm.h>
 #include <drm.h>
 #include <xf86drmMode.h>
+#include <libinput.h>
 
 kmsBackend* getKMSBackend();
 
@@ -14,20 +15,15 @@ kmsBackend* getKMSBackend();
 class kmsBackend : public backend
 {
 protected:
-    ttyHandler* tty_ = nullptr;
-    inputHandler* input_ = nullptr;
+    friend int inputEventLoop(int fd, unsigned int mask, void* data);
+    int inputEvent();
 
     device* drm_ = nullptr;
-
     gbm_device* gbmDevice_ = nullptr;
-
-    drmModeConnector* drmConnector_ = nullptr;
-    drmModeEncoder* drmEncoder_ = nullptr;
-    drmModeModeInfo drmMode_;
-
-    drmModeCrtc* drmSavedCrtc_ = nullptr;
+    libinput* input_ = nullptr;
 
     wl_event_source* drmEventSource_ = nullptr;
+    wl_event_source* inputEventSource_ = nullptr;
 
     void onTTYEnter();
     void onTTYLeave();
@@ -39,18 +35,9 @@ public:
     kmsBackend();
     ~kmsBackend();
 
-    virtual backendType getType() const override { return backendType::kms; }
-
-    ttyHandler* getTTYHandler() const { return tty_; }
-    inputHandler* getInputHandler() const { return input_; }
-
+    virtual unsigned int getType() const override { return backendType::kms; }
     gbm_device* getGBMDevice() const { return gbmDevice_; }
-    drmModeConnector* getDRMConnector() const { return drmConnector_; }
-    drmModeEncoder* getDRMEncoder() const { return drmEncoder_; }
-    const drmModeModeInfo& getDRMMode() const { return drmMode_; }
-    drmModeModeInfo& getDRMMode() { return drmMode_; }
-
-    int getFD() const;
+    int getDRMFD() const;
 };
 
 //output
@@ -65,13 +52,18 @@ protected:
         bool valid(){ return (buffer != nullptr && fb != 0); }
     };
 
+    //cb
+    friend void drmPageFlipEvent(int, unsigned int, unsigned int, unsigned int, void*);
+    void wasFlipped();
+
 protected:
+    drmModeCrtc* drmSavedCrtc_ = nullptr;
+    drmModeConnector* drmConnector_ = nullptr;
+    drmModeEncoder* drmEncoder_ = nullptr;
+
     gbm_surface* gbmSurface_ = nullptr;
-    void* eglSurface_; //EGLSurface
 
-    bool set = 0;
     bool flipping_ = 0;
-
     fb fbs_[2];
     unsigned char frontBuffer_ = 0;
 
@@ -79,17 +71,12 @@ protected:
     void releaseFB(fb& obj);
     void createFB(fb& obj);
 
-    virtual void render() override;
+    void resetCrtc();
 
 public:
-    kmsOutput(const kmsBackend& kms, unsigned int id);
+    kmsOutput(const kmsBackend& kms, drmModeConnector* connector, drmModeEncoder* encoder, unsigned int id);
     ~kmsOutput();
 
-    void wasFlipped();
-    void setCrtc();
-
-    //output
-    virtual void swapBuffers() override;
-    virtual vec2ui getSize() const override;
-    virtual void* getEglSurface() const override { return eglSurface_; }
+    virtual void* getNativeSurface() const override { return gbmSurface_; }
+    virtual void sendInformation(const outputRes& res) const override;
 };

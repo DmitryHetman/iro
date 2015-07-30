@@ -14,6 +14,7 @@
 
 #include <stdexcept>
 #include <iostream>
+#include <csignal>
 
 //device
 void device::release()
@@ -70,7 +71,7 @@ bool checkDBusErrorWarn(DBusError& err)
     return 0;
 }
 
-////
+///////////////////////////////////////////////////////
 int dbusDispatch(int fd, uint32_t mask, void* data)
 {
    sessionManager* sh = (sessionManager*)data;
@@ -309,7 +310,7 @@ void cbPropertiesChanged(DBusMessage* m)
     return;
 
 error0:
-    iroLog("dbus: cannot parse PropertiesChanged dbus signal");
+    iroWarning("dbus: cannot parse PropertiesChanged dbus signal");
 }
 
 void cbDevicePaused(DBusMessage* msg)
@@ -371,11 +372,96 @@ bool dbusAddMatchSignal(DBusConnection* conn, const std::string& sender, const s
     return dbusAddMatch(conn, "type='signal',sender='" + sender + "',interface='" + interface + "',member='" + member + "',path='" + path + "'");
 }
 
-/////////////////////////////////////////
-sessionManager::sessionManager(bool uselogind)
+//tty
+void ttySignalhandler(int signal)
 {
-    if(!uselogind) return;
+    auto handler = iroSessionManager();
+    if(!handler) return;
 
+    if(signal == SIGUSR1) handler->enteredTTY();
+    else if(signal == SIGUSR2) handler->leftTTY();
+}
+
+//udev
+int udevEventLoop(int fd, unsigned int mask, void* data)
+{
+    sessionManager* handler = (sessionManager*) data;
+    return handler->udevEvent();
+}
+
+/////////////////////////////////////////
+sessionManager::sessionManager()
+{
+}
+
+sessionManager::~sessionManager()
+{
+    //logind
+    if(dbus_)
+    {
+        //release control
+        DBusMessage* m;
+        if (!(m = dbus_message_new_method_call("org.freedesktop.login1", sessionPath_.c_str(), "org.freedesktop.login1.Session", "ReleaseControl")))
+        {
+            iroLog("sessionManager::~sessionManager: dbus_message_new_method_call for release control failed");
+        }
+
+        dbus_connection_send(dbus_, m, nullptr);
+        dbus_message_unref(m);
+
+        //cleanup dbus
+        dbus_connection_set_timeout_functions(dbus_, nullptr, nullptr, nullptr, nullptr, nullptr);
+        dbus_connection_set_watch_functions(dbus_, nullptr, nullptr, nullptr, nullptr, nullptr);
+
+        dbus_connection_close(dbus_);
+        dbus_connection_unref(dbus_);
+
+        dbus_ = nullptr;
+    }
+
+    if(dbusEventSource_)
+    {
+        wl_event_source_remove(dbusEventSource_);
+        dbusEventSource_ = nullptr;
+    }
+
+    if(udev_)
+    {
+        udev_unref(udev_);
+    }
+
+}
+
+void sessionManager::initDeviceFork()
+{
+    child_ = fork();
+    if(child_ < 0)
+    {
+        throw std::runtime_error("sessionManager::initDeviceFork: fork process failed");
+        return;
+    }
+    else if(child == 0)
+    {
+        //child
+        while(1); //child stays here
+    }
+    else
+    {
+        return; //return
+    }
+}
+
+void sessionManager::initSession(bool logind)
+{
+    if(logind)
+        logindInit();
+
+    ttyInit();
+    udevInit();
+}
+
+void sessionManager::logindInit()
+{
     //systemd
     char* session = nullptr;
     if(sd_pid_get_session(getpid(), &session) < 0 || !session)
@@ -485,102 +571,173 @@ sessionManager::sessionManager(bool uselogind)
     iroLog("Took Session Control");
 }
 
-sessionManager::~sessionManager()
+void sessionManager::ttyInit()
 {
-    if(dbus_)
+    /*
+    const char* number = getenv("XDG_VTNR");
+    if(!number)
     {
-        //release control
-        DBusMessage* m;
-        if (!(m = dbus_message_new_method_call("org.freedesktop.login1", sessionPath_.c_str(), "org.freedesktop.login1.Session", "ReleaseControl")))
-        {
-            iroLog("sessionManager::~sessionManager: dbus_message_new_method_call for release control failed");
-        }
-
-        dbus_connection_send(dbus_, m, nullptr);
-        dbus_message_unref(m);
-
-        //cleanup dbus
-        dbus_connection_set_timeout_functions(dbus_, nullptr, nullptr, nullptr, nullptr, nullptr);
-        dbus_connection_set_watch_functions(dbus_, nullptr, nullptr, nullptr, nullptr, nullptr);
-
-        dbus_connection_close(dbus_);
-        dbus_connection_unref(dbus_);
-
-        dbus_ = nullptr;
+        throw std::runtime_error("tty::tty: XDG_VTNR not set");
+        return;
     }
 
-    if(dbusEventSource_)
+    //tty0
+    int tty0FD = open("/dev/tty0", O_RDWR | O_CLOEXEC);
+    if(tty0FD < 0)
     {
-        wl_event_source_remove(dbusEventSource_);
-        dbusEventSource_ = nullptr;
+        throw std::runtime_error("could not open tty0");
+        return;
     }
+
+    if(ioctl(tty0FD, VT_OPENQRY, &number_) != 0)
+    {
+        throw std::runtime_error("no free tty found");
+        return;
+    }
+
+    close(tty0FD);
+    */
+
+    ////
+    number_ = handler.getVTNumber();
+
+    //open own tty
+    std::string ttyString;
+    ttyString += "/dev/tty";
+    ttyString += std::to_string(number_);
+
+    if((fd_ = open(ttyString.c_str(), O_RDWR | O_NOCTTY | O_CLOEXEC)) < 0)
+    {
+        throw std::runtime_error("could not open " + ttyString);
+        return;
+    }
+
+    //save current
+    vt_stat state;
+    if(ioctl(fd_, VT_GETSTATE, &state) == -1)
+    {
+        throw std::runtime_error("could not get current tty");
+        return;
+    }
+
+    //set it up
+    if(!activate())
+    {
+        throw std::runtime_error("Could not activate tty");
+        return;
+    }
+
+    if(ioctl(fd_, KDSETMODE, KD_GRAPHICS) == -1)
+    {
+        throw std::runtime_error("Could not set tty to graphics mode");
+        return;
+    }
+
+    focus_ = 1;
+
+    vt_mode mode;
+    mode.mode = VT_PROCESS;
+    mode.acqsig = SIGUSR1;
+    mode.relsig = SIGUSR2;
+
+    if(ioctl(fd_, VT_SETMODE, &mode) == -1)
+    {
+        throw std::runtime_error("Could not set vt_mode");
+        return;
+    }
+
+    //sig handler
+    struct sigaction action;
+    action.sa_handler = ttySignalhandler;
+
+    sigaction(SIGUSR1, &action, nullptr);
+    sigaction(SIGUSR2, &action, nullptr);
+}
+
+void sessionManager::udevEvent()
+{
+    udev_ = udev_new();
+    udevMonitor_ = udev_monitor_new_from_netlink(udev_, "udev");
+    udev_monitor_filter_add_match_subsystem_devtype(udevMonitor_, "drm", nullptr);
+    udev_monitor_filter_add_match_subsystem_devtype(udevMonitor_, "input", nullptr);
+    udev_monitor_enable_receiving(udevMonitor_);
+    wl_event_loop_add_fd(iroWlEventLoop(), udev_monitor_get_fd(udevMonitor_), WL_EVENT_READABLE, udevEventLoop, this);
 }
 
 device* sessionManager::takeDevice(const std::string& path)
 {
+    bool active = 1;
+    int fd = 0;
+
+    if(dbus_) //use logind
+    {
+        struct stat st;
+        if(stat(path.c_str(), &st) < 0 || !S_ISCHR(st.st_mode))
+        {
+            iroWarning("sessionManager::takeDevice: failed to get stat struct for path");
+            return nullptr;
+        }
+
+        unsigned int majr = major(st.st_rdev);
+        unsigned int minr = minor(st.st_rdev);
+
+        DBusMessage* msg;
+        if(!(msg = dbus_message_new_method_call("org.freedesktop.login1", sessionPath_.c_str(), "org.freedesktop.login1.Session", "TakeDevice")))
+        {
+            iroWarning("sessionManager::takeDevice: dbus_message_new_method_call failed");
+            dbus_message_unref(msg);
+            return nullptr;
+        }
+
+        if(!dbus_message_append_args(msg, DBUS_TYPE_UINT32, &majr, DBUS_TYPE_UINT32, &minr, DBUS_TYPE_INVALID))
+        {
+            iroWarning("sessionManager::takeDevice: dbus_message_append_args failed");
+            dbus_message_unref(msg);
+            return nullptr;
+        }
+
+        DBusMessage *reply;
+        if(!(reply = dbus_connection_send_with_reply_and_block(dbus_, msg, -1, nullptr)))
+        {
+            iroWarning("sessionManager::takeDevice: dbus_connection_send_with_reply_and_block failed");
+            dbus_message_unref(msg);
+            return nullptr;
+        }
+
+        int fd;
+        dbus_bool_t paused;
+        if(!dbus_message_get_args(reply, nullptr, DBUS_TYPE_UNIX_FD, &fd, DBUS_TYPE_BOOLEAN, &paused, DBUS_TYPE_INVALID))
+        {
+            iroWarning("sessionManager::takeDevice: dbus_message_get_args failed");
+            dbus_message_unref(reply);
+            dbus_message_unref(msg);
+            return nullptr;
+        }
+
+        int fl;
+        if((fl = fcntl(fd, F_GETFL)) < 0 || fcntl(fd, F_SETFD, fl | FD_CLOEXEC) < 0)
+        {
+            iroWarning("sessionManager::takeDevice: invalid fd");
+            close(fd);
+            dbus_message_unref(reply);
+            dbus_message_unref(msg);
+            return nullptr;
+        }
+
+        dbus_message_unref(reply);
+        dbus_message_unref(msg);
+
+        ret->active = !paused;
+        ret->fd = fd;
+    }
+    else
+    {
+
+    }
+
     device* ret = new device;
-
     ret->path = path;
-    ret->active = 0;
-    ret->fd = -1;
-
-    struct stat st;
-    if(stat(path.c_str(), &st) < 0 || !S_ISCHR(st.st_mode))
-    {
-        iroWarning("sessionManager::takeDevice: failed to get stat struct for path");
-        return nullptr;
-    }
-
-    unsigned int majr = major(st.st_rdev);
-    unsigned int minr = minor(st.st_rdev);
-
-    DBusMessage* msg;
-    if(!(msg = dbus_message_new_method_call("org.freedesktop.login1", sessionPath_.c_str(), "org.freedesktop.login1.Session", "TakeDevice")))
-    {
-        iroWarning("sessionManager::takeDevice: dbus_message_new_method_call failed");
-        dbus_message_unref(msg);
-        return nullptr;
-    }
-
-    if(!dbus_message_append_args(msg, DBUS_TYPE_UINT32, &majr, DBUS_TYPE_UINT32, &minr, DBUS_TYPE_INVALID))
-    {
-        iroWarning("sessionManager::takeDevice: dbus_message_append_args failed");
-        dbus_message_unref(msg);
-        return nullptr;
-    }
-
-    DBusMessage *reply;
-    if(!(reply = dbus_connection_send_with_reply_and_block(dbus_, msg, -1, nullptr)))
-    {
-        iroWarning("sessionManager::takeDevice: dbus_connection_send_with_reply_and_block failed");
-        dbus_message_unref(msg);
-        return nullptr;
-    }
-
-    int fd;
-    dbus_bool_t paused;
-    if(!dbus_message_get_args(reply, nullptr, DBUS_TYPE_UNIX_FD, &fd, DBUS_TYPE_BOOLEAN, &paused, DBUS_TYPE_INVALID))
-    {
-        iroWarning("sessionManager::takeDevice: dbus_message_get_args failed");
-        dbus_message_unref(reply);
-        dbus_message_unref(msg);
-        return nullptr;
-    }
-
-    int fl;
-    if((fl = fcntl(fd, F_GETFL)) < 0 || fcntl(fd, F_SETFD, fl | FD_CLOEXEC) < 0)
-    {
-        iroWarning("sessionManager::takeDevice: invalid fd");
-        close(fd);
-        dbus_message_unref(reply);
-        dbus_message_unref(msg);
-        return nullptr;
-    }
-
-    dbus_message_unref(reply);
-    dbus_message_unref(msg);
-
-    ret->active = !paused;
+    ret->active = active;
     ret->fd = fd;
 
     devices_.push_back(ret);
@@ -730,50 +887,37 @@ void sessionManager::deviceResumed(DBusMessage* msg)
     if(!found) iroWarning("sessionManager::deviceResumed: device not found");
 }
 
-
-//pam
-int pamConversation(int msg_count, const struct pam_message** messages, struct pam_response** responses, void* data)
+void sessionManager::enteredTTY()
 {
-	return PAM_SUCCESS;
+    beforeEnter_();
+
+    ioctl(fd_, VT_RELDISP, VT_ACKACQ);
+    focus_ = 1;
+
+
+    afterEnter_();
+
+
+    struct sigaction action;
+    action.sa_handler = ttySignalhandler;
+
+    sigaction(SIGUSR1, &action, nullptr);
+    sigaction(SIGUSR2, &action, nullptr);
 }
 
-pamSession::pamSession()
+void sessionManager::leftTTY()
 {
-    pamConv_.conv = &pamConversation;
-    pamConv_.appdata_ptr = this;
+    beforeLeave_();
 
-    passwd* pwd = getpwuid(getuid());
-    if(!pwd)
-    {
-        throw std::runtime_error("pamHandler::pamHandler: getpwuid failed");
-        return;
-    }
+    ioctl(fd_, VT_RELDISP, 1); //allowed
+    focus_ = 0;
 
-    if(pam_start("login", pwd->pw_name, &pamConv_, &pam_) != PAM_SUCCESS)
-    {
-        throw std::runtime_error("pamHandler::pamHandler: pam_start failed");
-        return;
-    }
+    afterLeave_();
 
-    std::string ttyname = ""; //todo
-    if(pam_set_item(pam_, PAM_TTY, ttyname.c_str()) != PAM_SUCCESS)
-    {
-        throw std::runtime_error("pamHandler::pamHandler: pam_set_item for TTY failed");
-        return;
-    }
 
-    if(pam_open_session(pam_, 0) != PAM_SUCCESS)
-    {
-        throw std::runtime_error("pamHandler::pamHandler: pam_open_session failed");
-        return;
-    }
-}
+    struct sigaction action;
+    action.sa_handler = ttySignalhandler;
 
-pamSession::~pamSession()
-{
-    if(pam_)
-    {
-        pam_close_session(pam_, 0);
-        pam_end(pam_, 0);
-    }
+    sigaction(SIGUSR1, &action, nullptr);
+    sigaction(SIGUSR2, &action, nullptr);
 }

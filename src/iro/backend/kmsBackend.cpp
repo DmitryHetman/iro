@@ -26,19 +26,35 @@ kmsBackend* getKMSBackend()
     return dynamic_cast<kmsBackend*>(iroBackend());
 }
 
-ttyHandler* iroTTYHandler()
+//input/////////////////////////////////////////////////////////////////////////7
+int openRestricted(const char* path, int flags, void *data)
 {
-    if(!getKMSBackend()) return nullptr;
-    return getKMSBackend()->getTTYHandler();
+    sessionManager* hdl = (sessionManager*) data;
+
+	device* dev = hdl->takeDevice(path);
+	return (dev) ? dev->fd : -1;
 }
 
-inputHandler* iroInputHandler()
+void closeRestricted(int fd, void* data)
 {
-    if(!getKMSBackend()) return nullptr;
-    return getKMSBackend()->getInputHandler();
+    sessionManager* hdl = (sessionManager*) data;
+
+    hdl->releaseDevice(fd);
 }
 
-///////////////////////////////////////////////////////////////////////////
+const libinput_interface libinputImplementation =
+{
+    openRestricted,
+    closeRestricted
+};
+
+int inputEventLoop(int fd, unsigned int mask, void* data)
+{
+    inputHandler* handler = (inputHandler*) data;
+    return handler->inputEvent();
+}
+
+//drm/////////////////////////////////////////////////////////////////////////
 void drmPageFlipEvent(int fd, unsigned int frame, unsigned int sec, unsigned int usec, void *data)
 {
     ((kmsOutput*)data)->wasFlipped();
@@ -58,14 +74,6 @@ int drmEvent(int fd, unsigned int mask, void* data)
 ///////////////////////////////////////////////////////////////////////////
 kmsBackend::kmsBackend()
 {
-    std::cout << "0" << std::endl;
-
-    tty_ = new ttyHandler(*iroSessionManager());
-    tty_->beforeEnter(memberCallback(&kmsBackend::onTTYEnter, this));
-    tty_->beforeLeave(memberCallback(&kmsBackend::onTTYLeave, this));
-
-    input_ = new inputHandler(*iroSessionManager());
-
     std::string path = "/dev/dri/card0";
     drm_ = iroSessionManager()->takeDevice(path);
 
@@ -84,7 +92,6 @@ kmsBackend::kmsBackend()
         return;
     }
 
-    int i;
     drmModeRes* resources = drmModeGetResources(drm_->fd);
     if (!resources)
     {
@@ -92,64 +99,59 @@ kmsBackend::kmsBackend()
         return;
     }
 
-    for (i = 0; i < resources->count_connectors; i++)
+    //find outputs, todo: logging
+    unsigned int c, e; //connector, encoder
+    drmModeConnector* connector = nullptr;
+    drmModeEncoder* encoder = nullptr;
+
+    for (c = 0; c < resources->count_connectors; c++)
     {
-        drmConnector_ = drmModeGetConnector(drm_->fd, resources->connectors[i]);
-        if (!drmConnector_)
+        if(!(connector = drmModeGetConnector(drm_->fd, resources->connectors[c])))
             continue;
 
-        if (drmConnector_->connection == DRM_MODE_CONNECTED && drmConnector_->count_modes > 0)
-            break;
+        if (connector->connection == DRM_MODE_CONNECTED && connector->count_modes > 0) //valid connector found
+        {
+            for (e = 0; e < resources->count_encoders; e++)
+            {
+                if(!(encode = drmModeGetEncoder(drm_->fd, resources->encoders[i])))
+                    continue;
 
-        drmModeFreeConnector(drmConnector_);
+                if (encoder->encoder_id == connector->encoder_id) //valid encoder found
+                {
+                    kmsOutput* out = new kmsOutput(*this, connector, encoder, outputs_.size());
+                    outputs_.push_back(out);
+                }
+
+                drmModeFreeEncoder(drmEncoder_);
+            }
+        }
+
+        drmModeFreeConnector(connector);
     }
 
-    if (i == resources->count_connectors)
+    if (c == resources->count_connectors)
     {
         throw std::runtime_error("kmsBackend::kmsBackend: no active connector found");
         return;
     }
 
-    for (i = 0; i < resources->count_encoders; i++)
-    {
-        drmEncoder_ = drmModeGetEncoder(drm_->fd, resources->encoders[i]);
+    iroLog("kmsBackend: ", c, " valid connectors found, ", e, " valid encoders found, ", outputs_.size(), " outputs created.");
+    drmEventSource_ = wl_event_loop_add_fd(iroWlEventLoop(), drm_->fd, WL_EVENT_READABLE, drmEvent, this);
 
-        if (!drmEncoder_)
-            continue;
+    //input
+    input_ = libinput_udev_create_context(&libinputImplementation, iroSessionManager(), iroSessionManager()->getUDev());
+    libinput_udev_assign_seat(input_, iroSessionManager()->getSeat().c_str());
+    inputEventSource_ = wl_event_loop_add_fd(iroWlEventLoop(), libinput_get_fd(input_), WL_EVENT_READABLE, inputEventLoop, this);
 
-        if (drmEncoder_->encoder_id == drmConnector_->encoder_id)
-            break;
-
-        drmModeFreeEncoder(drmEncoder_);
-    }
-
+/*
     drmMode_ = drmConnector_->modes[0];
-
     drmSavedCrtc_ = drmModeGetCrtc(drm_->fd, drmEncoder_->crtc_id);
     if(!drmSavedCrtc_)
     {
         throw std::runtime_error("kmsBackend::kmsBackend: cant save crtc");
         return;
     }
-
-    drmEventSource_ = wl_event_loop_add_fd(iroWlEventLoop(), drm_->fd, WL_EVENT_READABLE, drmEvent, this);
-
-    eglContext_ = new eglContext(gbmDevice_);
-
-    const unsigned int numOutputs = 1; //TODO
-    for(unsigned int i(0); i < numOutputs; i++)
-    {
-        kmsOutput* out = new kmsOutput(*this, 0);
-        outputs_.push_back(out);
-    }
-
-    renderer_ = new glRenderer(*eglContext_); //must be initialized after, because it needs a valid eglContext (is made current by outoput)
-
-    for(output* out : outputs_)
-    {
-        ((kmsOutput*)out)->setCrtc();
-        out->refresh();
-    }
+*/
 }
 
 kmsBackend::~kmsBackend()
@@ -157,70 +159,109 @@ kmsBackend::~kmsBackend()
     for(auto* out : outputs_)
         delete out;
 
-    if(drmSavedCrtc_)drmModeSetCrtc(drm_->fd, drmSavedCrtc_->crtc_id, drmSavedCrtc_->buffer_id, drmSavedCrtc_->x, drmSavedCrtc_->y, &drmConnector_->connector_id, 1, &drmSavedCrtc_->mode);
+    if(drmEventSource_) wl_event_source_remove(drmEventSource_);
+    if(inputEventSource_) wl_event_source_remove(inputEventSource_);
 
-    if(wlEventSource_) wl_event_source_remove(wlEventSource_);
-    if(eglContext_) delete eglContext_;
     if(gbmDevice_) gbm_device_destroy(gbmDevice_);
-    if(tty_) delete tty_;
     if(drm_) iroSessionManager()->releaseDevice(*drm_);
+
+    if(input_) libinput_unref(input_);
 }
 
 void kmsBackend::onTTYEnter()
 {
-    for(auto* out : outputs_)
-    {
-        kmsOutput* kout = (kmsOutput*) out;
-        kout->setCrtc();
-        kout->refresh();
-    }
+
 }
 
 void kmsBackend::onTTYLeave()
 {
-    drmModeSetCrtc(drm_->fd, drmSavedCrtc_->crtc_id, drmSavedCrtc_->buffer_id, drmSavedCrtc_->x, drmSavedCrtc_->y, &drmConnector_->connector_id, 1, &drmSavedCrtc_->mode);
+    //drmModeSetCrtc(drm_->fd, drmSavedCrtc_->crtc_id, drmSavedCrtc_->buffer_id, drmSavedCrtc_->x, drmSavedCrtc_->y, &drmConnector_->connector_id, 1, &drmSavedCrtc_->mode);
 }
 
 void kmsBackend::onDRMPause()
 {
-
+    drmDropMaster(drm_->fd);
 }
 
 void kmsBackend::onDRMResume()
 {
-
+    drmSetMaster(drm_->fd);
 }
 
-int kmsBackend::getFD() const
+int kmsBackend::getDRMFD() const
 {
     return (drm_) ? drm_->fd : -1;
 }
 
-////////////////////////////////////////////////////////////////////////////////////
-kmsOutput::kmsOutput(const kmsBackend& kms, unsigned int id) : output(id)
+int inputHandler::inputEvent()
 {
-    eglContext* egl = kms.getEglContext();
+    libinput_dispatch(input_);
 
-    unsigned int height = kms.getDRMMode().vdisplay;
-    unsigned int width = kms.getDRMMode().hdisplay;
+    struct libinput_event* event;
+    while((event = libinput_get_event(input_)))
+    {
+        switch(libinput_event_get_type(event))
+        {
+            case LIBINPUT_EVENT_POINTER_MOTION:
+            {
+                struct libinput_event_pointer* ev = libinput_event_get_pointer_event(event);
+
+                double x = libinput_event_pointer_get_dx(ev);
+                double y = libinput_event_pointer_get_dy(ev);
+                vec2ui pos = iroPointer()->getPosition() + vec2ui(x,y);
+                iroPointer()->sendMove(pos.x, pos.y);
+                break;
+            }
+            case LIBINPUT_EVENT_POINTER_MOTION_ABSOLUTE:
+            {
+                struct libinput_event_pointer* ev = libinput_event_get_pointer_event(event);
+
+                iroPointer()->sendMove(libinput_event_pointer_get_absolute_x(ev), libinput_event_pointer_get_absolute_y(ev));
+                break;
+            }
+            case LIBINPUT_EVENT_POINTER_BUTTON:
+            {
+                struct libinput_event_pointer* ev = libinput_event_get_pointer_event(event);
+                unsigned int pressed = libinput_event_pointer_get_button_state(ev);
+
+                if(pressed)iroPointer()->sendButtonPress(libinput_event_pointer_get_button(ev));
+                else iroPointer()->sendButtonRelease(libinput_event_pointer_get_button(ev));
+
+                break;
+            }
+            case LIBINPUT_EVENT_KEYBOARD_KEY:
+            {
+                struct libinput_event_keyboard* ev = libinput_event_get_keyboard_event(event);
+                unsigned int pressed = libinput_event_keyboard_get_key_state(ev);
+
+                if(pressed)iroKeyboard()->sendKeyPress(libinput_event_keyboard_get_key(ev));
+                else iroKeyboard()->sendKeyRelease(libinput_event_keyboard_get_key(ev));
+
+                break;
+            }
+            default:
+                break;
+        }
+
+        libinput_event_destroy(event);
+    }
+
+    return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////////
+kmsOutput::kmsOutput(const kmsBackend& kms,  drmModeConnector* connector, drmModeEncoder* encoder, unsigned int id) : output(id), drmConnector_(connector), drmEncoder_(encoder)
+{
+    drmSavedCrtc_ = drmModeGetCrtc(kms.getDRMFD(), drmEncoder_->crtc_id);
+
+    //todo: init modes correctly
+    size_.x = drmConnector_->modes[0].hdisplay;
+    size_.y = drmConnector_->modes[0].vdisplay;
 
     gbmSurface_ = gbm_surface_create(kms.getGBMDevice(), width, height, GBM_BO_FORMAT_XRGB8888, GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING);
     if(!gbmSurface_)
     {
-        throw std::runtime_error("cant create gbmSurface on kms output");
-        return;
-    }
-
-    eglSurface_ = eglCreateWindowSurface(egl->getDisplay(), egl->getConfig(), (EGLNativeWindowType) gbmSurface_, nullptr);
-    if(!gbmSurface_)
-    {
-        throw std::runtime_error("cant create eglSurface ons kms output");
-        return;
-    }
-
-    if(!eglMakeCurrent(egl->getDisplay(), eglSurface_, eglSurface_, egl->getContext()))
-    {
-        throw std::runtime_error("cant make egl Context current on kms output");
+        throw std::runtime_error("kmsOutput::kmsOutput: cant create gbmSurface");
         return;
     }
 }
@@ -233,12 +274,21 @@ kmsOutput::~kmsOutput()
     gbm_surface_destroy(gbmSurface_);
 }
 
+void kmsOutput::resetCrtc()
+{
+    if(!drmSavedCrtc_ || !drmConnector_)
+        return;
+
+    drmModeSetCrtc(drm_->fd, drmSavedCrtc_->crtc_id, drmSavedCrtc_->buffer_id, drmSavedCrtc_->x, drmSavedCrtc_->y, &drmConnector_->connector_id, 1, &drmSavedCrtc_->mode);
+}
+
 void kmsOutput::render()
 {
     if(flipping_)
         return;
 
     output::render();
+    swapBuffers();
 }
 
 void kmsOutput::setCrtc()
@@ -276,6 +326,7 @@ void kmsOutput::releaseFB(fb& obj)
     obj.fb = 0;
 }
 
+
 void kmsOutput::swapBuffers()
 {
     if(!flipping_ && getKMSBackend() && iroTTYHandler()->focus())
@@ -285,7 +336,7 @@ void kmsOutput::swapBuffers()
         releaseFB(fbs_[frontBuffer_]);
         createFB(fbs_[frontBuffer_]);
 
-        drmModePageFlip(getKMSBackend()->getFD(), getKMSBackend()->getDRMEncoder()->crtc_id, fbs_[frontBuffer_].fb, DRM_MODE_PAGE_FLIP_EVENT, this);
+        drmModePageFlip(getKMSBackend()->getDRMFD(), drmEncoder_->crtc_id, fbs_[frontBuffer_].fb, DRM_MODE_PAGE_FLIP_EVENT, this);
 
         flipping_ = 1;
     }
@@ -299,10 +350,15 @@ void kmsOutput::wasFlipped()
     releaseFB(fbs_[frontBuffer_]);
 }
 
-vec2ui kmsOutput::getSize() const
+void kmsOutput::sendInformation(const outputRes& res) const
 {
-    vec2ui ret;
-    ret.x = getKMSBackend()->getDRMMode().vdisplay;
-    ret.y = getKMSBackend()->getDRMMode().hdisplay;
-    return ret;
+    //todo
+    wl_output_send_scale(&res.getWlResource(), 1);
+    wl_output_send_geometry(&res.getWlResource(), position_.x, position_.y, drmConnector_->mmWidth, drmConnector_->mmHeight, drmConnector_->subpixel, "unknown", "unknown", WL_OUTPUT_TRANSFORM_NORMAL);
+
+    for(unsigned int i(0); i < drmConnector_->count_modes; i++)
+    {
+        unsigned int flags = 0;
+        wl_output_send_mode(&res.getWlResource(), flags, drmConnector_->modes[i].hdisplay, drmConnector_->modes[i].vdisplay, drmConnector_->modes[i].vrefresh * 1000);
+    }
 }

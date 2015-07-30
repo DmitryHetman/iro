@@ -13,8 +13,8 @@ class compositor : public nonCopyable
 {
 protected:
     wl_display* wlDisplay_ = nullptr;
+    wl_global* global_ = nullptr;
 
-    shell* shell_ = nullptr;
     seat* seat_ = nullptr;
     subcompositor* subcompositor_ = nullptr;
 
@@ -27,7 +27,7 @@ public:
     compositor();
     ~compositor();
 
-    int run();
+    void run();
 
     shell* getShell() const { return shell_; }
     seat* getSeat() const { return seat_; }
@@ -35,6 +35,7 @@ public:
 
     unsigned int getNumberClients() const { return clients_.size(); }
     client& getClient(wl_client& wlc); //getOrCreate -> always returns a valid client, reference
+    bool registeredClient(wl_client& wlc); //checks if client is registered
     void unregisterClient(client& c);
 
     wl_display* getWlDisplay() const { return wlDisplay_; }
@@ -52,5 +53,6 @@ class compositorRes : public resource
 public:
     compositorRes(wl_client& client, unsigned int id, unsigned int version);
 
-    resourceType getType() const { return resourceType::compositor; }
+    //res
+    virtual resourceType getType() const override { return resourceType::compositor; }
 };

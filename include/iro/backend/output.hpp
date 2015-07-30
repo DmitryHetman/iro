@@ -6,6 +6,9 @@
 #include <nyutil/nonCopyable.hpp>
 #include <nyutil/rect.hpp>
 #include <nyutil/vec.hpp>
+#include <nyutil/time.hpp>
+
+#include <ny/surface.hpp>
 
 #include <vector>
 
@@ -16,41 +19,42 @@ std::vector<output*> outputsAt(int x, int y, int w, int h);
 std::vector<output*> outputsAt(vec2i pos, vec2i size);
 std::vector<output*> outputsAt(rect2i ext);
 
-class output : public nonCopyable
+class output : public ny::surface
 {
+
+friend class renderer;
+friend int outputRedraw(void*);
+
 protected:
-    unsigned int id_;
+	unsigned int id_;
+	vec2ui size_;
+	vec2i position_;
 
-    std::vector<surfaceRes*> mappedSurfaces_;
+	bool repaintScheduled_ = 0;
+	wl_event_source* drawEventSource_ = nullptr;
+	timer lastRedraw_;
 
-    wl_event_source* drawEventSource_;
-    wl_global* global_;
+	std::vector<surfaceRef> mappedSurfaces_;
+	wl_global* global_ = nullptr;
+	renderData* renderData_ = nullptr;
 
-    vec2i position_;
+	void render();
 
-    friend int outputRedraw(void* data);
-    virtual void render();
+	output(unsigned int id);
+	virtual ~output();
 
 public:
-    output(unsigned int id);
-    virtual ~output();
+	void scheduleRepaint();
 
-    const std::vector<surfaceRes*> getSurfaces() const { return mappedSurfaces_; }
+	void mapSurface(surfaceRes& surf);
+	void unmapSurface(surfaceRes& surf);
 
-    void mapSurface(surfaceRes* surf);
-    void unmapSurface(surfaceRes* surf);
+	rect2i getExtents() const;
+	vec2i getPosition() const;
+	virtual vec2ui getSize() const override; //ny::surface
 
-    surfaceRes* getSurfaceAt(vec2i pos);
-    rect2i getExtents() const { return rect2i(getPosition(), getSize()); }
-
-    //virtual
-    virtual void refresh();
-
-    virtual void swapBuffers();
-    virtual void* getEglSurface() const { return nullptr; }; //EGLSurface == void*
-
-    virtual vec2ui getSize() const = 0;
-    virtual vec2i getPosition() const;
+	virtual void* getNativeSurface() const = 0;
+	virtual void sendInformation(const outputRes& res) const = 0;
 };
 
 //////////////////
@@ -61,6 +65,8 @@ protected:
 
 public:
     outputRes(output& out, wl_client& client, unsigned int id, unsigned int version);
-
     output& getOutput() const { return output_; }
+
+    //res
+    virtual resourceType getType() const override { return resourceType::output; }
 };

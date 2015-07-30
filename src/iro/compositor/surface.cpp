@@ -9,9 +9,31 @@
 #include <iro/backend/backend.hpp>
 #include <iro/seat/seat.hpp>
 #include <iro/seat/pointer.hpp>
+#include <iro/util/log.hpp>
 
 #include <wayland-server-protocol.h>
 
+surfaceState& surfaceState::operator=(const surfaceState& other)
+{
+    opaque = other.opaque;
+    input = other.input;
+    damage = other.damage;
+    offset = other.offset;
+    buffer.set(other.buffer.get());
+
+    frameCallbacks.clear();
+    for(auto& ref : other.frameCallbacks)
+    {
+        frameCallbacks.push_back(callbackRef(ref.get()));
+    }
+
+    scale = other.scale;
+    transform = other.transform;
+    zOrder = other.zOrder;
+
+    return *this;
+}
+/////
 void surfaceDestroy(wl_client* client, wl_resource* resource)
 {
     surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
@@ -21,32 +43,32 @@ void surfaceAttach(wl_client* client, wl_resource* resource, wl_resource* wlbuff
 {
     surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
 
-    bufferRes* buff = new bufferRes(*wlbuffer);
+    bufferRes* buff = bufferForResource(*wlbuffer); //gets or created bufferRes for this buffer wl_resource
     surf->attach(*buff, vec2i(x,y));
 }
 void surfaceDamage(wl_client* client, wl_resource* resource, int x, int y, int width, int height)
 {
     surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
-    surf->getPending().damage = rect2i(x, y, width, height);
+    surf->damage(rect2i(x, y, width, height);
 }
 void surfaceFrame(wl_client* client, wl_resource* resource, unsigned int callback)
 {
     surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
-    surf->registerFrameCallback(callback);
+    surf->addFrameCallback(callback);
 }
 void surfaceOpaqueRegion(wl_client* client,wl_resource* resource, wl_resource* region)
 {
     surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
     regionRes* reg = (regionRes*) wl_resource_get_user_data(region);
 
-    surf->getPending().opaque = reg->getRegion();
+    surf->setOpaqueRegion(reg->getRegion());
 }
 void surfaceInputRegion(wl_client* client,wl_resource* resource, wl_resource* region)
 {
     surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
     regionRes* reg = (regionRes*) wl_resource_get_user_data(region);
 
-    surf->getPending().input = reg->getRegion();
+    surf->setInputRegion(reg->getRegion());
 }
 void surfaceCommit(wl_client* client, wl_resource* resource)
 {
@@ -56,12 +78,12 @@ void surfaceCommit(wl_client* client, wl_resource* resource)
 void surfaceBufferTransform(wl_client* client, wl_resource* resource, int transform)
 {
     surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
-    surf->getPending().transform = transform;
+    surf->setBufferTransform(transform);
 }
 void surfaceBufferScale(wl_client* client, wl_resource* resource, int scale)
 {
     surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
-    surf->getPending().scale = scale;
+    surf->setBufferScale(scale);
 }
 
 const struct wl_surface_interface surfaceImplementation =
@@ -81,159 +103,122 @@ const struct wl_surface_interface surfaceImplementation =
 //////////////////////////////////////////////////////////////////////////////
 surfaceRes::surfaceRes(wl_client& client, unsigned int id) : resource(client, id, &wl_surface_interface, &surfaceImplementation, 3)
 {
-    //todo
-    mapper_ = iroBackend()->getOutputs()[0];
 }
 
 surfaceRes::~surfaceRes()
 {
-    unsetRole();
-
-    if(commited_.attached) commited_.attached->destroy();
-    if(pending_.attached) pending_.attached->destroy();
+    if(renderData_)
+        delete renderData_;
 }
 
-void surfaceRes::setShellSurface(unsigned int id)
+vec2i surfaceRes::getPosition()
 {
-    unsetRole();
+    if(role_)
+        return role_->getPosition() + pending_.offset;
 
-    role_ = surfaceRole::shell;
-    shellSurface_ = new shellSurfaceRes(*this, getWlClient(), id);
+    return pending_.offset;
 }
 
-void surfaceRes::setSubsurface(unsigned int id, surfaceRes* parent)
+vec2ui surfaceRes::getSize()
 {
-    unsetRole();
-
-    role_ = surfaceRole::sub;
-    subsurface_ = new subsurfaceRes(*this, getWlClient(), id, *parent);
-
-    parent->addChild(*this);
+    if(commited_.attached.get())
+        return commited_.attached.get()->getSize() * commited_.scale;
 }
 
-void surfaceRes::setCursor(vec2i hotspot)
+rect2i surfaceRes::getExtents()
 {
-    unsetRole();
-
-    role_ = surfaceRole::cursor;
-    cursorHotspot_ = hotspot;
-}
-
-void surfaceRes::unsetRole()
-{
-    if(role_ == surfaceRole::shell)
-    {
-        shellSurface_->destroy();
-    }
-    else if(role_ == surfaceRole::sub)
-    {
-        subsurface_->getParent().removeChild(*this);
-        subsurface_->destroy();
-    }
-    else if(role_ == surfaceRole::cursor && iroPointer()->getCursor() == this)
-    {
-        iroPointer()->resetCursor();
-    }
-
-    role_ = surfaceRole::none;
-
-    if(mapper_)mapper_->unmapSurface(this);
-}
-
-void surfaceRes::addChild(surfaceRes& child)
-{
-    children_.push_back(&child);
-}
-
-void surfaceRes::removeChild(surfaceRes& child)
-{
-    for(unsigned int i(0); i < children_.size(); i++)
-    {
-        if(children_[i] == &child)
-            children_.erase(children_.begin() + i);
-    }
-}
-
-bool surfaceRes::isChild(surfaceRes* surf) const
-{
-    for(unsigned int i(0); i < children_.size(); i++)
-    {
-        if(children_[i] == surf)
-            return 1;
-    }
-    return 0;
-}
-
-void surfaceRes::registerFrameCallback(unsigned int id)
-{
-    callbackRes* cb = new callbackRes(getWlClient(), id);
-    callbacks_.push_back(cb);
+    return rect2i(getPosition(), getSize());
 }
 
 void surfaceRes::frameDone()
 {
-    for(auto* cb : callbacks_)
+    for(auto& cb : commited_.frameCallbacks)
     {
-        wl_callback_send_done(&cb->getWlResource(), iroTime());
-        cb->destroy();
-    }
-
-    callbacks_.clear();
-}
-
-void surfaceRes::commit()
-{
-    surfaceState old = commited_;
-
-    commited_ = pending_;
-    pending_ = surfaceState();
-
-    if(role_ != surfaceRole::none && role_ != surfaceRole::cursor)
-    {
-        if(commited_.attached && !old.attached)
+        if(cb.get())
         {
-           mapper_->mapSurface(this);
-        }
-        else if(!commited_.attached && old.attached)
-        {
-            mapper_->unmapSurface(this);
-        }
-        else if(commited_.attached && old.attached)
-        {
-            mapper_->refresh();
+            wl_callback_send_done(&cb.get()->getWlResource(), iroTime());
+            cb.get()->destroy();
         }
     }
 
-    if(old.attached)
-        old.attached->destroy();
+    commited_.frameCallbacks.clear();
 }
 
-vec2i surfaceRes::getPosition() const
+void surfaceRes::addFrameCallback(callbackRes& cb)
 {
-    vec2i ret;
-
-    if(role_ == surfaceRole::shell)
-        ret += shellSurface_->getToplevelPosition();
-
-    return ret;
+    pending_.frameCallbacks.push_back(callbackRef(cb));
 }
 
-rect2i surfaceRes::getExtents() const
+void surfaceRes::setBufferScale(int scale)
 {
-    return rect2i(getPosition(), (commited_.attached) ? commited_.attached->getSize() * commited_.scale : vec2ui(0,0));
+    pending_.scale = scale;
+}
+
+void surfaceRes::setBufferTransform(unsigned int transform)
+{
+    pending_.transform = transform;
+}
+
+void surfaceRes::setInputRegion(region input)
+{
+    pending_.input = input;
+}
+
+void surfaceRes::setOpaqueRegion(region opaque)
+{
+    pending_.opaque = opaque;
+}
+
+void surfaceRes::damage(rect2i dmg)
+{
+    pending_.damage.add(dmg);
 }
 
 void surfaceRes::attach(bufferRes& buff, vec2i pos)
 {
-    std::cout << "attached buffer" << std::endl;
-
-    if(pending_.attached)
-    {
-        delete pending_.attached;
-    }
-
-    pending_.attached = &buff;
     pending_.offset = pos;
+    pending_.buffer.set(&buff);
 }
 
+void surfaceRes::commit()
+{
+    //todo
 
+    commited_ = pending_;
+    pending_.reset();
+
+    if(role_)
+    {
+        role_->commit();
+    }
+
+    if(commited_.bufer.get())
+    {
+        for(auto* o : outputs_)
+        {
+            o->unmapSurface(*this);
+        }
+
+        getIro()->getRenderer()->attachSurface(*this, *commited_.buffer.get());
+        outputs_ = outputsIntersecting(getExtents());
+
+        for(auto* o : outputs_)
+        {
+            o->mapSurface(*this);
+        }
+    }
+    else
+    {
+        for(auto o* : outputs_)
+        {
+            o->unmapSurface(*this);
+        }
+
+        outputs_.clear();
+    }
+}
+
+bool surfaceRes::isMapped()
+{
+    return (commited_.buffer.get && role_ && role_->isMapped());
+}
