@@ -75,8 +75,11 @@ bool iro::init(const iroSettings& settings)
     bool x11 = x11Backend::available();
     bool privileged = (geteuid() == 0);
 
+    bool loadDevices = (!onX11 || 1); //hardcoded, todo
+
     try
     {
+        //init log
         if(settings_.log == "cout")
         {
             logStream = &std::cout;
@@ -92,10 +95,37 @@ bool iro::init(const iroSettings& settings)
             }
         }
 
-        setupCompositor();
-        setupSession(x11, privileged);
-        setupBackend(x11);
-        loadModules(settings_.login);
+        //init devices
+        if(loadDevices)
+        {
+            sessionManager_ = new sessionManager();
+            sessionManager_->initDeviceFork();
+        }
+
+        //drop permissions
+        if(setuid(getuid()) < 0 || setgid(getgid()) < 0)
+        {
+            throw std::runtime_error("could not drop permissions");
+            return 0;
+        };
+
+        compositor_ = new compositor();
+
+        if(!onX11)
+        {
+            sessionManager_->initSession(!privileged); //logind only needed if not privileged
+            backend_ = new kmsBackend();
+        }
+        else
+        {
+            backend_ = new x11Backend();
+        }
+
+        egl_ = new eglContext();
+        renderer_ = new glRenderer(); //todo
+
+        for(output* o : backend_->getOutputs())
+            renderer_->initOutput(*o);
     }
 
     catch(const std::exception& err)
@@ -109,6 +139,11 @@ bool iro::init(const iroSettings& settings)
     iroLog("iro was successfully initialized. Version ", IRO_VMajor, ".", IRO_VMinor);
     initialized_ = 1;
     return 1;
+}
+
+void iro::setupDeviceManager()
+{
+    deviceManager_ = new deviceManager();
 }
 
 void iro::setupCompositor()

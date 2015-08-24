@@ -3,6 +3,7 @@
 #include <iro/backend/output.hpp>
 #include <iro/compositor/surface.hpp>
 #include <iro/compositor/buffer.hpp>
+#include <iro/backend/backend.hpp>
 #include <iro/seat/pointer.hpp>
 
 #include <iro/util/shaderSources.hpp>
@@ -16,6 +17,7 @@
 #include <wayland-server-core.h>
 #include <cassert>
 
+<<<<<<< HEAD
 class bufferDataGL : public bufferData
 {
 public:
@@ -23,11 +25,39 @@ public:
     {
         //if(texture_) glDeleteTextures(1, &texture_);
         //if(eglImage_) iroEglContext()->eglDestroyImageKHR(iroEglContext()->getDisplay(), eglImage_);
+=======
+class surfaceDataGL : public renderData
+{
+public:
+    virtual ~surfaceDataGL()
+    {
+        if(texture_) glDeleteTextures(1, &texture_);
+        if(eglImage_) iroEglContext()->eglDestroyImageKHR(iroEglContext()->getDisplay(), eglImage_);
+>>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
     }
 
     unsigned int texture_;
     void* eglImage_;
 };
+<<<<<<< HEAD
+=======
+
+class outputDataGL : public renderData
+{
+public:
+    outputDataGL(output& o)
+    {
+        eglSurface_ = eglCreateWindowSurface(iroEglContext()->getDisplay(), iroEglContext()->getConfig(), (EGLNativeWindowType) o.getNativeSurface(), nullptr);
+    }
+
+    virtual ~outputDataGL()
+    {
+        if(eglSurface_) eglDestroySurface(iroEglContext()->getDisplay(), eglSurface_);
+    }
+
+    EGLSurface eglSurface_ = nullptr;
+};
+>>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
 ////////////////////////////////
 rect2f rectToGL(const rect2f& src, const vec2ui& size)
 {
@@ -41,12 +71,28 @@ rect2f rectToGL(const rect2f& src, const vec2ui& size)
 
 
 /////////////////////////////////////////////////////7
-glRenderer::glRenderer(eglContext& ctx)
+glRenderer::glRenderer()
 {
-    if(!ctx.isCurrent())
+    if(!iroEglContext())
     {
         throw std::runtime_error("glRenderer::glRenderer: invalid eglContext");
         return;
+    }
+
+    outputDataGL* data = nullptr;
+    if(!iroEglContext()->isCurrent())
+    {
+        if(!iroBackend()->getOutputs()[0] || (!data = getOutputData(*iroBackend()->getOutputs()[0])))
+        {
+            throw std::runtime_error("glRenderer::glRenderer: no valid output to make eglContext current");
+            return;
+        }
+
+        if(!iroEglContext()->makeCurrent(data->eglSurface_))
+        {
+            throw std::runtime_error("glRenderer::glRenderer: failed to make egl context current");
+            return;
+        }
     }
 
     std::string version;
@@ -60,31 +106,40 @@ glRenderer::glRenderer(eglContext& ctx)
         throw std::runtime_error("could not initialize shaders");
         return;
     }
-    //init cursor texture
-    glActiveTexture(GL_TEXTURE0);
-    glGenTextures(1, &defaultCursorTex_);
-    glBindTexture(GL_TEXTURE_2D, defaultCursorTex_);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, 1);
-    glPixelStorei(GL_UNPACK_SKIP_PIXELS_EXT, 0);
-    glPixelStorei(GL_UNPACK_SKIP_ROWS_EXT, 0);
-
-    GLfloat pixels[] = {
-        1.0f, 1.0f, 1.0f
-    };
-
-    glTexImage2D(GL_TEXTURE_2D, 0,  GL_RGB, 1, 1, 0, GL_RGB, GL_FLOAT, pixels);
 }
 
 glRenderer::~glRenderer()
 {
-    glDeleteTextures(1, &defaultCursorTex_);
 }
 
+iroDrawContext& glRenderer::getDrawContext(output& o)
+{
+
+}
+void glRenderer::attachSurface(surfaceRes& surf, bufferRes& buf)
+{
+
+}
+
+void glRenderer::initOutput(output& o)
+{
+
+}
+void glRenderer::uninitOutput(output& o)
+{
+
+<<<<<<< HEAD
 bool glRenderer::drawTex(rect2f geometry, unsigned int texture, bufferFormat format)
+=======
+}
+
+void glRenderer::applyOutput(output& o)
+{
+
+}
+/*
+bool glRenderer::drawTex(rect2f geometry, unsigned int texture, ny::bufferFormat format)
+>>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
 {
     GLint viewport[4];
     glGetIntegerv(GL_VIEWPORT, viewport);
@@ -107,7 +162,7 @@ bool glRenderer::drawTex(rect2f geometry, unsigned int texture, bufferFormat for
         0, 1
     };
 
-    shader* program = nullptr;
+    ny::shader* program = nullptr;
     switch(format)
     {
         case bufferFormat::argb32: program = &argbShader_; break;
@@ -153,6 +208,7 @@ bufferDataGL* glRenderer::initBuffer(bufferRes& buff)
     {
         //format
         unsigned int format = wl_shm_buffer_get_format(shm);
+<<<<<<< HEAD
         bufferFormat buffFormat;
 
         switch(format)
@@ -160,6 +216,15 @@ bufferDataGL* glRenderer::initBuffer(bufferRes& buff)
             case WL_SHM_FORMAT_ARGB8888: buffFormat = bufferFormat::argb32; break;
             case WL_SHM_FORMAT_XRGB8888: buffFormat = bufferFormat::xrgb32; break;
             case WL_SHM_FORMAT_RGB888: buffFormat = bufferFormat::rgb24; break;
+=======
+        ny::bufferFormat buffFormat;
+
+        switch(format)
+        {
+            case WL_SHM_FORMAT_ARGB8888: buffFormat = ny::bufferFormat::argb32; break;
+            case WL_SHM_FORMAT_XRGB8888: buffFormat = ny::bufferFormat::xrgb32; break;
+            case WL_SHM_FORMAT_RGB888: buffFormat = ny::bufferFormat::rgb24; break;
+>>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
             default: return nullptr;
         }
 
@@ -198,8 +263,13 @@ bufferDataGL* glRenderer::initBuffer(bufferRes& buff)
 
         switch(eglFormat)
         {
+<<<<<<< HEAD
             case EGL_TEXTURE_RGBA: buffFormat = bufferFormat::argb32; break;
             case EGL_TEXTURE_RGB: buffFormat = bufferFormat::rgb24; break;
+=======
+            case EGL_TEXTURE_RGBA: ny::buffFormat = bufferFormat::argb32; break;
+            case EGL_TEXTURE_RGB: ny::buffFormat = bufferFormat::rgb24; break;
+>>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
             default: return nullptr;
         }
 
@@ -328,3 +398,4 @@ void glRenderer::endDraw(output& out)
     out.swapBuffers();
     glFinish();
 }
+*/

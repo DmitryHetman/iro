@@ -74,6 +74,10 @@ bool operator==(const resource& r1, const resource& r2);
 
 
 /////
+<<<<<<< HEAD
+=======
+//todo: make copyable with valid operators/constructors
+>>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
 template<typename T> class resourceRef : public nonCopyable /*: std::enable_if<std::is_base_of<resource, T>::type>*/
 {
 protected:

@@ -1,15 +1,23 @@
 #include <iro/backend/renderer.hpp>
+<<<<<<< HEAD
 #include <iro/compositor/buffer.hpp>
+=======
+#include <iro/compositor/surface.hpp>
+#include <iro/backend/backend.hpp>
+>>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
 
 /////////////////////////////////////////
 renderer::renderer()
 {
+    iroBackend()->onOutputCreated(memberCallback(&renderer::initOutput, this));
+    iroBackend()->onOutputDestroyed(memberCallback(&renderer::uninitOutput, this));
 }
 
 renderer::~renderer()
 {
 }
 
+<<<<<<< HEAD
 void renderer::setBufferSize(bufferRes& buff, vec2ui size) const
 {
     buff.size_ = size;
@@ -28,3 +36,23 @@ bufferData* renderer::getBufferData(bufferRes& buff) const
 }
 
 
+=======
+void renderer::setOutputData(output& o, renderData* data) const
+{
+    o.renderData_ = data;
+}
+void renderer::setSurfaceData(surfaceRes& surf, renderData* data) const
+{
+    surf.renderData_ = data;
+}
+
+renderData* renderer::getOutputData(output& o) const
+{
+    return o.renderData_;
+}
+renderData* renderer::getSurfaceData(surfaceRes& surf) const
+{
+    return surf.renderData_;
+}
+
+>>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527

@@ -20,7 +20,7 @@ int main(int argc, const char** argv)
 
         unsigned char ret = parser.parse(argc, argv);
         if(ret & argParser::helpCalled || ret & argParser::malformedToken)
-            return -1;
+            return (int) exitReason::passedArguments;
     }
 
     //init
@@ -28,12 +28,16 @@ int main(int argc, const char** argv)
     if(!ori.init(settings))
     {
         std::cout << "failed to init iro" << std::endl;
-        return -2;
+        return (int) exitReadson::initFailed;
     }
 
     //run
+<<<<<<< HEAD
     int ret = ori.run();
     std::cout << "exiting" << std::endl;
 
     return ret;
+=======
+    return (int) ori.run();
+>>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
 }

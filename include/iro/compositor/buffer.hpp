@@ -5,6 +5,7 @@
 
 #include <nyutil/nonCopyable.hpp>
 #include <nyutil/vec.hpp>
+<<<<<<< HEAD
 
 #include <wayland-server-core.h>
 
@@ -36,11 +37,26 @@ class bufferResPOD
 public:
     wl_listener destroyListener;
     bufferRes* buffer;
+=======
+#include <ny/surface.hpp>
+
+#include <wayland-server-core.h>
+
+bufferRes& bufferForResource(wl_resource& res);
+
+//for wl_container_of
+class bufferResPOD
+{
+public:
+    wl_listener destroyListener;
+    bufferRes* buffer;
+>>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
 };
 
 ///////////////////////////////////////////////
 class bufferRes : public resource
 {
+<<<<<<< HEAD
 
 friend class renderer;
 
@@ -51,11 +67,21 @@ protected:
     vec2ui size_;
 
     bufferData* data_ = nullptr;
+=======
+
+friend class renderer;
+
+protected:
+    bufferResPOD pod_;
+    ny::bufferFormat format_ = ny::bufferFormat::unknown;
+    vec2ui size_;
+>>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
 
 public:
     bufferRes(wl_resource& res);
     virtual ~bufferRes();
 
+<<<<<<< HEAD
     bufferFormat getFormat() const { return format_; }
     vec2ui getSize() const { return size_; }
 
@@ -64,11 +90,18 @@ public:
         if(data_) delete data_;
         data_ = nullptr;
     }
+=======
+    ny::bufferFormat getFormat() const { return format_; }
+    vec2ui getSize() const { return size_; }
+>>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
 
     //res
-    //virtual void destroy() override;
     virtual resourceType getType() const override { return resourceType::buffer; }
 };
 
+<<<<<<< HEAD
 bufferRes* bufferForResource(wl_resource& res); //gets the bufferRes for the given resource; if non-existent creates it
+=======
+
+>>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
 

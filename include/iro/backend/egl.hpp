@@ -28,7 +28,7 @@ public:
     EGLContext getContext() const { return context_; }
     EGLConfig getConfig() const { return config_; }
 
-    bool makeCurrent(output& out);
+    bool makeCurrent(EGLSurface surf);
     bool makeNotCurrent();
     bool isCurrent();
 

@@ -3,16 +3,16 @@
 #include <iro/include.hpp>
 
 #include <nyutil/callback.hpp>
+#include <nyutil/nonCopyable.hpp>
 
 #include <dbus/dbus.h>
-#include <security/pam_appl.h>
-
+#include <libudev.h>
 #include <string>
 
 //device
 class device
 {
-friend class sessionManager;
+friend class deviceManager;
 
 protected:
     callback<void(const device&)> pauseCallback_;
@@ -32,13 +32,30 @@ public:
     connection& onResume(std::function<void()> fnc){ return resumeCallback_.add([=](const device&){fnc();}); }
 };
 
-//sessionHandler
-class sessionManager
-{
-friend void cbDevicePaused(DBusMessage*);
-friend void cbDeviceResumed(DBusMessage*);
 
+//sessionHandler
+class sessionManager : public nonCopyable
+{
 protected:
+    //cbs
+    friend void ttySignalhandler(int);
+    friend DBusHandlerResult dbusFilter(DBusConnection*, DBusMessage*, void*);
+    friend int udevEventLoop(int, unsigned int, void*);
+    friend void cbDevicePaused(DBusMessage*);
+    friend void cbDeviceResumed(DBusMessage*);
+
+    void enteredTTY();
+    void leftTTY();
+    void devicePaused(DBusMessage* msg);
+    void deviceResumed(DBusMessage* msg);
+    int udevEvent();
+
+    //util setup
+    void logindInit();
+    void ttyInit();
+    void udevInit();
+
+    //session/tty
     std::string seat_;
     std::string session_;
     std::string sessionPath_;
@@ -46,43 +63,50 @@ protected:
     DBusConnection* dbus_ = nullptr;
     wl_event_source* dbusEventSource_ = nullptr;
 
-    pamSession* pam_ = nullptr;
+    unsigned int vtNumber_ = 0;
+    device* vt_ = nullptr;
+    bool vtActive_ = 0;
 
-    unsigned int vt_ = 0;
+    //devices
+    udev* udev_ = nullptr;
+    udev_monitor* udevMonitor_ = nullptr;
+    wl_event_source* udevEventSource_ = nullptr;
 
+    pid_t child_ = 0;
     std::vector<device*> devices_; //all taken devices
 
-    //cbs
-    void devicePaused(DBusMessage* msg);
-    void deviceResumed(DBusMessage* msg);
+    //callbacks
+    callback<void()> beforeEnter_;
+    callback<void()> beforeLeave_;
+    callback<void()> afterEnter_;
+    callback<void()> afterLeave_;
+    callback<void(bool, int)> deviceHotpluggedCallback_;
 
 public:
-    sessionManager(bool uselogind);
+    sessionManager();
     ~sessionManager();
 
-    DBusConnection* getDBusConnection() const { return dbus_; }
-    unsigned int getVTNumber() const { return vt_; }
+    void initDeviceFork(); //should be called as early as possible (fork)
+    void initSession(bool logind); //can only be called if compositor is initialized, not needed on x11
 
+    //session
+    DBusConnection* getDBusConnection() const { return dbus_; }
+
+    unsigned int getVTNumber() const { return vtNumber_; }
     std::string getSeat() const { return seat_; }
     std::string getSession() const { return session_; }
-    std::string getSessionPath() const { return sessionPath_; }
+
+    //devices
+    udev* getUDev() const { return udev_; }
 
     device* takeDevice(const std::string& path);
     void releaseDevice(device& dev);
     void releaseDevice(int devFD);
 
-    bool login(const std::string& user, const std::string password){ return 0; } //todo
-};
-
-class pamSession
-{
-protected:
-    pam_conv pamConv_;
-    pam_handle_t* pam_ = nullptr;
-
-public:
-    pamSession();
-    ~pamSession();
-
-
+    //callbacks
+    connection& beforeEnterTTY(std::function<void()> f){ return beforeEnter_.add(f); }
+    connection& beforeLeaveTTY(std::function<void()> f){ return beforeLeave_.add(f); }
+    connection& afterEnterTTY(std::function<void()> f){ return afterEnter_.add(f); }
+    connection& afterLeaveTTY(std::function<void()> f){ return afterLeave_.add(f); }
+    connection& onDeviceHotplug(std::function<void(bool added, int fd)> f){ return deviceHotpluggedCallback_.add(f); }
 };

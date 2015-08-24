@@ -44,7 +44,6 @@ class backend;
 class output;
 
 class renderer;
-class shader;
 class texProgram;
 
 class resource;
@@ -53,10 +52,21 @@ class shellSurfaceRes;
 class subsurfaceRes;
 class regionRes;
 
+template <typename> class resourceRef;
+typedef resourceRef<surfaceRes> surfaceRef;
+typedef resourceRef<bufferRes> bufferRef;
+typedef resourceRef<callbackRes> callbackRef;
+typedef resourceRef<pointerRes> pointerRef;
+
 class eglContext;
 class renderer;
 class glRenderer;
 
+<<<<<<< HEAD
+=======
+class renderData;
+
+>>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
 class bufferData;
 
 class x11Backend;
@@ -65,10 +75,9 @@ class x11Output;
 class kmsBackend;
 class kmsOutput;
 
-class ttyHandler;
 class inputHandler;
 class sessionManager;
-class pamSession;
+class deviceManager;
 
 class device;
 
@@ -82,23 +91,19 @@ class iroModule;
 class iroShellModule;
 class iroShellExtension;
 
-enum class backendType : unsigned char;
-enum class bufferFormat : unsigned char;
-enum class bufferType : unsigned char;
 enum class resourceType : unsigned char;
 
 iro* getIro();
 compositor* iroCompositor();
-sessionManager* iroSessionManager();
 subcompositor* getSubcompositor();
 backend* iroBackend();
+sessionManager* iroSessionManager();
 seat* iroSeat();
 pointer* iroPointer();
 keyboard* iroKeyboard();
-shell* iroShell();
 eglContext* iroEglContext();
-ttyHandler* iroTTYHandler();
-inputHandler* iroInputHandler();
+renderer* iroRenderer();
+iroShellModule* iroShel();
 
 wl_display* iroWlDisplay();
 wl_event_loop* iroWlEventLoop();

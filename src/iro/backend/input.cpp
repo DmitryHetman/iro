@@ -38,31 +38,23 @@ int inputEventLoop(int fd, unsigned int mask, void* data)
     return handler->inputEvent();
 }
 
-int udevEventLoop(int fd, unsigned int mask, void* data)
-{
-    inputHandler* handler = (inputHandler*) data;
-    return handler->udevEvent();
-}
-
 ///////////////////////////////////////////////
-inputHandler::inputHandler(sessionManager& handler)
+inputHandler::inputHandler()
 {
-    udev_ = udev_new();
-    udevMonitor_ = udev_monitor_new_from_netlink(udev_, "udev");
-    udev_monitor_filter_add_match_subsystem_devtype(udevMonitor_, "drm", nullptr);
-    udev_monitor_filter_add_match_subsystem_devtype(udevMonitor_, "input", nullptr);
-    udev_monitor_enable_receiving(udevMonitor_);
-    wl_event_loop_add_fd(iroWlEventLoop(), udev_monitor_get_fd(udevMonitor_), WL_EVENT_READABLE, udevEventLoop, this);
+    if(!iroSessionManager())
+    {
+        throw std::runtime_error("inputHandler::inputHandler: no session manager");
+        return;
+    }
 
-    input_ = libinput_udev_create_context(&libinputImplementation, &handler, udev_);
-    libinput_udev_assign_seat(input_, handler.getSeat().c_str());
+    input_ = libinput_udev_create_context(&libinputImplementation, iroSessionManager(), iroSessionManager()->getUDev());
+    libinput_udev_assign_seat(input_, iroSessionManager()->getSeat().c_str());
     inputEventSource_ = wl_event_loop_add_fd(iroWlEventLoop(), libinput_get_fd(input_), WL_EVENT_READABLE, inputEventLoop, this);
 }
 
 inputHandler::~inputHandler()
 {
     libinput_unref(input_);
-    udev_unref(udev_);
 }
 
 int inputHandler::inputEvent()
@@ -118,11 +110,5 @@ int inputHandler::inputEvent()
         libinput_event_destroy(event);
     }
 
-    return 0;
-}
-
-int inputHandler::udevEvent()
-{
-    std::cout << "udev event" << std::endl;
     return 0;
 }

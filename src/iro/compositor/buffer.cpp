@@ -13,6 +13,7 @@
 
 #include <iostream>
 
+<<<<<<< HEAD
 unsigned int getBufferFormatSize(bufferFormat format)
 {
     switch(format)
@@ -67,73 +68,46 @@ bufferRes::~bufferRes()
 
 /*
 bool bufferRes::fromShmBuffer(wl_shm_buffer* shmBuffer)
+=======
+////////////////////////////////////////////////////////////////////
+//listener callback function, when a buffer resource was destroyed
+void destroyBuffer(wl_listener* listener, void* data)
 {
-    unsigned int format = wl_shm_buffer_get_format(shmBuffer);
+    bufferResPOD* buffer;
+    buffer = wl_container_of(listener, buffer, destroyListener);
 
-    switch(format)
-    {
-        case WL_SHM_FORMAT_ARGB8888: format_ = bufferFormat::argb32; break;
-        case WL_SHM_FORMAT_XRGB8888: format_ = bufferFormat::rgb32; break;
-        default: return false;
-    }
-
-    unsigned int pitch = wl_shm_buffer_get_stride(shmBuffer) / 4;
-    GLint glFormat = GL_BGRA_EXT;
-    GLint glPixel = GL_UNSIGNED_BYTE;
-
-    glActiveTexture(GL_TEXTURE0);
-    glGenTextures(1, &texture_);
-    glBindTexture(GL_TEXTURE_2D, texture_);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, pitch);
-    glPixelStorei(GL_UNPACK_SKIP_PIXELS_EXT, 0);
-    glPixelStorei(GL_UNPACK_SKIP_ROWS_EXT, 0);
-
-    wl_shm_buffer_begin_access(shmBuffer);
-    void* data = wl_shm_buffer_get_data(shmBuffer);
-    glTexImage2D(GL_TEXTURE_2D, 0, glFormat, pitch, wl_shm_buffer_get_height(shmBuffer), 0, glFormat, glPixel, data);
-    wl_shm_buffer_end_access(shmBuffer);
-
-    return true;
+    delete buffer->buffer;
 }
 
-bool bufferRes::fromEglBuffer(wl_resource* buffer)
+////////////////////////////////////////////////////////////////////////////////////////
+bufferRes& bufferForResource(wl_resource& res)
+>>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
 {
-    std::cout << "from egl" << std::endl;
-
-    EGLint format;
-
-    eglContext* ctx = iroEglContext();
-    if(!eglContext::eglQueryWaylandBufferWL(ctx->getDisplay(), buffer, EGL_TEXTURE_FORMAT, &format))
+    wl_listener* listener = wl_resource_get_destroy_listener(&res, &destroyBuffer);
+    if(listener)
     {
-        //not a egl buffer
-        return false;
+        bufferResPOD* buffer;
+        buffer = wl_container_of(listener, buffer, destroyListener);
+        return *buffer->buffer;
     }
 
-    switch(format)
-    {
-        default:format_ = bufferFormat::argb32; break;
-    }
-
-    glActiveTexture(GL_TEXTURE0);
-    glGenTextures(1, &texture_);
-    glBindTexture(GL_TEXTURE_2D, texture_);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    EGLint attribs[] =
-    {
-        EGL_WAYLAND_PLANE_WL, 0,
-        EGL_NONE
-    };
-
-    image_ = iroEglContext()->eglCreateImageKHR(iroEglContext()->getDisplay(), iroEglContext()->getContext(), EGL_WAYLAND_BUFFER_WL, (EGLClientBuffer) wlResource_, attribs);
-
-    PFNGLEGLIMAGETARGETTEXTURE2DOESPROC func = (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC) eglGetProcAddress("glEGLImageTargetTexture2DOES");
-    func(GL_TEXTURE_2D, image_);
-
-    return true;
+    bufferRes* ret = new bufferRes(res);
+    return *ret;
 }
+<<<<<<< HEAD
 */
+=======
+
+////////////////////
+bufferRes::bufferRes(wl_resource& res) : resource(res)
+{
+    wl_resource_add_destroy_listener(&res, &pod_.destroyListener);
+    pod_.destroyListener.notify = &destroyBuffer;
+
+    pod_.buffer = this;
+}
+
+bufferRes::~bufferRes()
+{
+}
+>>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527

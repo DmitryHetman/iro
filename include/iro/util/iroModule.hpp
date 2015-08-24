@@ -20,17 +20,6 @@ public:
     virtual bool onLoad(iro& obj) = 0;
     virtual iroModuleType getType() const = 0;
 };
-
-//shellModule
-class iroShellModule : public iroModule
-{
-public:
-    virtual iroModuleType getType() const override final { return iroModuleType::shell; }
-
-    virtual void render(renderer* drawer) = 0;
-    virtual void renderSurface(surfaceRes& surf) = 0;
-};
-
 //shellExtension
 class iroShellExtension : public iroModule
 {
