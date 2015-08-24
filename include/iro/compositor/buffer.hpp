@@ -6,54 +6,69 @@
 #include <nyutil/nonCopyable.hpp>
 #include <nyutil/vec.hpp>
 
-/////////////////////////////////////////////
-enum class bufferType : unsigned char
-{
-    unknown = 0,
-
-    shm,
-    egl
-};
-
+#include <wayland-server-core.h>
 
 //////////////////////////////////////////////
 enum class bufferFormat : unsigned char
 {
     unknown = 0,
 
-    rgb32,
-    argb32
+    xrgb32,
+    argb32,
+    rgb24
+};
+
+unsigned int getBufferFormatSize(bufferFormat format);
+
+////////////////////////////////////////////////////////////////////////
+//renderer cann fill the buffer with sotred data (image, texture id),
+//they inherit their data classes from this base
+
+class bufferData
+{
+public:
+    virtual ~bufferData();
+};
+
+//pod wrapper for bufferRes, uimportant for wl_container_of
+class bufferResPOD
+{
+public:
+    wl_listener destroyListener;
+    bufferRes* buffer;
 };
 
 ///////////////////////////////////////////////
 class bufferRes : public resource
 {
+
+friend class renderer;
+
 protected:
+    bufferResPOD pod_;
+
     bufferFormat format_ = bufferFormat::unknown;
-    bufferType type_ = bufferType::unknown;
+    vec2ui size_;
 
-    unsigned int texture_ = 0; //GLTexture
-    void* image_ = nullptr; //EGLImageKHR
-
-    bool fromShmBuffer(wl_shm_buffer* buffer);
-    bool fromEglBuffer(wl_resource* buffer);
+    bufferData* data_ = nullptr;
 
 public:
     bufferRes(wl_resource& res);
     virtual ~bufferRes();
 
-    bool init();
-    bool initialized() const { return (texture_ != 0); }
-
     bufferFormat getFormat() const { return format_; }
-    bufferType getBufferType() const { return type_; }
+    vec2ui getSize() const { return size_; }
 
-    unsigned int getTexture() const { return texture_; }
-    void* getImage() const { return image_; }
-
-    vec2ui getSize() const;
+    void setReinit()
+    {
+        if(data_) delete data_;
+        data_ = nullptr;
+    }
 
     //res
     //virtual void destroy() override;
     virtual resourceType getType() const override { return resourceType::buffer; }
 };
+
+bufferRes* bufferForResource(wl_resource& res); //gets the bufferRes for the given resource; if non-existent creates it
+

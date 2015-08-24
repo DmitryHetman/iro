@@ -27,10 +27,13 @@ private:
 
 protected:
     std::vector<iroModule*> modules_;
+    std::vector<output*> outputs_;
 
-    compositor* compositor_ = nullptr;
-    sessionManager* sessionManager_ = nullptr;
-    backend* backend_ = nullptr;
+    compositor* compositor_ = nullptr; //deals with all the wayland stuff
+    sessionManager* sessionManager_ = nullptr; //deals with logind/dbus
+    backend* backend_ = nullptr; //deals with displaying the outputs, input
+    eglContext* egl_ = nullptr; //connects wayland and compositor
+    renderer* renderer_ = nullptr; //renders on the outputs
 
     iroSettings settings_;
 

@@ -48,7 +48,7 @@ seat::seat()
     pointer_->onButtonRelease([=](unsigned int button){
                                 if(mode_ != seatMode::normal)
                                 {
-                                    std::cout << ((pointerButtonEvent*)modeEvent_)->button << " " << button << std::endl;
+                                    std::cout << "release: " << button << " ev: " << ((pointerButtonEvent*)modeEvent_)->button << std::endl;
                                     if(modeEvent_ && modeEvent_->type == eventType::pointerButton && ((pointerButtonEvent*)modeEvent_)->button == button)
                                         cancelGrab();
                                 }
@@ -63,6 +63,8 @@ seat::~seat()
 
 void seat::moveShellSurface(unsigned int serial, seatRes* res, shellSurfaceRes* shellSurface)
 {
+    std::cout << "started move" << std::endl;
+
     event* ev = iroGetEvent(serial);
     if(!ev)
     {
@@ -77,6 +79,8 @@ void seat::moveShellSurface(unsigned int serial, seatRes* res, shellSurfaceRes* 
 
 void seat::resizeShellSurface(unsigned int serial, seatRes* res, shellSurfaceRes* shellSurface, unsigned int edges)
 {
+    std::cout << "started resize" << std::endl;
+
     event* ev = iroGetEvent(serial);
     if(!ev)
     {
@@ -92,11 +96,15 @@ void seat::resizeShellSurface(unsigned int serial, seatRes* res, shellSurfaceRes
 
 void seat::cancelGrab()
 {
+    std::cout << "cancelGrtab()" << std::endl;
+
     if(mode_ == seatMode::normal)
         iroWarning("seat::cancelGrab: ", "seat is already in normal mode");
 
     mode_ = seatMode::normal;
     modeEvent_ = nullptr;
+
+    std::cout << "modeeee0: " << (int) mode_ << std::endl;
 }
 
 //////////////////////////
@@ -115,7 +123,7 @@ void seatRes::createPointer(unsigned int id)
     if(!pointer_)
     {
         pointer_ = new pointerRes(*this, getWlClient(), id);
-        pointer_->onDestruct([=]{ pointer_ = nullptr; });
+        //pointer_->onDestruct([=]{ pointer_ = nullptr; });
     }
     else
     {
@@ -128,7 +136,7 @@ void seatRes::createKeyboard(unsigned int id)
     if(!keyboard_)
     {
         keyboard_ = new keyboardRes(*this, getWlClient(), id);
-        keyboard_->onDestruct([=]{ keyboard_ = nullptr; });
+        //keyboard_->onDestruct([=]{ keyboard_ = nullptr; });
     }
     else
     {

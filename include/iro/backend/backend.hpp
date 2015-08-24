@@ -19,9 +19,6 @@ protected:
     std::vector<output*> outputs_;
 
     wl_event_source* wlEventSource_ = nullptr;
-    eglContext* eglContext_ = nullptr;
-
-    renderer* renderer_ = nullptr;
 
 public:
     backend();
@@ -30,8 +27,6 @@ public:
     std::vector<output*> getOutputs() const { return outputs_; }
     wl_event_source* getWlEventSource() const { return wlEventSource_; }
 
-    virtual eglContext* getEglContext() const { return eglContext_; }
-    virtual renderer* getRenderer() const { return renderer_; }
-
     virtual backendType getType() const = 0;
+    virtual void* getEGLDisplay() const = 0;
 };

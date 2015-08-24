@@ -31,8 +31,8 @@ resource::~resource()
 {
     iroLog("destructing resource ",this, " with id ", getID()," of wl_client ", &getWlClient());
 
-    getClient().removeResource(*this);
-    destructionCallback_();
+    if(iroCompositor()->registeredClient(getWlClient())) getClient().removeResource(*this);
+    destructionCallback_(*this);
 }
 
 void resource::destroy()

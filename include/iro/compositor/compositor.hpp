@@ -35,6 +35,7 @@ public:
 
     unsigned int getNumberClients() const { return clients_.size(); }
     client& getClient(wl_client& wlc); //getOrCreate -> always returns a valid client, reference
+    bool registeredClient(wl_client& wlc);
     void unregisterClient(client& c);
 
     wl_display* getWlDisplay() const { return wlDisplay_; }

@@ -32,5 +32,8 @@ int main(int argc, const char** argv)
     }
 
     //run
-    return ori.run();
+    int ret = ori.run();
+    std::cout << "exiting" << std::endl;
+
+    return ret;
 }

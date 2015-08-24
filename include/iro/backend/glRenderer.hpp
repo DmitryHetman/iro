@@ -5,6 +5,8 @@
 #include <iro/backend/renderer.hpp>
 #include <iro/util/shader.hpp>
 
+class bufferDataGL;
+
 class glRenderer : public renderer
 {
 protected:
@@ -13,7 +15,8 @@ protected:
 
     unsigned int defaultCursorTex_ = 0;
 
-    void drawTex(rect2f geometry, unsigned int texture, bufferFormat format);
+    bool drawTex(rect2f geometry, unsigned int texture, bufferFormat format);
+    bufferDataGL* initBuffer(bufferRes& buff);
 
 public:
     glRenderer(eglContext& ctx);

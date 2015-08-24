@@ -13,15 +13,59 @@
 
 #include <iostream>
 
+unsigned int getBufferFormatSize(bufferFormat format)
+{
+    switch(format)
+    {
+        case bufferFormat::xrgb32: case bufferFormat::argb32: return 4;
+        case bufferFormat::rgb24: return 3;
+        default: return 0;
+    }
+}
+
+bufferData::~bufferData()
+{
+}
+
+////////////////////////////////////////////////////////////////////
+//listener callback function, when a buffer resource was destroyed
+void destroyBuffer(wl_listener* listener, void* data)
+{
+    bufferResPOD* buffer;
+    buffer = wl_container_of(listener, buffer, destroyListener);
+
+    delete buffer->buffer;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+bufferRes* bufferForResource(wl_resource& res)
+{
+    wl_listener* listener = wl_resource_get_destroy_listener(&res, &destroyBuffer);
+    if(listener)
+    {
+        bufferResPOD* buffer;
+        buffer = wl_container_of(listener, buffer, destroyListener);
+        return buffer->buffer;
+    }
+
+    return new bufferRes(res);
+}
+
+////////////////////
 bufferRes::bufferRes(wl_resource& res) : resource(res)
 {
+    wl_resource_add_destroy_listener(&res, &pod_.destroyListener);
+    pod_.destroyListener.notify = &destroyBuffer;
+
+    pod_.buffer = this;
 }
 
 bufferRes::~bufferRes()
 {
-    if(texture_) glDeleteTextures(1, &texture_);
+    std::cout << "deleted buffer " << this << std::endl;
 }
 
+/*
 bool bufferRes::fromShmBuffer(wl_shm_buffer* shmBuffer)
 {
     unsigned int format = wl_shm_buffer_get_format(shmBuffer);
@@ -92,47 +136,4 @@ bool bufferRes::fromEglBuffer(wl_resource* buffer)
 
     return true;
 }
-
-bool bufferRes::init()
-{
-    if(!wlResource_)
-        return 0;
-
-    if(initialized())
-        return 1;
-
-    wl_shm_buffer* shmBuffer = wl_shm_buffer_get(wlResource_);
-    if(shmBuffer)
-    {
-        type_ = bufferType::shm;
-        return fromShmBuffer(shmBuffer);
-    }
-    else
-    {
-        type_ = bufferType::egl;
-        return fromEglBuffer(wlResource_);
-    }
-}
-
-vec2ui bufferRes::getSize() const
-{
-    vec2ui ret;
-    if(type_ == bufferType::shm)
-    {
-        wl_shm_buffer* shmBuffer = wl_shm_buffer_get(wlResource_);
-        ret.x = wl_shm_buffer_get_width(shmBuffer);
-        ret.y = wl_shm_buffer_get_height(shmBuffer);
-    }
-    else if(type_ == bufferType::egl)
-    {
-        int w, h;
-        iroEglContext()->eglQueryWaylandBufferWL(iroEglContext()->getDisplay(), wlResource_, EGL_WIDTH, &w);
-        iroEglContext()->eglQueryWaylandBufferWL(iroEglContext()->getDisplay(), wlResource_, EGL_HEIGHT, &h);
-        ret.x = w;
-        ret.y = h;
-    }
-
-    iroLog("bufferSize: ", ret);
-    return ret;
-}
-
+*/

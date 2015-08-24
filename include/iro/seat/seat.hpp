@@ -6,10 +6,10 @@
 ////////////////////////////////
 enum class seatMode : unsigned char
 {
-    normal,
-    resize,
-    move,
-    dnd
+    normal = 1,
+    resize = 2,
+    move = 3,
+    dnd = 4
 };
 
 class seat

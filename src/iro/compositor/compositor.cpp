@@ -175,6 +175,14 @@ void compositor::unregisterClient(client& c)
     }
 }
 
+bool compositor::registeredClient(wl_client& wlc)
+{
+    auto it = clients_.find(&wlc);
+
+    if(it == clients_.end()) return 0;
+    else return 1;
+}
+
 event* compositor::getEvent(unsigned int serial) const
 {
     auto it = sentEvents_.find(serial);

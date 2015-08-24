@@ -7,6 +7,12 @@
 
 class renderer : public nonCopyable
 {
+protected:
+    void setBufferSize(bufferRes& buff, vec2ui size) const;
+    void setBufferData(bufferRes& buff, bufferData* data) const;
+    void setBufferFormat(bufferRes& buff, bufferFormat format) const;
+    bufferData* getBufferData(bufferRes& buff) const;
+
 public:
     renderer();
     virtual ~renderer();

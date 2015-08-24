@@ -57,6 +57,8 @@ class eglContext;
 class renderer;
 class glRenderer;
 
+class bufferData;
+
 class x11Backend;
 class x11Output;
 

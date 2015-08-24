@@ -9,6 +9,7 @@
 #include <iro/backend/backend.hpp>
 #include <iro/seat/seat.hpp>
 #include <iro/seat/pointer.hpp>
+#include <iro/util/log.hpp>
 
 #include <wayland-server-protocol.h>
 
@@ -21,7 +22,7 @@ void surfaceAttach(wl_client* client, wl_resource* resource, wl_resource* wlbuff
 {
     surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
 
-    bufferRes* buff = new bufferRes(*wlbuffer);
+    bufferRes* buff = bufferForResource(*wlbuffer); //gets or created bufferRes for this buffer wl_resource
     surf->attach(*buff, vec2i(x,y));
 }
 void surfaceDamage(wl_client* client, wl_resource* resource, int x, int y, int width, int height)
@@ -83,14 +84,14 @@ surfaceRes::surfaceRes(wl_client& client, unsigned int id) : resource(client, id
 {
     //todo
     mapper_ = iroBackend()->getOutputs()[0];
+
+    pending_ = new surfaceState;
+    commited_ = new surfaceState;
 }
 
 surfaceRes::~surfaceRes()
 {
     unsetRole();
-
-    if(commited_.attached) commited_.attached->destroy();
-    if(pending_.attached) pending_.attached->destroy();
 }
 
 void surfaceRes::setShellSurface(unsigned int id)
@@ -183,29 +184,27 @@ void surfaceRes::frameDone()
 
 void surfaceRes::commit()
 {
-    surfaceState old = commited_;
+    delete commited_;
 
     commited_ = pending_;
-    pending_ = surfaceState();
+    pending_ = new surfaceState();
 
     if(role_ != surfaceRole::none && role_ != surfaceRole::cursor)
     {
-        if(commited_.attached && !old.attached)
+        if(commited_->attached.get() && !pending_->attached.get())
         {
-           mapper_->mapSurface(this);
+            mapper_->mapSurface(this);
         }
-        else if(!commited_.attached && old.attached)
+        else if(!commited_->attached.get() && pending_->attached.get())
         {
             mapper_->unmapSurface(this);
         }
-        else if(commited_.attached && old.attached)
+        else if(commited_->attached.get() && pending_->attached.get())
         {
             mapper_->refresh();
         }
     }
 
-    if(old.attached)
-        old.attached->destroy();
 }
 
 vec2i surfaceRes::getPosition() const
@@ -220,20 +219,17 @@ vec2i surfaceRes::getPosition() const
 
 rect2i surfaceRes::getExtents() const
 {
-    return rect2i(getPosition(), (commited_.attached) ? commited_.attached->getSize() * commited_.scale : vec2ui(0,0));
+    return rect2i(getPosition(), (commited_->attached.get()) ? commited_->attached.get()->getSize() * commited_->scale : vec2ui(0,0));
 }
 
 void surfaceRes::attach(bufferRes& buff, vec2i pos)
 {
-    std::cout << "attached buffer" << std::endl;
+    iroLog("attached buffer");
 
-    if(pending_.attached)
-    {
-        delete pending_.attached;
-    }
+    //buff.setReinit();
 
-    pending_.attached = &buff;
-    pending_.offset = pos;
+    pending_->attached.set(&buff);
+    pending_->offset = pos;
 }
 
 

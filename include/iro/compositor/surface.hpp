@@ -2,6 +2,7 @@
 
 #include <iro/include.hpp>
 #include <iro/compositor/resource.hpp>
+#include <iro/compositor/buffer.hpp>
 
 #include <nyutil/vec.hpp>
 #include <nyutil/region.hpp>
@@ -16,7 +17,8 @@ struct surfaceState
 
     rect2i damage = rect2i(0, 0, 0, 0);
     vec2i offset = vec2i(0, 0);
-    bufferRes* attached = nullptr;
+
+    resourceRef<bufferRes> attached;
 
     int scale = 1;
     unsigned int transform = 0;
@@ -30,19 +32,21 @@ enum class surfaceRole : unsigned char
 
     shell,
     sub,
-    cursor
+    cursor,
+    dnd
 };
 
 //class///////////////////////////////////////////////////
 class surfaceRes : public resource
 {
 protected:
-    surfaceState commited_;
-    surfaceState pending_;
+    surfaceState* commited_;
+    surfaceState* pending_;
 
     surfaceRole role_ = surfaceRole::none;
 
-    output* mapper_ = nullptr;
+    std::vector<output*> outputs_; //all outputs this surface is mapped on
+    void* renderData_ = nullptr; //cache data from the renderer
 
     union
     {
@@ -58,9 +62,9 @@ public:
     surfaceRes(wl_client& client, unsigned int id);
     ~surfaceRes();
 
-    const surfaceState& getCommited() const { return commited_; }
-    surfaceState& getPending() { return pending_; }
-    const surfaceState& getPending() const { return pending_; }
+    const surfaceState& getCommited() const { return *commited_; }
+    surfaceState& getPending() { return *pending_; }
+    const surfaceState& getPending() const { return *pending_; }
 
     void registerFrameCallback(unsigned int id);
     void frameDone();

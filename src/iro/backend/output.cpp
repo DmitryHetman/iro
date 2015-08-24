@@ -92,7 +92,7 @@ void output::render()
         return;
     }
 
-    timer t;
+    //timer t;
 
     machine->beginDraw(*this);
 
@@ -108,7 +108,7 @@ void output::render()
 
     machine->endDraw(*this);
 
-    iroLog("output::render: frametime ", t.getElapsedTime().asMilliseconds()," ms");
+    //iroLog("output::render: frametime ", t.getElapsedTime().asMilliseconds()," ms");
     for(auto* surf : mappedSurfaces_) surf->frameDone();
 }
 

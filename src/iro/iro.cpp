@@ -132,6 +132,8 @@ void iro::setupBackend(bool onX11)
     {
         backend_ = new kmsBackend();
     }
+
+    egl_ = new eglContext(backend_->getEglDisplay());
 }
 
 void iro::loadModules(bool loginShell)

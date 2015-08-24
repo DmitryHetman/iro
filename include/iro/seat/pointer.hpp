@@ -2,6 +2,7 @@
 
 #include <iro/include.hpp>
 #include <iro/compositor/resource.hpp>
+#include <iro/compositor/surface.hpp>
 
 #include <nyutil/nonCopyable.hpp>
 #include <nyutil/vec.hpp>
@@ -17,11 +18,11 @@ protected:
     seat& seat_;
 
     //grab_ contains the pointerRes for the over_ surface
-    surfaceRes* over_ = nullptr;
+    resourceRef<surfaceRes> over_;
     vec2i position_;
 
     //if this is == nullptr, the default cursor will be used
-    surfaceRes* cursor_ = nullptr;
+    resourceRef<surfaceRes> cursor_;
 
     callback<void(vec2i pos)> moveCallback_;
     callback<void(unsigned int button)> buttonPressCallback_;
@@ -31,7 +32,7 @@ protected:
     callback<void(surfaceRes*, surfaceRes*)> focusCallback_;
 
     //helper func for sendMove
-    void setActive(surfaceRes* res);
+    void changeActiveCB(surfaceRes* oldOne, surfaceRes* newOne);
 
 public:
     void sendMove(int x, int y);
@@ -41,14 +42,14 @@ public:
     void sendButtonRelease(unsigned int button);
     void sendAxis(unsigned int axis, double value);
 
-    surfaceRes* getOver() const { return over_; }
+    surfaceRes* getOver() const { return over_.get(); }
     pointerRes* getActiveRes() const;
 
     seat& getSeat() const { return seat_; }
 
     void setCursor(surfaceRes& surf);
     void resetCursor();
-    surfaceRes* getCursor() const { return cursor_; }
+    surfaceRes* getCursor() const { return cursor_.get(); }
 
     vec2i getPosition() const { return position_; }
     vec2i getPositionWl() const;
