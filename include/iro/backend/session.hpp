@@ -12,7 +12,7 @@
 //device
 class device
 {
-friend class deviceManager;
+friend class sessionManager;
 
 protected:
     callback<void(const device&)> pauseCallback_;
@@ -25,11 +25,11 @@ public:
     int fd;
     bool active;
 
-    connection& onPause(std::function<void(const device&)> fnc){ return pauseCallback_.add(fnc); }
-    connection& onResume(std::function<void(const device&)> fnc){ return resumeCallback_.add(fnc); }
+    std::unique_ptr<connection> onPause(std::function<void(const device&)> fnc){ return pauseCallback_.add(fnc); }
+    std::unique_ptr<connection> onResume(std::function<void(const device&)> fnc){ return resumeCallback_.add(fnc); }
 
-    connection& onPause(std::function<void()> fnc){ return pauseCallback_.add([=](const device&){fnc();}); }
-    connection& onResume(std::function<void()> fnc){ return resumeCallback_.add([=](const device&){fnc();}); }
+    std::unique_ptr<connection> onPause(std::function<void()> fnc){ return pauseCallback_.add([=](const device&){fnc();}); }
+    std::unique_ptr<connection> onResume(std::function<void()> fnc){ return resumeCallback_.add([=](const device&){fnc();}); }
 };
 
 
@@ -63,7 +63,9 @@ protected:
     DBusConnection* dbus_ = nullptr;
     wl_event_source* dbusEventSource_ = nullptr;
 
-    unsigned int vtNumber_ = 0;
+    unsigned int originalVT_ = 0;
+    unsigned int usedVT_ = 0;
+
     device* vt_ = nullptr;
     bool vtActive_ = 0;
 
@@ -92,9 +94,11 @@ public:
     //session
     DBusConnection* getDBusConnection() const { return dbus_; }
 
-    unsigned int getVTNumber() const { return vtNumber_; }
+    unsigned int getVTNumber() const { return usedVT_; }
     std::string getSeat() const { return seat_; }
     std::string getSession() const { return session_; }
+
+    bool active() const { return vtActive_; }
 
     //devices
     udev* getUDev() const { return udev_; }
@@ -104,9 +108,9 @@ public:
     void releaseDevice(int devFD);
 
     //callbacks
-    connection& beforeEnterTTY(std::function<void()> f){ return beforeEnter_.add(f); }
-    connection& beforeLeaveTTY(std::function<void()> f){ return beforeLeave_.add(f); }
-    connection& afterEnterTTY(std::function<void()> f){ return afterEnter_.add(f); }
-    connection& afterLeaveTTY(std::function<void()> f){ return afterLeave_.add(f); }
-    connection& onDeviceHotplug(std::function<void(bool added, int fd)> f){ return deviceHotpluggedCallback_.add(f); }
+    std::unique_ptr<connection> beforeEnterTTY(std::function<void()> f){ return beforeEnter_.add(f); }
+    std::unique_ptr<connection> beforeLeaveTTY(std::function<void()> f){ return beforeLeave_.add(f); }
+    std::unique_ptr<connection> afterEnterTTY(std::function<void()> f){ return afterEnter_.add(f); }
+    std::unique_ptr<connection> afterLeaveTTY(std::function<void()> f){ return afterLeave_.add(f); }
+    std::unique_ptr<connection> onDeviceHotplug(std::function<void(bool added, int fd)> f){ return deviceHotpluggedCallback_.add(f); }
 };

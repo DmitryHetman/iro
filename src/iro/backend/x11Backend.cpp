@@ -58,9 +58,6 @@ x11Backend::x11Backend()
 
     xScreen_ = xcb_setup_roots_iterator(xcb_get_setup(xConnection_)).data;
 
-    //egl
-    eglContext_ = new eglContext(xDisplay_);
-
     //atoms
     xcb_intern_atom_reply_t* reply;
 
@@ -80,14 +77,14 @@ x11Backend::x11Backend()
     }
 
     //event source
-    wlEventSource_ =  wl_event_loop_add_fd(iroWlEventLoop(), xcb_get_file_descriptor(xConnection_), WL_EVENT_READABLE, x11EventLoop, this);
-    if(!wlEventSource_)
+    inputEventSource_ =  wl_event_loop_add_fd(iroWlEventLoop(), xcb_get_file_descriptor(xConnection_), WL_EVENT_READABLE, x11EventLoop, this);
+    if(!inputEventSource_)
     {
         throw std::runtime_error("could not create wayland event source");
         return;
     }
 
-    wl_event_source_check(wlEventSource_);
+    wl_event_source_check(inputEventSource_);
 
     //outputs
     unsigned int numOutputs = 1;
@@ -98,14 +95,11 @@ x11Backend::x11Backend()
     }
 
     xcb_flush(xConnection_);
-
-    renderer_ = new glRenderer(*eglContext_);
 }
 
 x11Backend::~x11Backend()
 {
-    if(wlEventSource_)wl_event_source_remove(wlEventSource_);
-    if(eglContext_) delete eglContext_;
+    if(inputEventSource_)wl_event_source_remove(inputEventSource_);
     if(xDisplay_) XCloseDisplay(xDisplay_);
 }
 
@@ -127,7 +121,7 @@ int x11Backend::eventLoop(int fd, unsigned int mask)
                     iroWarning("invalid xcb window");
                     break;
                 }
-                outputs_[id]->refresh();
+                outputs_[id]->scheduleRepaint();
                 break;
             }
             case XCB_CLIENT_MESSAGE:
@@ -246,16 +240,10 @@ int x11EventLoop(int fd, unsigned int mask, void* data)
 /////////////////////////////
 x11Output::x11Output(const x11Backend& backend, unsigned int id) : output(id)
 {
-    vec2ui size(1400, 800);
+    size_ = vec2ui(1400, 800);
 
     xcb_connection_t* connection = backend.getXConnection();
     xcb_screen_t* screen = backend.getXScreen();
-
-    eglContext* ctx = backend.getEglContext();
-
-    const EGLint winAttribs[] = {
-        EGL_NONE
-    };
 
     unsigned int mask = XCB_CW_EVENT_MASK;
     unsigned int values = XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_KEY_PRESS |
@@ -263,7 +251,7 @@ x11Output::x11Output(const x11Backend& backend, unsigned int id) : output(id)
 
     xWindow_ = xcb_generate_id(connection);
 
-    xcb_create_window(connection, XCB_COPY_FROM_PARENT, xWindow_, screen->root, 0, 0, size.x, size.y ,10, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, mask, &values);
+    xcb_create_window(connection, XCB_COPY_FROM_PARENT, xWindow_, screen->root, 0, 0, size_.x, size_.y ,10, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, mask, &values);
     if(!xWindow_)
     {
         throw std::runtime_error("could not create xcb window");
@@ -275,11 +263,11 @@ x11Output::x11Output(const x11Backend& backend, unsigned int id) : output(id)
     //cant be resized
     xcb_size_hints_t sizeHints;
 
-    sizeHints.max_width = size.x;
-    sizeHints.max_height = size.y;
+    sizeHints.max_width = size_.x;
+    sizeHints.max_height = size_.y;
 
-    sizeHints.min_width = size.x;
-    sizeHints.min_height = size.y;
+    sizeHints.min_width = size_.x;
+    sizeHints.min_height = size_.y;
 
     sizeHints.flags = XCB_ICCCM_SIZE_HINT_P_MIN_SIZE | XCB_ICCCM_SIZE_HINT_P_MAX_SIZE;
 
@@ -296,28 +284,11 @@ x11Output::x11Output(const x11Backend& backend, unsigned int id) : output(id)
 
     xcb_change_window_attributes(connection, xWindow_, XCB_CW_CURSOR, &hiddenCursor);
 
-    //egl
-    eglWindow_ = eglCreateWindowSurface(ctx->getDisplay(), ctx->getConfig(), xWindow_, winAttribs);
-    if(!eglWindow_)
-    {
-        throw std::runtime_error("could not create egl surface");
-        return;
-    }
-
-    ctx->makeCurrent(*this);
     xcb_map_window(connection, xWindow_);
 }
 
 x11Output::~x11Output()
 {
     xcb_destroy_window(getXBackend()->getXConnection(), xWindow_);
-}
-
-vec2ui x11Output::getSize() const
-{
-    vec2ui ret;
-    ret.x = 800;
-    ret.y = 500;
-    return ret;
 }
 

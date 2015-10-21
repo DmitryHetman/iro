@@ -101,33 +101,12 @@ void output::render()
     }
 
     //timer t;
-<<<<<<< HEAD
-
-    machine->beginDraw(*this);
-
-    iroShell()->getModule()->render(machine);
-    for(auto* surf : mappedSurfaces_)
-    {
-        if(!iroBackend()->getRenderer()->render(*surf))
-            iroWarning("output::render: failed to render mapped surface ", surf);
-    }
-
-    if(!iroBackend()->getRenderer()->drawCursor(*iroSeat()->getPointer()))
-        iroWarning("output::render: failed to draw cursor");
-=======
->>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
 
     iroShell()->render(machine->getDrawContext(*this), mappedSurfaces_);
     machine->applyOutput(*this);
-
-    //iroLog("output::render: frametime ", t.getElapsedTime().asMilliseconds()," ms");
-<<<<<<< HEAD
-    for(auto* surf : mappedSurfaces_) surf->frameDone();
-=======
->>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
 }
 
-void output::refresh()
+void output::scheduleRepaint()
 {
     if(!repaintScheduled_)
     {
@@ -140,23 +119,23 @@ void output::refresh()
     repaintScheduled_ = 1;
 }
 
-void output::mapSurface(surfaceRes* surf)
+void output::mapSurface(surfaceRes& surf)
 {
-    mappedSurfaces_.push_back(surf);
-    refresh();
+    mappedSurfaces_.push_back(&surf);
+    scheduleRepaint();
 }
 
-void output::unmapSurface(surfaceRes* surf)
+void output::unmapSurface(surfaceRes& surf)
 {
     for(unsigned int i(0); i < mappedSurfaces_.size(); i++)
     {
-        if(mappedSurfaces_[i] == surf)
+        if(mappedSurfaces_[i] == &surf)
             mappedSurfaces_.erase(mappedSurfaces_.begin() + i);
     }
-    refresh();
+    scheduleRepaint();
 }
 
-surfaceRes* output::getSurfaceAt(vec2i pos)
+surfaceRes* output::getSurfaceAt(const vec2i& pos)
 {
     for(surfaceRes* res : mappedSurfaces_)
     {

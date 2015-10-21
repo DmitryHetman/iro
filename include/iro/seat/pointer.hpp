@@ -18,11 +18,12 @@ protected:
     seat& seat_;
 
     //grab_ contains the pointerRes for the over_ surface
-    resourceRef<surfaceRes> over_;
+    surfaceRef over_;
     vec2i position_;
 
     //if this is == nullptr, the default cursor will be used
-    resourceRef<surfaceRes> cursor_;
+    bool customCursor_ = 0; //cursor is used
+    surfaceRef cursor_;
 
     callback<void(vec2i pos)> moveCallback_;
     callback<void(unsigned int button)> buttonPressCallback_;
@@ -32,7 +33,7 @@ protected:
     callback<void(surfaceRes*, surfaceRes*)> focusCallback_;
 
     //helper func for sendMove
-    void changeActiveCB(surfaceRes* oldOne, surfaceRes* newOne);
+    void setOver(surfaceRes* newOne);
 
 public:
     void sendMove(int x, int y);
@@ -55,12 +56,12 @@ public:
     vec2i getPositionWl() const;
 
     //cbs
-    connection& onMove(std::function<void(vec2i)> func){ return moveCallback_.add(func); }
-    connection& onButtonPress(std::function<void(unsigned int button)> func){ return buttonPressCallback_.add(func); }
-    connection& onButtonRelease(std::function<void(unsigned int button)> func){ return buttonReleaseCallback_.add(func); }
-    connection& onAxis(std::function<void(unsigned int axis, double value)> func){ return axisCallback_.add(func); }
+    std::unique_ptr<connection> onMove(std::function<void(vec2i)> func){ return moveCallback_.add(func); }
+    std::unique_ptr<connection> onButtonPress(std::function<void(unsigned int button)> func){ return buttonPressCallback_.add(func); }
+    std::unique_ptr<connection> onButtonRelease(std::function<void(unsigned int button)> func){ return buttonReleaseCallback_.add(func); }
+    std::unique_ptr<connection> onAxis(std::function<void(unsigned int axis, double value)> func){ return axisCallback_.add(func); }
 
-    connection& onFocusChange(std::function<void(surfaceRes*, surfaceRes*)> func){ return focusCallback_.add(func); }
+    std::unique_ptr<connection> onFocusChange(std::function<void(surfaceRes*, surfaceRes*)> func){ return focusCallback_.add(func); }
 };
 ////////////////////////
 class pointerRes : public resource

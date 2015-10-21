@@ -31,8 +31,8 @@ public:
 	virtual void mask(const ny::rectangle& obj) override { dc_->mask(obj); }
 	virtual void mask(const ny::circle& obj) override { dc_->mask(obj); }
 
-	virtual void fill(const ny::brush& col) override { dc_->fill(col); }
-	virtual void outline(const ny::pen& col) override { dc_->outline(col); }
+	virtual void fillPreserve(const ny::brush& col) override { dc_->fillPreserve(col); }
+	virtual void strokePreserve(const ny::pen& col) override { dc_->strokePreserve(col); }
 
     virtual rect2f getClip() override { return dc_->getClip(); }
     virtual void clip(const rect2f& obj) override { dc_->clip(obj); }

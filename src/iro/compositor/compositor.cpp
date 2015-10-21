@@ -48,12 +48,6 @@ keyboard* iroKeyboard()
     return iroSeat()->getKeyboard();
 }
 
-shell* iroShell()
-{
-    if(!iroCompositor()) return nullptr;
-    return iroCompositor()->getShell();
-}
-
 wl_display* iroWlDisplay()
 {
     if(!iroCompositor()) return nullptr;
@@ -128,27 +122,21 @@ compositor::compositor()
 
     object = this;
 
-
-
-
     subcompositor_ = new subcompositor();
-    shell_ = new shell();
     seat_ = new seat();
 }
 
 compositor::~compositor()
 {
-    //if(wlDisplay_) wl_display_destroy(wlDisplay_);
-
     if(subcompositor_) delete subcompositor_;
-    if(shell_) delete shell_;
     if(seat_) delete seat_;
+
+    //if(wlDisplay_) wl_display_destroy(wlDisplay_);
 }
 
-int compositor::run()
+void compositor::run()
 {
     wl_display_run(wlDisplay_);
-    return 1;
 }
 
 wl_event_loop* compositor::getWlEventLoop() const

@@ -20,10 +20,9 @@ protected:
 
     device* drm_ = nullptr;
     gbm_device* gbmDevice_ = nullptr;
-    libinput* input_ = nullptr;
+    inputHandler* input_ = nullptr;
 
     wl_event_source* drmEventSource_ = nullptr;
-    wl_event_source* inputEventSource_ = nullptr;
 
     void onTTYEnter();
     void onTTYLeave();
@@ -35,9 +34,12 @@ public:
     kmsBackend();
     ~kmsBackend();
 
-    virtual unsigned int getType() const override { return backendType::kms; }
     gbm_device* getGBMDevice() const { return gbmDevice_; }
     int getDRMFD() const;
+
+    //backend
+    virtual void* getNativeDisplay() const override { return gbmDevice_; }
+    virtual unsigned int getType() const override { return backendType::kms; }
 };
 
 //output
@@ -67,11 +69,17 @@ protected:
     fb fbs_[2];
     unsigned char frontBuffer_ = 0;
 
+    bool crtcActive_ = 0;
+
     /////
     void releaseFB(fb& obj);
     void createFB(fb& obj);
 
     void resetCrtc();
+    void swapBuffers();
+
+    ////
+    virtual void render() override;
 
 public:
     kmsOutput(const kmsBackend& kms, drmModeConnector* connector, drmModeEncoder* encoder, unsigned int id);

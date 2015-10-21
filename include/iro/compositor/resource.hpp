@@ -63,8 +63,8 @@ public:
     client& getClient() const;
 
     //resources can be custom destroyed [resources::destroy] or are automatically destroyed when their wl_resource object is destroyed -> wl_resource should be ALWAYS valid
-    connection& onDestruction(std::function<void()> func){ return destructionCallback_.add([=](resource&){func();}); }
-    connection& onDestruction(std::function<void(resource&)> func){ return destructionCallback_.add(func); }
+    std::unique_ptr<connection> onDestruction(std::function<void()> func){ return destructionCallback_.add([=](resource&){func();}); }
+    std::unique_ptr<connection> onDestruction(std::function<void(resource&)> func){ return destructionCallback_.add(func); }
 
     //restype
     virtual resourceType getType() const { return resourceType::unknown; };
@@ -74,17 +74,12 @@ bool operator==(const resource& r1, const resource& r2);
 
 
 /////
-<<<<<<< HEAD
-=======
 //todo: make copyable with valid operators/constructors
->>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
 template<typename T> class resourceRef : public nonCopyable /*: std::enable_if<std::is_base_of<resource, T>::type>*/
 {
 protected:
     T* resource_ = nullptr;
-    connection* resourceConnection_ = nullptr;
-
-    callback<void(T* oldOne, T* newOne)> changeCallback_;
+    std::unique_ptr<connection> resourceConnection_ = nullptr;
 
     void destroyCB()
     {
@@ -94,14 +89,15 @@ protected:
 
 public:
     resourceRef() = default;
-    resourceRef(T* res)
-    {
-        if(res) set(res);
-    }
+    resourceRef(T& res){ set(&res); }
+    resourceRef(T* res){ if(res) set(&res); }
     ~resourceRef()
     {
-        if(resourceConnection_ && resourceConnection_->connected()) resourceConnection_->destroy();
+        if(resourceConnection_) resourceConnection_->destroy();
     }
+
+    resourceRef(resourceRef&& other) noexcept : resource_(other.resource_), resourceConnection_(std::move(other.resourceConnection_)) { other.resourceConnection_.reset(); }
+    resourceRef<T>& operator=(resourceRef&& other) noexcept { resource_ = other.resource_; resourceConnection_ = std::move(other.resourceConnection_); other.resourceConnection_.reset(); return *this; }
 
     T* get() const { return resource_; }
     void set(T* value)
@@ -109,17 +105,14 @@ public:
         if(resource_)
         {
             resourceConnection_->destroy();
+            resourceConnection_.reset();
         }
 
         if(value)
         {
-            resourceConnection_ = &value->onDestruction(memberCallback(&resourceRef<T>::destroyCB, this)); //its ok if T ids unknown
+            resourceConnection_ = value->onDestruction(memberCallback(&resourceRef<T>::destroyCB, this)); //its ok if T ids unknown
         }
 
-        changeCallback_(resource_, value);
         resource_ = value;
     }
-
-    connection& onChange(std::function<void(T* oldOne, T* newOne)> func){ return changeCallback_.add(func); }
-    connection& onChange(std::function<void()> func){ return changeCallback_.add([=](T*, T*){ func(); }); }
 };

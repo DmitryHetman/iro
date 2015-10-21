@@ -10,9 +10,12 @@
 class inputHandler
 {
 protected:
-
+    libinput* input_ = nullptr;
+    wl_event_source* inputEventSource_ = nullptr;
 
 public:
     inputHandler();
     ~inputHandler();
+
+    int inputEvent();
 };

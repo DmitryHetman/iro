@@ -1,12 +1,16 @@
 #include <iro/util/iroModule.hpp>
 #include <iro/iro.hpp>
 
-//module
-bool iroModule::onLoad(moduleLoader& loader)
-{
-    iro* obj = dynamic_cast<iro*>(&loader);
-    if(!obj)
-        return 0;
+iroModule* iroModule::global_ = nullptr;
 
-    return onLoad(*obj);
+extern "C" iroModule* iro_moduleLoadFunc(iro& obj)
+{
+    if(iroModule::getGlobal())
+    {
+        if(iroModule::getGlobal()->onLoad(obj))
+            return iroModule::getGlobal();
+    }
+
+
+    return nullptr;
 }

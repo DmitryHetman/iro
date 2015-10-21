@@ -34,10 +34,10 @@ public:
     seat& getSeat() const { return seat_; }
 
     //cbs
-    connection& onKeyPress(std::function<void(unsigned int key)> func){ return keyPressCallback_.add(func); }
-    connection& onKeyRelease(std::function<void(unsigned int key)> func){ return keyReleaseCallback_.add(func); }
+    std::unique_ptr<connection> onKeyPress(std::function<void(unsigned int key)> func){ return keyPressCallback_.add(func); }
+    std::unique_ptr<connection> onKeyRelease(std::function<void(unsigned int key)> func){ return keyReleaseCallback_.add(func); }
 
-    connection& onFocus(std::function<void(surfaceRes* old, surfaceRes*)> func){ return focusCallback_.add(func); }
+    std::unique_ptr<connection> onFocus(std::function<void(surfaceRes* old, surfaceRes*)> func){ return focusCallback_.add(func); }
 };
 //////////////////////////////////////////
 class keyboardRes : public resource

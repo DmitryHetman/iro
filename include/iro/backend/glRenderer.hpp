@@ -8,23 +8,16 @@
 class surfaceDataGL;
 class outputDataGL;
 
-class bufferDataGL;
-
 class glRenderer : public renderer
 {
 protected:
     ny::shader argbShader_;
     ny::shader rgbShader_;
 
-<<<<<<< HEAD
-    unsigned int defaultCursorTex_ = 0;
-
-    bool drawTex(rect2f geometry, unsigned int texture, bufferFormat format);
-    bufferDataGL* initBuffer(bufferRes& buff);
-=======
     outputDataGL* getOutputData(output& o) const;
     surfaceDataGL* getSurfaceData(surfaceRes& surf) const;
->>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
+
+    bool initialized_ = 0;
 
 public:
     glRenderer();

@@ -19,29 +19,6 @@ std::vector<output*> outputsAt(int x, int y, int w, int h);
 std::vector<output*> outputsAt(vec2i pos, vec2i size);
 std::vector<output*> outputsAt(rect2i ext);
 
-<<<<<<< HEAD
-class output
-{
-protected:
-	unsigned int id_;
-	vec2ui size_;
-	vec2i position_;
-
-	bool repaintSchedules_ = 0;
-	bool repaintNeeded_ = 0;
-	wl_event_source* refreshTimer_ = nullptr;
-
-	wl_global* global_ = nullptr;
-
-	rendererOutputData rendererData_ = nullptr;
-
-public:
-	void scheduleRepaint();
-
-	rect2i getExtents() const;
-	vec2i getPosition() const;
-	vec2ui getSize() const;
-=======
 class output : public ny::surface
 {
 
@@ -57,16 +34,16 @@ protected:
 	wl_event_source* drawEventSource_ = nullptr;
 	timer lastRedraw_;
 
-	std::vector<surfaceRef> mappedSurfaces_;
+	std::vector<surfaceRes*> mappedSurfaces_; //no need for ref here, surfaces unmap theirself at destruction
 	wl_global* global_ = nullptr;
 	renderData* renderData_ = nullptr;
 
-	void render();
-
-	output(unsigned int id);
-	virtual ~output();
+	virtual void render();
 
 public:
+    output(unsigned int id);
+    virtual ~output();
+
 	void scheduleRepaint();
 
 	void mapSurface(surfaceRes& surf);
@@ -76,9 +53,10 @@ public:
 	vec2i getPosition() const;
 	virtual vec2ui getSize() const override; //ny::surface
 
+	surfaceRes* getSurfaceAt(const vec2i& pos);
+
 	virtual void* getNativeSurface() const = 0;
 	virtual void sendInformation(const outputRes& res) const = 0;
->>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
 };
 
 //////////////////

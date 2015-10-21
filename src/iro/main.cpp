@@ -28,16 +28,9 @@ int main(int argc, const char** argv)
     if(!ori.init(settings))
     {
         std::cout << "failed to init iro" << std::endl;
-        return (int) exitReadson::initFailed;
+        return (int) exitReason::initFailed;
     }
 
     //run
-<<<<<<< HEAD
-    int ret = ori.run();
-    std::cout << "exiting" << std::endl;
-
-    return ret;
-=======
     return (int) ori.run();
->>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
 }

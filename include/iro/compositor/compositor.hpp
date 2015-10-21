@@ -29,17 +29,12 @@ public:
 
     void run();
 
-    shell* getShell() const { return shell_; }
     seat* getSeat() const { return seat_; }
     subcompositor* getSubcompositor() const { return subcompositor_; }
 
     unsigned int getNumberClients() const { return clients_.size(); }
     client& getClient(wl_client& wlc); //getOrCreate -> always returns a valid client, reference
-<<<<<<< HEAD
-    bool registeredClient(wl_client& wlc);
-=======
     bool registeredClient(wl_client& wlc); //checks if client is registered
->>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
     void unregisterClient(client& c);
 
     wl_display* getWlDisplay() const { return wlDisplay_; }

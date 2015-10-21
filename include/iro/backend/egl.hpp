@@ -1,7 +1,7 @@
 #pragma once
 
 #include <iro/include.hpp>
-#include <nyutil/nonCopyable.hpp>
+#include <ny/gl/egl.hpp>
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
@@ -11,22 +11,17 @@
 
 struct gbm_device;
 
-class eglContext : public nonCopyable
+class eglContext : public ny::eglAppContext
 {
 protected:
-    EGLDisplay display_;
-    EGLContext context_;
-    EGLConfig config_;
-
+    EGLContext eglContext_; //just one context for all surfaces
     std::vector<std::string> extensions_;
 
 public:
     eglContext(void* display);
     virtual ~eglContext();
 
-    EGLDisplay getDisplay() const { return display_; }
-    EGLContext getContext() const { return context_; }
-    EGLConfig getConfig() const { return config_; }
+    EGLContext getContext() const { return eglContext_; }
 
     bool makeCurrent(EGLSurface surf);
     bool makeNotCurrent();

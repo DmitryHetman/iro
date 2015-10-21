@@ -10,7 +10,9 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <pwd.h>
+#include <linux/vt.h>
+#include <linux/kd.h>
+#include <sys/ioctl.h>
 
 #include <stdexcept>
 #include <iostream>
@@ -434,13 +436,15 @@ sessionManager::~sessionManager()
 
 void sessionManager::initDeviceFork()
 {
+    iroLog("sessionManager::initDeviceFork");
+
     child_ = fork();
     if(child_ < 0)
     {
         throw std::runtime_error("sessionManager::initDeviceFork: fork process failed");
         return;
     }
-    else if(child == 0)
+    else if(child_ == 0)
     {
         //child
         while(1); //child stays here
@@ -482,7 +486,7 @@ void sessionManager::logindInit()
     seat_ = seat;
     free(seat);
 
-    if(sd_session_get_vt(session_.c_str(), &vt_) < 0)
+    if(sd_session_get_vt(session_.c_str(), &originalVT_) < 0)
     {
         throw std::runtime_error("cant get vt number from systemd");
         return;
@@ -573,7 +577,6 @@ void sessionManager::logindInit()
 
 void sessionManager::ttyInit()
 {
-    /*
     const char* number = getenv("XDG_VTNR");
     if(!number)
     {
@@ -582,67 +585,65 @@ void sessionManager::ttyInit()
     }
 
     //tty0
-    int tty0FD = open("/dev/tty0", O_RDWR | O_CLOEXEC);
-    if(tty0FD < 0)
+    device* dev= takeDevice("/dev/tty0");
+    if(!dev)
     {
-        throw std::runtime_error("could not open tty0");
-        return;
+        iroLog("sessionManager::ttyInit: failed to open /dev/tty0 to get free vt");
+        usedVT_ = originalVT_;
+    }
+    else
+    {
+        if(ioctl(dev->fd, VT_OPENQRY, &usedVT_) != 0)
+        {
+            iroLog("sessionManager::ttyInit: no free vt found");
+            usedVT_ = originalVT_;
+        }
     }
 
-    if(ioctl(tty0FD, VT_OPENQRY, &number_) != 0)
-    {
-        throw std::runtime_error("no free tty found");
-        return;
-    }
-
-    close(tty0FD);
-    */
-
-    ////
-    number_ = handler.getVTNumber();
+    dev->release();
 
     //open own tty
-    std::string ttyString;
-    ttyString += "/dev/tty";
-    ttyString += std::to_string(number_);
+    std::string vtString = "/dev/tty" + std::to_string(usedVT_);
 
-    if((fd_ = open(ttyString.c_str(), O_RDWR | O_NOCTTY | O_CLOEXEC)) < 0)
+    vt_ = takeDevice(vtString.c_str());
+    if(!vt_)
     {
-        throw std::runtime_error("could not open " + ttyString);
+        throw std::runtime_error("sessionManager::ttyInit: could not open " + vtString);
         return;
     }
 
     //save current
+    //needed? todo
     vt_stat state;
-    if(ioctl(fd_, VT_GETSTATE, &state) == -1)
+    if(ioctl(vt_->fd, VT_GETSTATE, &state) == -1)
     {
-        throw std::runtime_error("could not get current tty");
+        throw std::runtime_error("sessionManager::ttyInit: could not get current vt");
         return;
     }
 
     //set it up
-    if(!activate())
+    if(ioctl(vt_->fd, VT_ACTIVATE, usedVT_) < 0 || ioctl(vt_->fd, VT_WAITACTIVE, usedVT_) < 0)
     {
-        throw std::runtime_error("Could not activate tty");
+        throw std::runtime_error("sessionManager::ttyInit: could not activate vt");
         return;
     }
 
-    if(ioctl(fd_, KDSETMODE, KD_GRAPHICS) == -1)
+    if(ioctl(vt_->fd, KDSETMODE, KD_GRAPHICS) == -1)
     {
-        throw std::runtime_error("Could not set tty to graphics mode");
+        throw std::runtime_error("sessionManager::ttyInit: could not set vt to graphics mode");
         return;
     }
 
-    focus_ = 1;
+    vtActive_ = 1;
 
     vt_mode mode;
     mode.mode = VT_PROCESS;
     mode.acqsig = SIGUSR1;
     mode.relsig = SIGUSR2;
 
-    if(ioctl(fd_, VT_SETMODE, &mode) == -1)
+    if(ioctl(vt_->fd, VT_SETMODE, &mode) == -1)
     {
-        throw std::runtime_error("Could not set vt_mode");
+        throw std::runtime_error("sessionManager::ttyInit: could not set vt_mode");
         return;
     }
 
@@ -654,14 +655,21 @@ void sessionManager::ttyInit()
     sigaction(SIGUSR2, &action, nullptr);
 }
 
-void sessionManager::udevEvent()
+void sessionManager::udevInit()
 {
     udev_ = udev_new();
     udevMonitor_ = udev_monitor_new_from_netlink(udev_, "udev");
+
     udev_monitor_filter_add_match_subsystem_devtype(udevMonitor_, "drm", nullptr);
     udev_monitor_filter_add_match_subsystem_devtype(udevMonitor_, "input", nullptr);
     udev_monitor_enable_receiving(udevMonitor_);
+
     wl_event_loop_add_fd(iroWlEventLoop(), udev_monitor_get_fd(udevMonitor_), WL_EVENT_READABLE, udevEventLoop, this);
+}
+
+int sessionManager::udevEvent()
+{
+    return 0;
 }
 
 device* sessionManager::takeDevice(const std::string& path)
@@ -704,7 +712,6 @@ device* sessionManager::takeDevice(const std::string& path)
             return nullptr;
         }
 
-        int fd;
         dbus_bool_t paused;
         if(!dbus_message_get_args(reply, nullptr, DBUS_TYPE_UNIX_FD, &fd, DBUS_TYPE_BOOLEAN, &paused, DBUS_TYPE_INVALID))
         {
@@ -727,8 +734,7 @@ device* sessionManager::takeDevice(const std::string& path)
         dbus_message_unref(reply);
         dbus_message_unref(msg);
 
-        ret->active = !paused;
-        ret->fd = fd;
+        active = !paused;
     }
     else
     {
@@ -890,17 +896,13 @@ void sessionManager::deviceResumed(DBusMessage* msg)
 void sessionManager::enteredTTY()
 {
     beforeEnter_();
-
-    ioctl(fd_, VT_RELDISP, VT_ACKACQ);
-    focus_ = 1;
-
-
+    ioctl(vt_->fd, VT_RELDISP, VT_ACKACQ);
+    vtActive_ = 1;
     afterEnter_();
 
 
     struct sigaction action;
     action.sa_handler = ttySignalhandler;
-
     sigaction(SIGUSR1, &action, nullptr);
     sigaction(SIGUSR2, &action, nullptr);
 }
@@ -908,16 +910,13 @@ void sessionManager::enteredTTY()
 void sessionManager::leftTTY()
 {
     beforeLeave_();
-
-    ioctl(fd_, VT_RELDISP, 1); //allowed
-    focus_ = 0;
-
+    ioctl(vt_->fd, VT_RELDISP, 1); //allowed
+    vtActive_ = 0;
     afterLeave_();
 
 
     struct sigaction action;
     action.sa_handler = ttySignalhandler;
-
     sigaction(SIGUSR1, &action, nullptr);
     sigaction(SIGUSR2, &action, nullptr);
 }

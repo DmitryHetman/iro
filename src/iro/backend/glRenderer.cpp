@@ -17,15 +17,6 @@
 #include <wayland-server-core.h>
 #include <cassert>
 
-<<<<<<< HEAD
-class bufferDataGL : public bufferData
-{
-public:
-    virtual ~bufferDataGL()
-    {
-        //if(texture_) glDeleteTextures(1, &texture_);
-        //if(eglImage_) iroEglContext()->eglDestroyImageKHR(iroEglContext()->getDisplay(), eglImage_);
-=======
 class surfaceDataGL : public renderData
 {
 public:
@@ -33,14 +24,11 @@ public:
     {
         if(texture_) glDeleteTextures(1, &texture_);
         if(eglImage_) iroEglContext()->eglDestroyImageKHR(iroEglContext()->getDisplay(), eglImage_);
->>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
     }
 
     unsigned int texture_;
     void* eglImage_;
 };
-<<<<<<< HEAD
-=======
 
 class outputDataGL : public renderData
 {
@@ -57,7 +45,7 @@ public:
 
     EGLSurface eglSurface_ = nullptr;
 };
->>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
+
 ////////////////////////////////
 rect2f rectToGL(const rect2f& src, const vec2ui& size)
 {
@@ -82,7 +70,7 @@ glRenderer::glRenderer()
     outputDataGL* data = nullptr;
     if(!iroEglContext()->isCurrent())
     {
-        if(!iroBackend()->getOutputs()[0] || (!data = getOutputData(*iroBackend()->getOutputs()[0])))
+        if(!iroBackend()->getOutputs()[0] || (!(data = getOutputData(*iroBackend()->getOutputs()[0]))))
         {
             throw std::runtime_error("glRenderer::glRenderer: no valid output to make eglContext current");
             return;
@@ -114,8 +102,16 @@ glRenderer::~glRenderer()
 
 iroDrawContext& glRenderer::getDrawContext(output& o)
 {
+    outputDataGL* data = getOutputData(o);
+    if(!data)
+    {
+        throw std::runtime_error("error 2");
+        return;
+    }
 
+    return data->
 }
+
 void glRenderer::attachSurface(surfaceRes& surf, bufferRes& buf)
 {
 
@@ -128,15 +124,23 @@ void glRenderer::initOutput(output& o)
 void glRenderer::uninitOutput(output& o)
 {
 
-<<<<<<< HEAD
-bool glRenderer::drawTex(rect2f geometry, unsigned int texture, bufferFormat format)
-=======
 }
 
 void glRenderer::applyOutput(output& o)
 {
+}
+
+outputDataGL* glRenderer::getOutputData(output& o) const
+{
 
 }
+
+surfaceDataGL* glRenderer::getSurfaceData(surfaceRes& o) const
+{
+
+}
+
+
 /*
 bool glRenderer::drawTex(rect2f geometry, unsigned int texture, ny::bufferFormat format)
 >>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527

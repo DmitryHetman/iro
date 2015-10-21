@@ -22,6 +22,8 @@ protected:
     xcb_connection_t* xConnection_ = nullptr;
     xcb_screen_t* xScreen_ = nullptr;
 
+    wl_event_source* inputEventSource_ = nullptr;
+
     int eventLoop(int fd, unsigned int mask);
 
     int outputIDForWindow(xcb_window_t win) const;
@@ -34,7 +36,8 @@ public:
     xcb_connection_t* getXConnection() const { return xConnection_; }
     xcb_screen_t* getXScreen() const { return xScreen_; }
 
-    backendType getType() const { return backendType::x11; }
+    virtual unsigned int getType() const override { return backendType::x11; }
+    virtual void* getNativeDisplay() const override { return xDisplay_; }
 
 public:
     static bool available();
@@ -45,7 +48,6 @@ class x11Output : public output
 {
 protected:
     xcb_window_t xWindow_;
-    EGLSurface eglWindow_;
 
 public:
     x11Output(const x11Backend& backend, unsigned int id);
@@ -54,7 +56,7 @@ public:
     xcb_window_t getXWindow() const { return xWindow_; }
 
     //output
-    virtual vec2ui getSize() const override;
-    virtual EGLSurface getEglSurface() const override { return eglWindow_; }
+    virtual void* getNativeSurface() const { return nullptr; }
+	virtual void sendInformation(const outputRes& res) const {}
 };
 

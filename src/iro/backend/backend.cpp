@@ -8,3 +8,9 @@ unsigned char iroBackendType()
     return iroBackend()->getType();
 }
 
+backend::~backend()
+{
+    for(auto* o : outputs_)
+        delete o;
+}
+

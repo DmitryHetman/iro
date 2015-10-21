@@ -2,6 +2,7 @@
 
 #include <iro/compositor/surface.hpp>
 #include <iro/compositor/compositor.hpp>
+#include <iro/compositor/subsurface.hpp>
 
 #include <wayland-server-protocol.h>
 
@@ -14,7 +15,10 @@ void subcompositorGetSubsurface(wl_client* client, wl_resource* resource, unsign
 {
     surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(surface);
     surfaceRes* par = (surfaceRes*) wl_resource_get_user_data(parent);
-    surf->setSubsurface(id, par);
+
+    if(!surf || !par) return; //error?
+
+    new subsurfaceRes(*surf, *client, id, *par);
 }
 const struct wl_subcompositor_interface subcompositorImplementation =
 {
@@ -29,9 +33,13 @@ void bindSubcompositor(wl_client* client, void* data, unsigned int version, unsi
 /////////////////////////////////
 subcompositor::subcompositor()
 {
-    wl_global_create(iroWlDisplay(), &wl_subcompositor_interface, 1, this, bindSubcompositor);
+    global_ = wl_global_create(iroWlDisplay(), &wl_subcompositor_interface, 1, this, bindSubcompositor);
 }
 
+subcompositor::~subcompositor()
+{
+    wl_global_destroy(global_);
+}
 /////////////////////////
 subcompositorRes::subcompositorRes(wl_client& client, unsigned int id, unsigned int version) : resource(client, id, &wl_subcompositor_interface, &subcompositorImplementation, version)
 {

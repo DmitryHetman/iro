@@ -13,10 +13,10 @@ PFNEGLCREATEIMAGEKHRPROC eglContext::eglCreateImageKHR = nullptr;
 PFNEGLDESTROYIMAGEKHRPROC eglContext::eglDestroyImageKHR = nullptr;
 
 ///////////////////////////////////////////////////////////
-eglContext::eglContext(void* display)
+eglContext::eglContext(void* display) : ny::eglAppContext()
 {
-    display_ = eglGetDisplay((EGLNativeDisplayType)display);
-    if(!display_)
+    eglDisplay_ = eglGetDisplay((EGLNativeDisplayType)display);
+    if(!eglDisplay_)
     {
         throw std::runtime_error("could not get egl display");
         return;
@@ -24,7 +24,7 @@ eglContext::eglContext(void* display)
 
     EGLint major, minor;
 
-    if(!eglInitialize(display_, &major, &minor))
+    if(!eglInitialize(eglDisplay_, &major, &minor))
     {
         throw std::runtime_error("could not initalize egl");
         return;
@@ -44,12 +44,12 @@ eglContext::eglContext(void* display)
         EGL_BLUE_SIZE, 1,
         EGL_ALPHA_SIZE, 0,
         EGL_DEPTH_SIZE, 0,
-        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
         EGL_NONE
     };
 
     EGLint configCount;
-    if(!eglChooseConfig(display_, attr, &config_, 1, &configCount))
+    if(!eglChooseConfig(eglDisplay_, attr, &eglConfig_, 1, &configCount))
     {
         throw std::runtime_error("could not get egl config");
         return;
@@ -61,14 +61,14 @@ eglContext::eglContext(void* display)
       EGL_NONE
     };
 
-    context_ = eglCreateContext(display_, config_, EGL_NO_CONTEXT, contextAttr);
-    if (!context_)
+    eglContext_ = eglCreateContext(eglDisplay_, eglConfig_, EGL_NO_CONTEXT, contextAttr);
+    if (!eglContext_)
     {
         throw std::runtime_error("could not create egl config");
         return;
     }
 
-    std::string ext = eglQueryString(display_, EGL_EXTENSIONS);
+    std::string ext = eglQueryString(eglDisplay_, EGL_EXTENSIONS);
     extensions_ = split(ext, ' ');
 
     if(hasExtension("EGL_WL_bind_wayland_display") && hasExtension("EGL_KHR_image_base"))
@@ -92,16 +92,16 @@ eglContext::eglContext(void* display)
         return;
     }
 
-    eglBindWaylandDisplayWL(display_, iroWlDisplay());
+    eglBindWaylandDisplayWL(eglDisplay_, iroWlDisplay());
 }
 
 eglContext::~eglContext()
 {
     //eglUnbindWaylandDisplayWL(display_, iroCompositor()->iroWlDisplay());
 
-    eglMakeCurrent(display_, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-    eglDestroyContext(display_, context_);
-    eglTerminate(display_);
+    eglMakeCurrent(eglDisplay_, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    eglDestroyContext(eglDisplay_, eglContext_);
+    eglTerminate(eglDisplay_);
 }
 
 bool eglContext::hasExtension(const std::string& extension) const
@@ -117,17 +117,17 @@ bool eglContext::hasExtension(const std::string& extension) const
 
 bool eglContext::makeCurrent(EGLSurface surf)
 {
-    if(context_ && display_ && surf) return eglMakeCurrent(display_, surf, surf, context_);
+    if(eglContext_ && eglDisplay_ && surf) return eglMakeCurrent(eglDisplay_, surf, surf, eglContext_);
     else return 0;
 }
 
 bool eglContext::makeNotCurrent()
 {
-    if(display_) return eglMakeCurrent(display_, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    if(eglDisplay_) return eglMakeCurrent(eglDisplay_, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     else return 0;
 }
 
 bool eglContext::isCurrent()
 {
-    return (eglGetCurrentContext() == context_);
+    return (eglGetCurrentContext() == eglContext_);
 }

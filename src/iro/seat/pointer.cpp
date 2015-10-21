@@ -15,24 +15,9 @@
 //////////////////////////
 void pointerSetCursor(wl_client* client, wl_resource* resource, unsigned int serial, wl_resource* surface, int hotspot_x, int hotspot_y)
 {
-    iroLog("pointerSetCursor");
-    return;
-
-    pointerRes* res = (pointerRes*) wl_resource_get_user_data(resource);
-    pointer& p = res->getPointer();
-
-    if(p.getActiveRes() != res)
-        return;
-
-    surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(surface);
-    surf->setCursor(vec2i(hotspot_x,hotspot_y));
-
-    p.setCursor(*surf);
 }
 void pointerRelease(wl_client* client, wl_resource* resource)
 {
-    pointerRes* pt = (pointerRes*) wl_resource_get_user_data(resource);
-    pt->destroy();
 }
 
 const struct wl_pointer_interface pointerImplementation
@@ -44,27 +29,29 @@ const struct wl_pointer_interface pointerImplementation
 ////////////////////////////////////777
 pointer::pointer(seat& s) : seat_(s)
 {
-    over_.onChange(memberCallback(&pointer::changeActiveCB, this));
 }
 
 pointer::~pointer()
 {
 }
 
-void pointer::changeActiveCB(surfaceRes* oldOne, surfaceRes* newOne)
+void pointer::setOver(surfaceRes* newOne)
 {
     //send leave
-    if(oldOne)
+    if(over_.get())
     {
-        if(!oldOne->getClient().getPointerRes())
+        if(!over_.get()->getClient().getPointerRes())
             iroWarning("pointer::sendActive: ", "Left surface without associated pointerRes");
 
         else
         {
-            pointerFocusEvent* ev = new pointerFocusEvent(0, oldOne);
-            wl_pointer_send_leave(&oldOne->getClient().getPointerRes()->getWlResource(), iroNextSerial(ev), &oldOne->getWlResource());
+            pointerFocusEvent* ev = new pointerFocusEvent(0, over_.get());
+            wl_pointer_send_leave(&over_.get()->getClient().getPointerRes()->getWlResource(), iroNextSerial(ev), &over_.get()->getWlResource());
         }
     }
+
+    surfaceRes* old = over_.get();
+    over_.set(newOne);
 
     //send enter
     if(newOne)
@@ -80,7 +67,7 @@ void pointer::changeActiveCB(surfaceRes* oldOne, surfaceRes* newOne)
         }
     }
 
-    focusCallback_(oldOne, newOne);
+    focusCallback_(old, newOne);
 }
 
 void pointer::sendMove(vec2i pos)
@@ -96,14 +83,14 @@ void pointer::sendMove(vec2i pos)
     */
 
     output* overOut = iroBackend()->getOutputs()[0];
-    overOut->refresh();
+    overOut->scheduleRepaint();
 
     if(seat_.getMode() == seatMode::normal)
     {
         surfaceRes* surf = overOut->getSurfaceAt(position_);
         if(surf != over_.get())
         {
-            over_.set(surf);
+            setOver(surf);
         }
 
         if(!getActiveRes())
@@ -214,9 +201,10 @@ void pointer::sendAxis(unsigned int axis, double value)
 
 void pointer::setCursor(surfaceRes& surf)
 {
-    if(surf.getRole() != surfaceRole::cursor)
+    if(surf.getRoleType() != surfaceRoleType::cursor)
     {
         iroWarning("pointer::setCursor: tried to set cursor to a surface without cursor role");
+        return;
     }
 
     cursor_.set(&surf);

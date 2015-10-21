@@ -61,13 +61,7 @@ typedef resourceRef<pointerRes> pointerRef;
 class eglContext;
 class renderer;
 class glRenderer;
-
-<<<<<<< HEAD
-=======
 class renderData;
-
->>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
-class bufferData;
 
 class x11Backend;
 class x11Output;
@@ -91,6 +85,8 @@ class iroModule;
 class iroShellModule;
 class iroShellExtension;
 
+class iroDrawContext;
+
 enum class resourceType : unsigned char;
 
 iro* getIro();
@@ -103,7 +99,7 @@ pointer* iroPointer();
 keyboard* iroKeyboard();
 eglContext* iroEglContext();
 renderer* iroRenderer();
-iroShellModule* iroShel();
+iroShellModule* iroShell();
 
 wl_display* iroWlDisplay();
 wl_event_loop* iroWlEventLoop();

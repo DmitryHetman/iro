@@ -3,10 +3,7 @@
 #include <iro/include.hpp>
 #include <iro/compositor/resource.hpp>
 #include <iro/compositor/buffer.hpp>
-<<<<<<< HEAD
-=======
 #include <iro/compositor/callback.hpp>
->>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
 
 #include <nyutil/vec.hpp>
 #include <nyutil/region.hpp>
@@ -23,15 +20,8 @@ public:
     region damage = region();
     vec2i offset = vec2i();
 
-<<<<<<< HEAD
-    rect2i damage = rect2i(0, 0, 0, 0);
-    vec2i offset = vec2i(0, 0);
-
-    resourceRef<bufferRes> attached;
-=======
     bufferRef buffer;
     std::vector<callbackRef> frameCallbacks;
->>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
 
     int scale = 1;
     unsigned int transform = 0;
@@ -56,15 +46,6 @@ public:
 //roleType
 namespace surfaceRoleType
 {
-<<<<<<< HEAD
-    none = 0,
-
-    shell,
-    sub,
-    cursor,
-    dnd
-};
-=======
     const unsigned char none = 0;
     const unsigned char shell = 1;
     const unsigned char sub = 2;
@@ -75,12 +56,11 @@ namespace surfaceRoleType
 class surfaceRole
 {
 public:
-    virtual unsigned char getType() const = 0;
+    virtual unsigned char getRoleType() const = 0;
     virtual vec2i getPosition() const = 0;
     virtual bool isMapped() const = 0;
     virtual void commit() = 0;
 };
->>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
 
 //class///////////////////////////////////////////////////
 class surfaceRes : public resource
@@ -89,29 +69,13 @@ class surfaceRes : public resource
 friend renderer;
 
 protected:
-<<<<<<< HEAD
-    surfaceState* commited_;
-    surfaceState* pending_;
-=======
     surfaceState commited_;
     surfaceState pending_;
->>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
 
     unsigned int roleType_ = surfaceRoleType::none;
     surfaceRole* role_;
 
     std::vector<output*> outputs_; //all outputs this surface is mapped on
-<<<<<<< HEAD
-    void* renderData_ = nullptr; //cache data from the renderer
-
-    union
-    {
-        shellSurfaceRes* shellSurface_;
-        subsurfaceRes* subsurface_;
-        vec2i cursorHotspot_;
-    };
-=======
->>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
 
     //for renderer
     renderData* renderData_ = nullptr; //cache data from the renderer
@@ -121,28 +85,11 @@ public:
     surfaceRes(wl_client& client, unsigned int id);
     ~surfaceRes();
 
-<<<<<<< HEAD
-    const surfaceState& getCommited() const { return *commited_; }
-    surfaceState& getPending() { return *pending_; }
-    const surfaceState& getPending() const { return *pending_; }
-
-    void registerFrameCallback(unsigned int id);
-    void frameDone();
-
-    void commit();
-
-    void setSubsurface(unsigned int id, surfaceRes* parent);
-    void setShellSurface(unsigned int id);
-    void setCursor(vec2i hotspot);
-    void unsetRole();
-
-=======
     void addFrameCallback(callbackRes& cb);
     void setInputRegion(region input);
 	void setOpaqueRegion(region output);
  	void setBufferScale(int scale);
 	void setBufferTransform(unsigned int transform);
->>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
     void attach(bufferRes& buff, vec2i pos);
 	void damage(rect2i dmg);
     void commit();

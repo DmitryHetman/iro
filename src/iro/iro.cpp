@@ -4,6 +4,8 @@
 #include <iro/backend/session.hpp>
 #include <iro/backend/x11Backend.hpp>
 #include <iro/backend/kmsBackend.hpp>
+#include <iro/backend/renderer.hpp>
+#include <iro/backend/glRenderer.hpp>
 #include <iro/util/log.hpp>
 
 #include <string>
@@ -39,6 +41,24 @@ backend* iroBackend()
     return getIro()->getBackend();
 }
 
+renderer* iroRenderer()
+{
+    if(!getIro()) return nullptr;
+    return getIro()->getRenderer();
+}
+
+iroShellModule* iroShell()
+{
+    if(!getIro()) return nullptr;
+    return getIro()->getShell();
+}
+
+eglContext* iroEglContext()
+{
+    if(!getIro()) return nullptr;
+    return getIro()->getEGLContext();
+}
+
 unsigned int iroTime()
 {
     if(!getIro()) return 0;
@@ -60,8 +80,6 @@ iro::iro()
 
 iro::~iro()
 {
-    if(mainLoop_) exit();
-
     if(backend_) delete backend_;
     if(sessionManager_) delete sessionManager_;
     if(compositor_) delete compositor_;
@@ -75,7 +93,7 @@ bool iro::init(const iroSettings& settings)
     bool x11 = x11Backend::available();
     bool privileged = (geteuid() == 0);
 
-    bool loadDevices = (!onX11 || 1); //hardcoded, todo
+    bool loadDevices = (!x11); //todo
 
     try
     {
@@ -89,7 +107,7 @@ bool iro::init(const iroSettings& settings)
             iroStreamLog_.open(settings_.log);
             if(!iroStreamLog_.is_open())
             {
-                iroWarning("could not open log file ", settings_.log, ", using std::cout");
+                iroWarning("iro::init: could not open log file ", settings_.log, ", using std::cout");
                 settings_.log = "cout";
                 logStream = &std::cout;
             }
@@ -105,13 +123,13 @@ bool iro::init(const iroSettings& settings)
         //drop permissions
         if(setuid(getuid()) < 0 || setgid(getgid()) < 0)
         {
-            throw std::runtime_error("could not drop permissions");
+            throw std::runtime_error("iro::init: could not drop permissions");
             return 0;
         };
 
         compositor_ = new compositor();
 
-        if(!onX11)
+        if(!x11)
         {
             sessionManager_->initSession(!privileged); //logind only needed if not privileged
             backend_ = new kmsBackend();
@@ -121,11 +139,19 @@ bool iro::init(const iroSettings& settings)
             backend_ = new x11Backend();
         }
 
-        egl_ = new eglContext();
+        egl_ = new eglContext(backend_->getNativeDisplay());
         renderer_ = new glRenderer(); //todo
 
         for(output* o : backend_->getOutputs())
             renderer_->initOutput(*o);
+
+        //load modules - todo
+        iroModule* module = loadModule("libiro-desktop-shell.so");
+        if(!module || !(shell_ = dynamic_cast<iroShellModule*>(module)))
+        {
+            throw std::runtime_error("iro::init: could not load desktop shell");
+            return 0;
+        }
     }
 
     catch(const std::exception& err)
@@ -136,140 +162,30 @@ bool iro::init(const iroSettings& settings)
         return 0;
     }
 
-    iroLog("iro was successfully initialized. Version ", IRO_VMajor, ".", IRO_VMinor);
+    iroLog("iro::init: iro was successfully initialized! Version ", IRO_VMajor, ".", IRO_VMinor);
     initialized_ = 1;
     return 1;
-}
-
-void iro::setupDeviceManager()
-{
-    deviceManager_ = new deviceManager();
-}
-
-void iro::setupCompositor()
-{
-    compositor_ = new compositor();
-}
-
-void iro::setupSession(bool onX11, bool privileged)
-{
-    bool uselogind = (!onX11 && !privileged);
-    sessionManager_ = new sessionManager(uselogind);
-}
-
-void iro::setupBackend(bool onX11)
-{
-    if(onX11)
-    {
-        backend_ = new x11Backend();
-    }
-    else
-    {
-        backend_ = new kmsBackend();
-    }
-
-    egl_ = new eglContext(backend_->getEglDisplay());
-}
-
-void iro::loadModules(bool loginShell)
-{
-    if(loginShell)
-    {
-        iroShellModule* mod = loadShellModule("libiro-login-shell.so");
-        if(!mod)
-        {
-            throw std::runtime_error("iro::loadModules: could not load login shell");
-            return;
-        }
-
-        compositor_->getShell()->setModule(*mod);
-    }
-    else
-    {
-        iroShellModule* mod = loadShellModule("libiro-desktop-shell.so");
-        if(!mod)
-        {
-            throw std::runtime_error("iro::loadModules: could not load desktop shell");
-            return;
-        }
-
-        compositor_->getShell()->setModule(*mod);
-    }
-
-
-    //load listed modules
-    std::string home = getenv("HOME");
-
-    std::ifstream modStream;
-    modStream.open(home + "/.config/iro/modules");
-
-    if(!modStream.is_open())
-    {
-        iroWarning("iro::loadModules: could not open ~/config/iro/modules. Failed to load modules");
-        return;
-    }
-
-    while(!modStream.eof())
-    {
-        std::string tmp;
-        if(!std::getline(modStream, tmp, '\n'))
-            return;
-
-        iroModule* mod = loadModule(tmp);
-        if(mod)
-        {
-            iroLog("iro::loadModules: loaded module ", tmp);
-            modules_.push_back(mod);
-        }
-        else
-        {
-            iroWarning("iro::loadModules: failed to load module ", tmp);
-        }
-    }
 }
 
 //loader
 iroModule* iro::loadModule(const std::string& modName)
 {
-    module* mod = moduleLoader::loadModule(modName);
-    if(mod)
-    {
-        iroModule* ret = dynamic_cast<iroModule*>(mod);
-        if(!ret)
-        {
-            moduleLoader::unloadModule(*mod);
-            return nullptr;
-        }
-        return ret;
-    }
-
-    return nullptr;
+    return nullptr; //todo
 }
 
-iroShellModule* iro::loadShellModule(const std::string& modName)
-{
-        iroModule* mod = loadModule(modName);
-        if(!mod) return nullptr;
-
-        iroShellModule* shellMod = dynamic_cast<iroShellModule*>(mod);
-        if(!shellMod) unloadModule(*mod);
-
-        return shellMod;
-}
-
-int iro::run()
+exitReason iro::run()
 {
     if(!initialized_)
-        return -1;
+        return exitReason::initFailed;
 
-    mainLoop_ = 1;
+    compositor_->run();
 
-    return compositor_->run();
+    return exitReason_;
 }
 
-void iro::exit()
+void iro::exit(exitReason reason)
 {
-    mainLoop_ = 0;
+    exitReason_ = reason;
 
     if(compositor_)
         wl_display_terminate(compositor_->getWlDisplay());

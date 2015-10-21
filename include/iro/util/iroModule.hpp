@@ -1,7 +1,7 @@
 #pragma once
 
 #include <iro/include.hpp>
-#include <nyutil/module.hpp>
+#include <nyutil/nonCopyable.hpp>
 
 //type
 enum class iroModuleType
@@ -12,14 +12,21 @@ enum class iroModuleType
 };
 
 //module
-class iroModule : public module
+class iroModule : public nonCopyable
 {
+protected:
+    static iroModule* global_;
+
 public:
-    virtual bool onLoad(moduleLoader& loader) override final;
+    iroModule(){ global_ = this; }
+    ~iroModule(){ global_ = nullptr; };
 
     virtual bool onLoad(iro& obj) = 0;
     virtual iroModuleType getType() const = 0;
+
+    static iroModule* getGlobal() { return global_; }
 };
+
 //shellExtension
 class iroShellExtension : public iroModule
 {

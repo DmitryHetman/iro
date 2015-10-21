@@ -13,18 +13,11 @@ public:
 class renderer : public nonCopyable
 {
 protected:
-<<<<<<< HEAD
-    void setBufferSize(bufferRes& buff, vec2ui size) const;
-    void setBufferData(bufferRes& buff, bufferData* data) const;
-    void setBufferFormat(bufferRes& buff, bufferFormat format) const;
-    bufferData* getBufferData(bufferRes& buff) const;
-=======
     void setOutputData(output& o, renderData* data) const;
     void setSurfaceData(surfaceRes& surf, renderData* data) const;
 
     renderData* getOutputData(output& o) const;
     renderData* getSurfaceData(surfaceRes& surf) const;
->>>>>>> 13bffabe7b15c8003eb9856e874841aad3236527
 
 public:
     renderer();
