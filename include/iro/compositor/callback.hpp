@@ -3,8 +3,15 @@
 #include <iro/include.hpp>
 #include <iro/compositor/resource.hpp>
 
-class callbackRes : public resource
+namespace iro
+{
+
+class CallbackRes : public Resource
 {
 public:
-    callbackRes(wl_client& client, unsigned int id);
+    CallbackRes(wl_client& client, unsigned int id);
+
+	virtual unsigned int type() const override { return resourceType::callback; }
 };
+
+}

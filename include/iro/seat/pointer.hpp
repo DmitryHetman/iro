@@ -2,81 +2,84 @@
 
 #include <iro/include.hpp>
 #include <iro/compositor/resource.hpp>
-#include <iro/compositor/surface.hpp>
 
-#include <nyutil/nonCopyable.hpp>
-#include <nyutil/vec.hpp>
-#include <nyutil/callback.hpp>
+#include <nytl/nonCopyable.hpp>
+#include <nytl/vec.hpp>
+#include <nytl/callback.hpp>
+#include <nytl/watchable.hpp>
 
-class pointer : public nonCopyable
+namespace iro
+{
+
+///Represents a physical pointer.
+class Pointer : public nytl::nonCopyable
 {
 protected:
-    friend seat; //manages pointer
-    pointer(seat& s);
-    ~pointer();
+    Seat* seat_;
 
-    seat& seat_;
-
-    //grab_ contains the pointerRes for the over_ surface
-    surfaceRef over_;
-    vec2i position_;
+    SurfaceRef over_;
+	nytl::vec2i position_;
 
     //if this is == nullptr, the default cursor will be used
     bool customCursor_ = 0; //cursor is used
-    surfaceRef cursor_;
+    SurfaceRef cursor_;
+	nytl::vec2i hotspot_;
 
-    callback<void(vec2i pos)> moveCallback_;
-    callback<void(unsigned int button)> buttonPressCallback_;
-    callback<void(unsigned int button)> buttonReleaseCallback_;
-    callback<void(unsigned int axis, double value)> axisCallback_;
-
-    callback<void(surfaceRes*, surfaceRes*)> focusCallback_;
+	nytl::callback<void(const nytl::vec2i& pos)> moveCallback_;
+	nytl::callback<void(unsigned int button, bool press)> buttonCallback_;
+	nytl::callback<void(unsigned int axis, double value)> axisCallback_;
+	nytl::callback<void(SurfaceRes*, SurfaceRes*)> focusCallback_;
 
     //helper func for sendMove
-    void setOver(surfaceRes* newOne);
+    void setOver(SurfaceRes* newOne);
 
 public:
-    void sendMove(int x, int y);
-    void sendMove(vec2i pos);
+	Pointer(Seat& seat);
+	~Pointer();
 
-    void sendButtonPress(unsigned int button);
-    void sendButtonRelease(unsigned int button);
+    void sendMove(const nytl::vec2i& pos);
+    void sendButton(unsigned int button, bool press);
     void sendAxis(unsigned int axis, double value);
 
-    surfaceRes* getOver() const { return over_.get(); }
-    pointerRes* getActiveRes() const;
+    SurfaceRes* overSurface() const { return over_.get(); }
+    PointerRes* activeResource() const;
 
-    seat& getSeat() const { return seat_; }
+    Seat& seat() const { return *seat_; }
+	Compositor& compositor() const;
 
-    void setCursor(surfaceRes& surf);
+    void cursor(SurfaceRes& surf, const nytl::vec2i& hotspot);
     void resetCursor();
-    surfaceRes* getCursor() const { return cursor_.get(); }
+    SurfaceRes* cursor() const { return cursor_.get(); }
 
-    vec2i getPosition() const { return position_; }
-    vec2i getPositionWl() const;
+	nytl::vec2i position() const { return position_; }
+	nytl::vec2i wlFixedPosition() const;
 
-    //cbs
-    std::unique_ptr<connection> onMove(std::function<void(vec2i)> func){ return moveCallback_.add(func); }
-    std::unique_ptr<connection> onButtonPress(std::function<void(unsigned int button)> func){ return buttonPressCallback_.add(func); }
-    std::unique_ptr<connection> onButtonRelease(std::function<void(unsigned int button)> func){ return buttonReleaseCallback_.add(func); }
-    std::unique_ptr<connection> onAxis(std::function<void(unsigned int axis, double value)> func){ return axisCallback_.add(func); }
-
-    std::unique_ptr<connection> onFocusChange(std::function<void(surfaceRes*, surfaceRes*)> func){ return focusCallback_.add(func); }
+    //callbacks
+	template<typename F> nytl::connection onMove(F&& f)
+		{ return moveCallback_.add(f); }
+    template<typename F> nytl::connection onButton(F&& f)
+		{ return buttonCallback_.add(f); }
+    template<typename F> nytl::connection onAxis(F&& f)
+		{ return axisCallback_.add(f); }
+    template<typename F> nytl::connection onFocusChange(F&& f)
+		{ return focusCallback_.add(f); }
 };
-////////////////////////
-class pointerRes : public resource
+
+///Represents a clients pointer resource.
+class PointerRes : public Resource
 {
 protected:
-    friend seatRes;
-    pointerRes(seatRes& sr, wl_client& client, unsigned int id);
-
-    seatRes& seatRes_;
+    SeatRes* seatRes_;
 
 public:
-    seatRes& getSeatRes() const { return seatRes_; }
+	PointerRes(SeatRes& seatRes, unsigned int id);
+	~PointerRes() = default;
 
-    seat& getSeat() const;
-    pointer& getPointer() const;
+    SeatRes& seatRes() const { return *seatRes_; }
+    Seat& seat() const;
+    Pointer& pointer() const;
 
-    virtual resourceType getType() const override { return resourceType::pointer; }
+    virtual unsigned int type() const override { return resourceType::pointer; }
 };
+
+}

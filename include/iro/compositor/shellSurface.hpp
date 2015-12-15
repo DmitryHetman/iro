@@ -2,61 +2,98 @@
 
 #include <iro/include.hpp>
 #include <iro/compositor/resource.hpp>
-#include <nyutil/vec.hpp>
+#include <iro/compositor/surface.hpp>
 
-#include <string>
+#include <nytl/time.hpp>
 
-//todo: state
-enum class shellSurfaceState
+namespace iro
 {
-    toplevel,
-    fullscreen,
-    maximized,
-    transient
-};
 
-class shellSurfaceRes : public resource
+///Represents a wayland wl_shell_surface resource.
+class ShellSurfaceRes : public Resource
 {
+public:
+	static nytl::timeDuration inactiveDuration;
+
 protected:
-    friend surfaceRes;
-    shellSurfaceRes(surfaceRes& surf, wl_client& client, unsigned int id);
+	SurfaceRes& surface_;
 
-    std::string className_;
-    std::string title_;
+	std::string title_;
+	std::string class_;
 
-    bool ping_ = 0;
+	unsigned int pingSerial_ = 0;
+	nytl::timePoint pingTime_;
 
-    surfaceRes& surface_;
+	unsigned int state_;
+	union
+	{
+		struct {} dummy_;
 
-    shellSurfaceState state_ = shellSurfaceState::toplevel;
+		struct
+		{ 
+			unsigned int method_;  
+			unsigned int frames_;
+			Output& output;
+		} fullscreen_;
 
-    union //different states
-    {
-        vec2i toplevelPosition_ = vec2i(0,0);
-        output* fullscreenOutput_;
-    };
+		struct
+		{
+			SurfaceRes* parent;
+			nytl::vec2i position;
+			unsigned int flags;
+		} transient_;
+
+		struct
+		{
+			SeatRes* seat;
+			SurfaceRes* parent;
+			nytl::vec2i position;
+			unsigned int flags;		
+		} popup_;
+
+		struct
+		{
+			OutputRes* output;
+		} maximized_;
+	};
 
 public:
-    surfaceRes& getSurface() const { return surface_; }
+	ShellSurfaceRes(SurfaceRes& surf, wl_client& client, unsigned int id);
 
-    std::string getClassName() const { return className_; };
-    std::string getTitle() const { return title_; };
+	void ping(unsigned int serial);
+	void pong(unsigned int serial);
+	void move(SeatRes& seat, unsigned int serial);
+	void resize(SeatRes& seat, unsigned int serial, unsigned int edges);
 
-    void setClassName(const std::string& name);
-    void setTitle(const std::string& name);
+	void setToplevel();
+	void setTransient(SurfaceRes& parent, const nytl::vec2i& pos, unsigned int flags);
+	void setFullscreen(unsigned int mthd, unsigned int frames, OutputRes& output);
+	void setPopup(SeatRes& seat, unsigned int serial, SurfaceRes& parent, 
+			const nytl::vec2i& pos, unsigned int flags);
+	void setMaximized(OutputRes& output);
 
-    void ping();
-    void pong() { ping_ = 0; }
+	void className(const std::string& name){ class_ = name; }
+	void title(const std::string& title){ title_ = title; }
 
-    bool hasPing() const { return ping_; }
-
-    void move(vec2i delta){ toplevelPosition_ += delta; }
-
-    shellSurfaceState getState() const { return state_; }
-
-    vec2i getToplevelPosition() const { return state_ == shellSurfaceState::toplevel ? toplevelPosition_ : vec2i(0,0); }
-    output* getFullscreenOutput() const { return state_ == shellSurfaceState::fullscreen ? fullscreenOutput_ : nullptr; }
-
-    //resource
-    resourceType getType() const { return resourceType::shellSurface; }
+	nytl::vec2i position() const { return {0, 0}; }
+	bool inactive() const { return (!pingSerial_ || nytl::now() - pingTime_ < inactiveDuration ); }
 };
+
+///Represents the wayland surface role of a shell surface.
+class ShellSurfaceRole : public SurfaceRole
+{
+protected:
+	ShellSurfaceRes& shellSurfaceRes_;
+
+public:
+	ShellSurfaceRole(ShellSurfaceRes& res) : shellSurfaceRes_(res) {};
+
+    virtual nytl::vec2i position() const override { return shellSurfaceRes_.position(); }
+    virtual bool mapped() const override { return 1; } //todo?
+    virtual void commit() override {} //todo
+    virtual unsigned int roleType() const override { return surfaceRoleType::shell; }
+
+	ShellSurfaceRes& shellSurfaceRes() const { return shellSurfaceRes_; }
+};
+
+}

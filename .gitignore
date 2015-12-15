@@ -1,0 +1,12 @@
+build/
+.git
+concepts/
+obj/
+bin/
+old/
+*.swp
+*.swo
+html/
+latex/
+log.txt
+wallpaper.png

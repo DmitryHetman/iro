@@ -1,20 +1,26 @@
 #include <iro/compositor/surface.hpp>
 
-#include <iro/compositor/shellSurface.hpp>
-#include <iro/compositor/subsurface.hpp>
 #include <iro/compositor/buffer.hpp>
+#include <iro/compositor/compositor.hpp>
 #include <iro/compositor/region.hpp>
 #include <iro/compositor/callback.hpp>
-#include <iro/backend/renderer.hpp>
+#include <iro/compositor/client.hpp>
 #include <iro/backend/output.hpp>
 #include <iro/backend/backend.hpp>
-#include <iro/seat/seat.hpp>
-#include <iro/seat/pointer.hpp>
-#include <iro/util/log.hpp>
+#include <iro/backend/surfaceContext.hpp>
+
+#include <nytl/log.hpp>
+#include <nytl/make_unique.hpp>
 
 #include <wayland-server-protocol.h>
 
-surfaceState& surfaceState::operator=(const surfaceState& other)
+namespace iro
+{
+
+class surfaceRendererData{};
+
+//surfaceState
+SurfaceState& SurfaceState::operator=(const SurfaceState& other)
 {
     opaque = other.opaque;
     input = other.input;
@@ -25,7 +31,7 @@ surfaceState& surfaceState::operator=(const surfaceState& other)
     frameCallbacks.clear();
     for(auto& ref : other.frameCallbacks)
     {
-        if(ref.get())frameCallbacks.push_back(callbackRef(*ref.get()));
+        if(ref.get())frameCallbacks.push_back(CallbackRef(*ref.get()));
     }
 
     scale = other.scale;
@@ -34,59 +40,81 @@ surfaceState& surfaceState::operator=(const surfaceState& other)
 
     return *this;
 }
-/////
-void surfaceDestroy(wl_client* client, wl_resource* resource)
+
+//surface wayland
+void surfaceDestroy(wl_client*, wl_resource* resource)
 {
-    surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
+	SurfaceRes* surf = Resource::validateDisconnect<SurfaceRes>(resource, "surfaceDestroy");
+	if(!surf) return;
+
     surf->destroy();
 }
-void surfaceAttach(wl_client* client, wl_resource* resource, wl_resource* wlbuffer, int x, int y)
+void surfaceAttach(wl_client*, wl_resource* resource, wl_resource* wlbuffer, int x, int y)
 {
-    surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
+    SurfaceRes* surf = Resource::validateDisconnect<SurfaceRes>(resource, "surfaceAttach");
+	if(!surf) return;
 
-    bufferRes& buff = bufferForResource(*wlbuffer); //gets or created bufferRes for this buffer wl_resource
-    surf->attach(buff, vec2i(x,y));
+	BufferRes* buff = Resource::validate<BufferRes>(*wlbuffer);
+	if(!buff)
+	{
+		buff = &surf->client().addResource(nytl::make_unique<BufferRes>(*wlbuffer));
+	}
+
+    surf->attach(*buff, nytl::vec2i(x,y));
 }
-void surfaceDamage(wl_client* client, wl_resource* resource, int x, int y, int width, int height)
+void surfaceDamage(wl_client*, wl_resource* resource, int x, int y, int width, int height)
 {
-    surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
-    surf->damage(rect2i(x, y, width, height));
+	SurfaceRes* surf = Resource::validateDisconnect<SurfaceRes>(resource, "surfaceDamage");
+	if(!surf) return;
+
+    surf->damage(nytl::rect2i(x, y, width, height));
 }
 void surfaceFrame(wl_client* client, wl_resource* resource, unsigned int id)
 {
-    surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
-    callbackRes* cb = new callbackRes(*client, id);
+	SurfaceRes* surf = Resource::validateDisconnect<SurfaceRes>(resource, "surfaceFrame");
+	if(!surf) return;
 
+	auto cb = nytl::make_unique<CallbackRes>(*client, id);
     surf->addFrameCallback(*cb);
-}
-void surfaceOpaqueRegion(wl_client* client,wl_resource* resource, wl_resource* region)
-{
-    surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
-    regionRes* reg = (regionRes*) wl_resource_get_user_data(region);
 
-    surf->setOpaqueRegion(reg->getRegion());
+	surf->client().addResource(std::move(cb));
 }
-void surfaceInputRegion(wl_client* client,wl_resource* resource, wl_resource* region)
+void surfaceOpaqueRegion(wl_client*,wl_resource* resource, wl_resource* region)
 {
-    surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
-    regionRes* reg = (regionRes*) wl_resource_get_user_data(region);
+	SurfaceRes* surf = Resource::validateDisconnect<SurfaceRes>(resource, "surfaceOpaqueRegion");
+	RegionRes* reg = Resource::validateDisconnect<RegionRes>(region, "surfaceOpaqueRegion");
+	if(!surf || !reg) return;
 
-    surf->setInputRegion(reg->getRegion());
+    surf->opaqueRegion(reg->region());
 }
-void surfaceCommit(wl_client* client, wl_resource* resource)
+void surfaceInputRegion(wl_client*,wl_resource* resource, wl_resource* region)
 {
-    surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
+	SurfaceRes* surf = Resource::validateDisconnect<SurfaceRes>(resource, "surfaceOpaqueRegion");
+	RegionRes* reg = Resource::validateDisconnect<RegionRes>(region, "surfaceOpaqueRegion");
+	if(!surf || !reg) return;
+
+    surf->inputRegion(reg->region());
+}
+void surfaceCommit(wl_client*, wl_resource* resource)
+{
+	SurfaceRes* surf = Resource::validateDisconnect<SurfaceRes>(resource, "surfaceCommit");
+	if(!surf) return;
+
     surf->commit();
 }
-void surfaceBufferTransform(wl_client* client, wl_resource* resource, int transform)
+void surfaceBufferTransform(wl_client*, wl_resource* resource, int transform)
 {
-    surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
-    surf->setBufferTransform(transform);
+	SurfaceRes* surf = Resource::validateDisconnect<SurfaceRes>(resource, "surfaceBufferTransform");
+	if(!surf) return;
+
+    surf->bufferTransform(transform);
 }
-void surfaceBufferScale(wl_client* client, wl_resource* resource, int scale)
+void surfaceBufferScale(wl_client*, wl_resource* resource, int scale)
 {
-    surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(resource);
-    surf->setBufferScale(scale);
+	SurfaceRes* surf = Resource::validateDisconnect<SurfaceRes>(resource, "surfaceBufferScale");
+	if(!surf) return;
+
+    surf->bufferScale(scale);
 }
 
 const struct wl_surface_interface surfaceImplementation =
@@ -103,91 +131,104 @@ const struct wl_surface_interface surfaceImplementation =
 };
 
 
-//////////////////////////////////////////////////////////////////////////////
-surfaceRes::surfaceRes(wl_client& client, unsigned int id) : resource(client, id, &wl_surface_interface, &surfaceImplementation, 3)
+//surface implementation
+SurfaceRes::SurfaceRes(wl_client& client, unsigned int id) 
+	: Resource(client, id, &wl_surface_interface, &surfaceImplementation, 3),
+	surfaceContext_(nullptr)
 {
+	if(!compositor().backend())
+	{
+		nytl::sendWarning("SurfaceRes::SurfaceRes: no valid backend, cant create context.");
+		return;
+	}
+
+	surfaceContext_ = compositor().backend()->createSurfaceContext();
+	if(!surfaceContext_)
+	{
+		nytl::sendWarning("SurfaceRes::SurfaceRes: failed to create context.");
+	}
 }
 
-surfaceRes::~surfaceRes()
+SurfaceRes::~SurfaceRes()
 {
-    if(renderData_)
-        delete renderData_;
+	for(auto* outp : mappedOutputs_)
+		outp->unmapSurface(*this);
 }
 
-vec2i surfaceRes::getPosition() const
+nytl::vec2i SurfaceRes::position() const
 {
     if(role_)
-        return role_->getPosition() + pending_.offset;
+        return role_->position() + pending_.offset;
 
     return pending_.offset;
 }
 
-vec2ui surfaceRes::getSize() const
+nytl::vec2ui SurfaceRes::size() const
 {
-    if(commited_.buffer.get())
-        return commited_.buffer.get()->getSize() * commited_.scale;
+    if(commited_.buffer)
+        return bufferSize_ * commited_.scale;
 
-    return vec2ui();
+    return {0, 0};
 }
 
-rect2i surfaceRes::getExtents() const
+nytl::rect2i SurfaceRes::extents() const
 {
-    return rect2i(getPosition(), getSize());
+    return nytl::rect2i(position(), size());
 }
 
-void surfaceRes::frameDone()
+void SurfaceRes::sendFrameDone()
 {
     for(auto& cb : commited_.frameCallbacks)
     {
-        if(cb.get())
+        if(cb)
         {
-            wl_callback_send_done(&cb.get()->getWlResource(), iroTime());
-            cb.get()->destroy();
+            wl_callback_send_done(&cb->wlResource(), compositor().time());
+            cb->destroy();
         }
     }
 
     commited_.frameCallbacks.clear();
 }
 
-void surfaceRes::addFrameCallback(callbackRes& cb)
+void SurfaceRes::addFrameCallback(CallbackRes& cb)
 {
-    pending_.frameCallbacks.push_back(callbackRef(cb));
+    pending_.frameCallbacks.push_back(CallbackRef(cb));
 }
 
-void surfaceRes::setBufferScale(int scale)
+void SurfaceRes::bufferScale(int scale)
 {
     pending_.scale = scale;
 }
 
-void surfaceRes::setBufferTransform(unsigned int transform)
+void SurfaceRes::bufferTransform(unsigned int transform)
 {
     pending_.transform = transform;
 }
 
-void surfaceRes::setInputRegion(region input)
+void SurfaceRes::inputRegion(const nytl::region2i& input)
 {
     pending_.input = input;
 }
 
-void surfaceRes::setOpaqueRegion(region opaque)
+void SurfaceRes::opaqueRegion(const nytl::region2i& opaque)
 {
     pending_.opaque = opaque;
 }
 
-void surfaceRes::damage(rect2i dmg)
+void SurfaceRes::damage(const nytl::rect2i& dmg)
 {
     pending_.damage.add(dmg);
 }
 
-void surfaceRes::attach(bufferRes& buff, vec2i pos)
+void SurfaceRes::attach(BufferRes& buff, const nytl::vec2i& pos)
 {
     pending_.offset = pos;
-    pending_.buffer.set(&buff);
+    pending_.buffer.set(buff);
 }
 
-void surfaceRes::commit()
+void SurfaceRes::commit()
 {
-    //todo
+	nytl::sendLog("commiting surfaceRes ", this, " with buffer ", pending_.buffer.get());
 
     commited_ = pending_;
     pending_.reset();
@@ -199,31 +240,66 @@ void surfaceRes::commit()
 
     if(commited_.buffer.get())
     {
-        for(auto* o : outputs_)
+        for(auto* o : mappedOutputs_)
         {
             o->unmapSurface(*this);
         }
 
-        iroRenderer()->attachSurface(*this, *commited_.buffer.get());
-        outputs_ = outputsAt(getExtents());
+        if(surfaceContext_)
+		{
+			if(!surfaceContext_->attachBuffer(*commited_.buffer.get(), bufferSize_))
+			{
+				nytl::sendWarning("SurfaceRes::commit: attaching the buffer failed");
+				return;
+			}
+		}
+		else
+		{
+			nytl::sendWarning("SurfaceRes::commit: no valiud surfaceContext_");
+			return;
+		}
 
-        for(auto* o : outputs_)
+		auto* bckn = compositor().backend();
+		if(!bckn)
+		{
+			nytl::sendWarning("SurfaceRes::commit: compositor has no valid backend");
+			return;
+		}
+
+        mappedOutputs_ = bckn->outputsAt(extents());
+		nytl::sendLog("mapping surfaceRes ", this, " on ", mappedOutputs_.size(), " outputs");
+        for(auto* o : mappedOutputs_)
         {
             o->mapSurface(*this);
         }
     }
     else
     {
-        for(auto* o : outputs_)
+        for(auto* o : mappedOutputs_)
         {
             o->unmapSurface(*this);
         }
 
-        outputs_.clear();
+        mappedOutputs_.clear();
     }
+
 }
 
-bool surfaceRes::isMapped() const
+SurfaceRole& SurfaceRes::role(std::unique_ptr<SurfaceRole>&& role)
 {
-    return (commited_.buffer.get() && role_ && role_->isMapped());
+	role_ = std::move(role);
+	return *role_;
+}
+
+unsigned int SurfaceRes::roleType() const
+{
+	if(role_) return role_->roleType();
+	return surfaceRoleType::none;
+}
+
+bool SurfaceRes::isMapped() const
+{
+    return (commited_.buffer && role_ && role_->mapped());
+}
+
 }

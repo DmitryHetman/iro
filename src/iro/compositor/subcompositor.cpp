@@ -1,24 +1,54 @@
 #include <iro/compositor/subcompositor.hpp>
 
 #include <iro/compositor/surface.hpp>
+#include <iro/compositor/client.hpp>
 #include <iro/compositor/compositor.hpp>
 #include <iro/compositor/subsurface.hpp>
 
+#include <nytl/make_unique.hpp>
+#include <nytl/log.hpp>
+
 #include <wayland-server-protocol.h>
 
-void subcompositorDestroy(wl_client* client, wl_resource* resource)
+namespace iro
 {
-    subcompositorRes* res = (subcompositorRes*) wl_resource_get_user_data(resource);
-    delete res;
+
+//resource
+class SubcompositorRes : public Resource
+{
+public:
+    SubcompositorRes(wl_client& client, unsigned int id, unsigned int version);
+
+    virtual unsigned int type() const { return resourceType::subcompositor; }
+};
+
+//wayland implementation
+void subcompositorDestroy(wl_client*, wl_resource* resource)
+{
+	SubcompositorRes* subres = Resource::validateDisconnect<SubcompositorRes>(resource, 
+			"subcompositorDestroy");
+	if(!subres) return;
+
+	subres->destroy();
 }
-void subcompositorGetSubsurface(wl_client* client, wl_resource* resource, unsigned int id, wl_resource* surface, wl_resource* parent)
+void subcompositorGetSubsurface(wl_client* client, wl_resource* resource, 
+		unsigned int id, wl_resource* surface, wl_resource* parent)
 {
-    surfaceRes* surf = (surfaceRes*) wl_resource_get_user_data(surface);
-    surfaceRes* par = (surfaceRes*) wl_resource_get_user_data(parent);
+	SurfaceRes* surf = Resource::validateDisconnect<SurfaceRes>(surface, "getsubsurf1");
+	SurfaceRes* parentSurf = Resource::validateDisconnect<SurfaceRes>(parent, "getsubsurf2");
+    if(!surf || !parentSurf) return; 
 
-    if(!surf || !par) return; //error?
+	if(surf->role())
+	{
+		nytl::sendWarning("subcompGetSubsurf: surface already has a role");
+		wl_resource_post_error(resource, WL_SUBCOMPOSITOR_ERROR_BAD_SURFACE, "has a role");
+		return;
+	}
 
-    new subsurfaceRes(*surf, *client, id, *par);
+	auto subres = nytl::make_unique<SubsurfaceRes>(*surf, *client, id, *parentSurf);
+	surf->role(nytl::make_unique<SubsurfaceRole>(*subres));
+
+	surf->client().addResource(std::move(subres));
 }
 const struct wl_subcompositor_interface subcompositorImplementation =
 {
@@ -27,21 +57,32 @@ const struct wl_subcompositor_interface subcompositorImplementation =
 };
 void bindSubcompositor(wl_client* client, void* data, unsigned int version, unsigned int id)
 {
-    new subcompositorRes(*client, id, version);
+	Subcompositor* subcomp = static_cast<Subcompositor*>(data);
+	if(!subcomp)
+	{
+		nytl::sendWarning("bindSubcompositor: invalid data");
+		return;
+	}
+
+	auto scRes = nytl::make_unique<SubcompositorRes>(*client, id, version);
+	subcomp->compositor().client(*client).addResource(std::move(scRes));
 }
 
-/////////////////////////////////
-subcompositor::subcompositor()
+//Subcompositor
+Subcompositor::Subcompositor(Compositor& comp) : compositor_(&comp)
 {
-    global_ = wl_global_create(iroWlDisplay(), &wl_subcompositor_interface, 1, this, bindSubcompositor);
+    wlGlobal_ = wl_global_create(&comp.wlDisplay(), &wl_subcompositor_interface, 1, 
+			this, bindSubcompositor);
 }
 
-subcompositor::~subcompositor()
+Subcompositor::~Subcompositor()
 {
-    wl_global_destroy(global_);
 }
-/////////////////////////
-subcompositorRes::subcompositorRes(wl_client& client, unsigned int id, unsigned int version) : resource(client, id, &wl_subcompositor_interface, &subcompositorImplementation, version)
+
+//SubcompositorRes
+SubcompositorRes::SubcompositorRes(wl_client& client, unsigned int id, unsigned int version) 
+	: Resource(client, id, &wl_subcompositor_interface, &subcompositorImplementation, version)
 {
+}
 
 }

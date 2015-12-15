@@ -1,33 +1,20 @@
 #pragma once
 
 #include <iro/include.hpp>
-#include <iro/util/iroDrawContext.hpp>
-#include <nyutil/nonCopyable.hpp>
+#include <nytl/nonCopyable.hpp>
 
-class renderData
+namespace iro
 {
-public:
-    virtual ~renderData(){}
-};
 
+//renderer
 class renderer : public nonCopyable
 {
-protected:
-    void setOutputData(output& o, renderData* data) const;
-    void setSurfaceData(surfaceRes& surf, renderData* data) const;
-
-    renderData* getOutputData(output& o) const;
-    renderData* getSurfaceData(surfaceRes& surf) const;
-
 public:
-    renderer();
-    virtual ~renderer();
+    virtual ~renderer() = default;
 
-    virtual iroDrawContext& getDrawContext(output& o) = 0; //for direct drawing on outputs
-    virtual void attachSurface(surfaceRes& surf, bufferRes& buf) = 0;
-
-    virtual void initOutput(output& o) = 0;
-    virtual void uninitOutput(output& o) = 0;
-
-    virtual void applyOutput(output& o) = 0;
+    virtual std::unique_ptr<outputRendererData> initOutput(output& outp) = 0;
+    virtual std::unique_ptr<surfaceRendererData> initBuffer(buffer& buf) = 0;
 };
+
+
+}

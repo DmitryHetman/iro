@@ -4,33 +4,52 @@
 #include <iro/compositor/resource.hpp>
 #include <iro/compositor/surface.hpp>
 
-#include <nyutil/vec.hpp>
+#include <nytl/vec.hpp>
 
-class subsurfaceRes : public resource, public surfaceRole
+namespace iro
+{
+
+///SubsurfaceRes represents a subsurface resource as well as the subsurface role for a surface.
+class SubsurfaceRes : public Resource
 {
 protected:
-    surfaceRes& surface_;
-    surfaceRes& parent_;
+    SurfaceRes& surface_;
+    SurfaceRes& parent_;
     bool sync_ = 0;
 
-    vec2i position_;
+	nytl::vec2i position_;
 
 public:
-    subsurfaceRes(surfaceRes& surface, wl_client& client, unsigned int id, surfaceRes& parent);
-    surfaceRes& getSurface() const { return surface_; };
+    SubsurfaceRes(SurfaceRes& surface, wl_client& client, unsigned int id, SurfaceRes& parent);
 
-    surfaceRes& getParent() const { return parent_; }
-    bool isSync() const { return sync_; }
+    SurfaceRes& surface() const { return surface_; };
+    SurfaceRes& parent() const { return parent_; }
 
-    void setSync(bool sync){ sync_ = sync; }
-    void setPosition(vec2i position){ position_ = position; }
+    bool synced() const { return sync_; }
+    void synced(bool sync){ sync_ = sync; }
 
-    //surfaceRole
-    virtual vec2i getPosition() const override { return position_; }
-    virtual bool isMapped() const override { return 1; } //todo?
-    virtual void commit() override { } //todo
-    virtual unsigned char getRoleType() const override { return surfaceRoleType::sub; }
+    void position(const nytl::vec2i& position){ position_ = position; }
+	const nytl::vec2i& position() const { return position_; }
 
     //res
-    virtual resourceType getType() const override { return resourceType::subsurface; }
+    virtual unsigned int type() const override { return resourceType::subsurface; }
 };
+
+///Represents the subsurface role for a surface resource.
+class SubsurfaceRole : public SurfaceRole
+{
+protected:
+	SubsurfaceRes* subsurfaceRes_;
+
+public:
+	SubsurfaceRole(SubsurfaceRes& sub) : subsurfaceRes_(&sub) {}
+
+    virtual nytl::vec2i position() const override { return subsurfaceRes_->position(); }
+    virtual bool mapped() const override { return 1; } //todo?
+    virtual void commit() override {} //todo
+    virtual unsigned int roleType() const override { return surfaceRoleType::sub; }
+
+	SubsurfaceRes& subsurfaceRes() const { return *subsurfaceRes_; }
+};
+
+}

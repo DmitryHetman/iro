@@ -10,6 +10,8 @@
  * context,e.g. when a shellSurface is moved, which button was pressed
  * to start that -> at which button release stop moving the shellSurface
  */
+namespace iro
+{
 
 namespace eventType
 {
@@ -19,51 +21,58 @@ namespace eventType
     constexpr unsigned char keyboardFocus = 0x04;
 }
 
-//base///////////////////////////////////////////
-class event
+///The Event class represents a unique event that was sent to a client.
+class Event
 {
 protected:
-    event(unsigned int t, client* c = nullptr) : type(t) {}
+    Event(unsigned int t, Client* c = nullptr) : type(t), client(c) {}
 
 public:
     const unsigned int type;
-    client* target;
+    Client* client;
+	unsigned int serial = 0; //0: no serial
 };
 
 //pointer/////////////////////////////////////////
-class pointerButtonEvent : public event
+class PointerButtonEvent : public Event
 {
 public:
-    pointerButtonEvent(bool pstate, unsigned int pbutton, client* c = nullptr) : event(eventType::pointerButton, c),
-                                                                                    state(pstate), button(pbutton) {};
+    PointerButtonEvent(bool pstate, unsigned int pbutton, Client* c = nullptr) 
+		: Event(eventType::pointerButton, c), state(pstate), button(pbutton) {};
+
     bool state;
     unsigned int button;
 };
 
-class pointerFocusEvent : public event
+class PointerFocusEvent : public Event
 {
 public:
-    pointerFocusEvent(bool pstate, surfaceRes* surf, client* c = nullptr) : event(eventType::pointerFocus, c),
-                                                                                state(pstate), surface(surf) {};
+    PointerFocusEvent(bool pstate, SurfaceRes* surf, Client* c = nullptr) 
+		: Event(eventType::pointerFocus, c), state(pstate), surface(surf) {};
+
     bool state;
-    surfaceRes* surface;
+    SurfaceRes* surface;
 };
 
 //keyboard/////////////////////////////////////
-class keyboardKeyEvent : public event
+class KeyboardKeyEvent : public Event
 {
 public:
-    keyboardKeyEvent(bool pstate, unsigned int pkey, client* c = nullptr) : event(eventType::keyboardKey, c),
-                                                                                state(pstate), key(pkey) {};
+    KeyboardKeyEvent(bool pstate, unsigned int pkey, Client* c = nullptr) 
+		: Event(eventType::keyboardKey, c), state(pstate), key(pkey) {};
+
     bool state;
     unsigned int key;
 };
 
-class keyboardFocusEvent : public event
+class KeyboardFocusEvent : public Event
 {
 public:
-    keyboardFocusEvent(bool pstate, surfaceRes* surf, client* c = nullptr) : event(eventType::keyboardFocus, c),
-                                                                                state(pstate), surface(surf) {};
+    KeyboardFocusEvent(bool pstate, SurfaceRes* surf, Client* c = nullptr) 
+		: Event(eventType::keyboardFocus, c),state(pstate), surface(surf) {};
+
     bool state;
-    surfaceRes* surface;
+    SurfaceRes* surface;
 };
+
+}

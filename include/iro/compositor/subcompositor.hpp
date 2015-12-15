@@ -1,26 +1,23 @@
 #pragma once
 
 #include <iro/include.hpp>
-#include <nyutil/nonCopyable.hpp>
+#include <iro/util/global.hpp>
 
-#include <iro/compositor/resource.hpp>
+namespace iro
+{
 
-class subcompositor : public nonCopyable
+///The Subcompositor class is resposbile for managing subsurfaces.
+class Subcompositor : public Global
 {
 protected:
-    wl_global* global_;
+	Compositor* compositor_;
 
 public:
-    subcompositor();
-    ~subcompositor();
+    Subcompositor(Compositor& comp);
+    ~Subcompositor();
+
+	Compositor& compositor() const { return *compositor_; }
 };
 
-//////////////////////
-class subcompositorRes : public resource
-{
-public:
-    subcompositorRes(wl_client& client, unsigned int id, unsigned int version);
 
-    //res
-    resourceType getType() const { return resourceType::subcompositor; }
-};
+}

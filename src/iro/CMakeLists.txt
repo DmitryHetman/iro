@@ -1,42 +1,5 @@
-#sources
-set (CMAKE_POSITION_INDEPENDENT_CODE TRUE)
-
-set(src
-	compositor/compositor.cpp
-	compositor/subcompositor.cpp
-	compositor/callback.cpp
-	compositor/region.cpp
-	compositor/resource.cpp
-	compositor/surface.cpp
-	compositor/subsurface.cpp
-	compositor/buffer.cpp
-	compositor/shellSurface.cpp
-	compositor/client.cpp
-	compositor/xdg-surface.cpp
-	compositor/shell.cpp
-	compositor/xdg-shell.cpp
-
-	backend/egl.cpp
-	backend/tty.cpp
-	backend/backend.cpp
-	backend/renderer.cpp
-	backend/output.cpp
-	backend/session.cpp
-	backend/x11Backend.cpp
-	backend/kmsBackend.cpp
-	backend/input.cpp
-
-	util/shader.cpp
-	util/iroModule.cpp
-
-	seat/seat.cpp
-	seat/keyboard.cpp
-	seat/pointer.cpp
-
-	iro.cpp
-)
-
 #deps
+find_package(NYTL REQUIRED)
 find_package(Wayland REQUIRED)
 find_package(libinput REQUIRED)
 find_package(X11 REQUIRED)
@@ -50,8 +13,45 @@ find_package(Systemd REQUIRED)
 find_package(X11_XCB REQUIRED)
 find_package(PAM REQUIRED)
 
-include_directories( 
-	${nyutil_include}
+set(iro-src
+	compositor/compositor.cpp
+	compositor/callback.cpp
+	compositor/region.cpp
+	compositor/resource.cpp
+	compositor/surface.cpp
+	compositor/subsurface.cpp
+	compositor/subcompositor.cpp
+	compositor/buffer.cpp
+	compositor/client.cpp
+	compositor/shell.cpp
+	compositor/shellSurface.cpp
+
+	backend/egl.cpp
+	backend/backend.cpp
+	backend/output.cpp
+	backend/x11.cpp
+	backend/kms.cpp
+	backend/surfaceContext.cpp
+	backend/devices.cpp
+	backend/tty.cpp
+	#backend/logind.hpp
+	#backend/dbus.hpp
+
+	util/global.cpp
+
+	seat/seat.cpp
+	seat/keyboard.cpp
+	seat/pointer.cpp
+	seat/touch.cpp
+)
+
+#iro
+add_library(iro SHARED ${iro-src})
+target_compile_features(iro PRIVATE cxx_range_for)
+
+
+target_include_directories(iro PUBLIC
+	${NYTL_INCLUDE_DIRS}
 	${WAYLAND_SERVER_INCLUDE_DIRS}
 	${GBM_INCLUDE_DIRS}
 	${DRM_INCLUDE_DIRS}
@@ -68,15 +68,7 @@ include_directories(
 	${PAM_INCLUDE_DIR}
 )
 
-#proto
-add_subdirectory(proto)
-
-#iro
-add_library(iro SHARED ${src})
-target_compile_features(iro PRIVATE cxx_range_for)
-
 target_link_libraries(iro
-	${nyutil_lib}
 	${WAYLAND_SERVER_LIBRARIES}
   	${LIBINPUT_LIBRARIES}
    	${UDEV_LIBRARIES}
@@ -91,26 +83,5 @@ target_link_libraries(iro
 	${X11_XCB_LIBRARIES}
 	${XCB_ICCCM_LIBRARY}
 	${PAM_LIBRARIES}
-
+	ny-draw
 )
-
-if(NOT ${NYUTIL_FOUND})
-	add_dependencies(iro nyutilTarget)
-endif()
-
-install(TARGETS iro DESTINATION lib)
-
-#main
-add_executable(iroCompositor main.cpp)
-target_compile_features(iroCompositor PRIVATE cxx_range_for)
-target_link_libraries(iroCompositor iro ${nyutil_lib})
-
-if(NOT ${NYUTIL_FOUND})
-	add_dependencies(iroCompositor nyutilTarget)
-endif()
-
-install(TARGETS iroCompositor DESTINATION bin)
-
-
-
-

@@ -1,20 +1,29 @@
 #include <iro/seat/keyboard.hpp>
+
 #include <iro/seat/seat.hpp>
 #include <iro/seat/event.hpp>
 #include <iro/compositor/surface.hpp>
 #include <iro/compositor/client.hpp>
-#include <iro/iro.hpp>
-#include <iro/util/log.hpp>
+#include <iro/compositor/compositor.hpp>
+
+#include <nytl/log.hpp>
+#include <nytl/make_unique.hpp>
 
 #include <wayland-server-protocol.h>
 
 #include <linux/input.h>
 
-///////////////////////////////////////
-void keyboardRelease(wl_client* client, wl_resource* resource)
+
+namespace iro
 {
-    keyboardRes* kb = (keyboardRes*) wl_resource_get_user_data(resource);
-    kb->destroy();
+
+//wayland implementation
+void keyboardRelease(wl_client*, wl_resource* resource)
+{
+	KeyboardRes* kbres = Resource::validateDisconnect<KeyboardRes>(resource, "keyboardRelease");
+	if(!kbres) return;
+
+    kbres->destroy();
 }
 
 const struct wl_keyboard_interface keyboardImplementation
@@ -22,82 +31,84 @@ const struct wl_keyboard_interface keyboardImplementation
     &keyboardRelease
 };
 
-///////////////////////////////////
-keyboard::keyboard(seat& s) : seat_(s), focus_(nullptr)
+//Keyboard implementation
+Keyboard::Keyboard(Seat& seat) : seat_(&seat), focus_(nullptr)
 {
 }
 
-keyboard::~keyboard()
+Keyboard::~Keyboard()
 {
 }
 
-void keyboard::sendKeyPress(unsigned int key)
+Compositor& Keyboard::compositor() const
 {
-    iroLog("Key ", key, " Pressed");
+	return seat().compositor();
+}
 
-    if(key == KEY_ESC)
+void Keyboard::sendKey(unsigned int key, bool press)
+{
+	nytl::sendLog("Key ", key, " ", press);
+
+	//only for debug - should NOT be in releases.
+    if(key == KEY_ESC && press)
     {
-        getIro()->exit();
+		nytl::sendLog("ESC key - exiting compositor");
+        compositor().exit();
         return;
     }
 
-    if(!getActiveRes())
-        return;
-
-    keyboardKeyEvent* ev = new keyboardKeyEvent(1, key, &getActiveRes()->getClient());
-    wl_keyboard_send_key(&getActiveRes()->getWlResource(), iroNextSerial(ev), iroTime(), key, 1);
-
-    keyPressCallback_(key);
+    if(activeResource())
+	{
+		auto& ev = compositor().event(nytl::make_unique<KeyboardKeyEvent>(press, 
+					key, &activeResource()->client()), 1);
+		wl_keyboard_send_key(&activeResource()->wlResource(), ev.serial, 
+			compositor().time(), key, press);
+	}
+        
+    keyCallback_(key, press);
 }
 
-void keyboard::sendKeyRelease(unsigned int key)
+void Keyboard::sendFocus(SurfaceRes* newFocus)
 {
-    iroLog("Key ", key, " Released");
-
-    if(!getActiveRes())
-        return;
-
-    keyboardKeyEvent* ev = new keyboardKeyEvent(0, key, &focus_->getClient());
-    wl_keyboard_send_key(&getActiveRes()->getWlResource(), iroNextSerial(ev), iroTime(), key, 0);
-
-    keyReleaseCallback_(key);
-}
-
-void keyboard::sendFocus(surfaceRes* newFocus)
-{
-    if(getActiveRes())
+    if(activeResource())
     {
-        keyboardFocusEvent* ev = new keyboardFocusEvent(0, focus_, &focus_->getClient());
-        wl_keyboard_send_leave(&getActiveRes()->getWlResource(), iroNextSerial(ev), &focus_->getWlResource());
+        auto& ev = compositor().event(nytl::make_unique<KeyboardFocusEvent>(0, focus_, 
+				&focus_->client()), 1);
+        wl_keyboard_send_leave(&activeResource()->wlResource(), ev.serial, &focus_->wlResource());
     }
 
     focusCallback_(focus_, newFocus);
     focus_ = newFocus;
 
-    if(getActiveRes())
+    if(activeResource())
     {
-        keyboardFocusEvent* ev = new keyboardFocusEvent(1, focus_, &focus_->getClient());
-        wl_keyboard_send_enter(&getActiveRes()->getWlResource(), iroNextSerial(ev), &focus_->getWlResource(), nullptr);
+        auto& ev = compositor().event(nytl::make_unique<KeyboardFocusEvent>(1, focus_, 
+				&focus_->client()), 1);
+        wl_keyboard_send_enter(&activeResource()->wlResource(), ev.serial, 
+				&focus_->wlResource(), nullptr);
     }
 }
 
-keyboardRes* keyboard::getActiveRes() const
+KeyboardRes* Keyboard::activeResource() const
 {
-    return (focus_) ? focus_->getClient().getKeyboardRes() : nullptr;
+    return (focus_) ? focus_->client().keyboardResource() : nullptr;
 }
 
-/////////////////////////
-keyboardRes::keyboardRes(seatRes& sr, wl_client& client, unsigned int id) : resource(client, id, &wl_keyboard_interface, &keyboardImplementation), seatRes_(sr)
+//Keyboard Resource
+KeyboardRes::KeyboardRes(SeatRes& seatRes, unsigned int id)
+	: Resource(seatRes.wlClient(), id, &wl_keyboard_interface, &keyboardImplementation, 
+			seatRes.version())
 {
-
 }
 
-seat& keyboardRes::getSeat() const
+Keyboard& KeyboardRes::keyboard() const
 {
-    return seatRes_.getSeat();
+	return *seat().keyboard();
 }
 
-keyboard& keyboardRes::getKeyboard() const
+Seat& KeyboardRes::seat() const
 {
-    return *getSeat().getKeyboard();
+	return seatRes().seat();
+}
+
 }

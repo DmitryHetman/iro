@@ -1,167 +1,142 @@
 #include <iro/backend/output.hpp>
-#include <iro/backend/backend.hpp>
-
-#include <iro/backend/egl.hpp>
-#include <iro/backend/renderer.hpp>
+#include <iro/compositor/resource.hpp>
+#include <iro/compositor/client.hpp>
+#include <iro/compositor/compositor.hpp>
 #include <iro/compositor/surface.hpp>
-#include <iro/compositor/shell.hpp>
-#include <iro/seat/seat.hpp>
 
-#include <iro/util/log.hpp>
-#include <iro/util/iroModule.hpp>
+#include <ny/draw/drawContext.hpp>
 
-#include <nyutil/time.hpp>
+#include <nytl/make_unique.hpp>
+#include <nytl/log.hpp>
 
 #include <wayland-server-protocol.h>
 
+namespace iro
+{
 
-const unsigned char maxFps = 60; //todo
+OutputRes::OutputRes(Output& out, wl_client& client, unsigned int id, unsigned int version)
+	: Resource(client, id, &wl_output_interface, nullptr, version), output_(&out) {}
 
-//////
+//callback
+void bindOutput(wl_client* client, void* data, unsigned int version, unsigned int id)
+{
+    Output* out = static_cast<Output*>(data);
+	if(!out)
+	{
+		nytl::sendWarning("bindOutput: invalid data");
+		return;
+	}
+
+	auto& c = out->compositor().client(*client);
+	auto outres = nytl::make_unique<OutputRes>(*out, *client, id, version);
+	out->sendInformation(*outres);
+
+	c.addResource(std::move(outres));
+}
+
 int outputRedraw(void* data)
 {
-    output* o = (output*) data;
-    o->render();
+    Output* o = static_cast<Output*>(data);
+	if(!o)
+	{
+		nytl::sendWarning("outputRedraw: invalid data");
+		return 1;
+	}
 
+    o->redraw();
     return 1;
 }
 
-//
-output* outputAt(int x, int y)
+//output implementation
+Output::Output(Compositor& comp, unsigned int id, const nytl::vec2i& position, 
+		const nytl::vec2ui& size) 
+	: id_(id), position_(position), size_(size), compositor_(&comp)
 {
-    return outputAt(vec2i(x,y));
+    wlGlobal_ = wl_global_create(&comp.wlDisplay(), &wl_output_interface, 2, this, bindOutput);
+    redrawEventSource_ = wl_event_loop_add_timer(&comp.wlEventLoop(), outputRedraw, this);
 }
 
-output* outputAt(vec2i pos)
+Output::~Output()
 {
-    for(auto* out : iroBackend()->getOutputs())
-    {
-        if(out->getExtents().contains(pos))
-            return out;
-    }
-
-    return nullptr;
+    wl_event_source_remove(redrawEventSource_);
 }
 
-//
-std::vector<output*> outputsAt(int x, int y, int w, int h)
+void Output::redraw()
 {
-    return outputsAt(rect2i(x,y,w,h));
+	repaintScheduled_ = 0;
+	lastRedraw_.reset();
+
+	drawCallback_(*this, *drawContext_);
 }
 
-std::vector<output*> outputsAt(vec2i pos, vec2i size)
+void Output::scheduleRepaint()
 {
-    return outputsAt(rect2i(pos, size));
+	static const unsigned int maxFPS = 60; //todo: general?
+	if(!repaintScheduled_)
+	{
+		int time = (1000 / maxFPS) - lastRedraw_.getElapsedTime().asMilliseconds();
+		if(time < 0) time = 1;
+
+		wl_event_source_timer_update(redrawEventSource_, time);
+		repaintScheduled_ = 1;
+	}
 }
 
-std::vector<output*> outputsAt(rect2i ext)
+void Output::mapSurface(SurfaceRes& surf)
 {
-    std::vector<output*> ret;
+	if(surfaceMapped(surf)) return;
 
-    for(auto* out : iroBackend()->getOutputs())
-    {
-        if(out->getExtents().intersects(ext))
-            ret.push_back(out);
-    }
-
-    return ret;
-}
-
-//////////////////////////////
-void bindOutput(wl_client* client, void* data, unsigned int version, unsigned int id)
-{
-    output* out = (output*) data;
-    outputRes* res = new outputRes(*out, *client, id, version);
-
-    out->sendInformation(*res);
-}
-
-//////////////////////////
-output::output(unsigned int id) : id_(id)
-{
-    global_ = wl_global_create(iroWlDisplay(), &wl_output_interface, 2, this, bindOutput);
-    drawEventSource_ = wl_event_loop_add_timer(iroWlEventLoop(), outputRedraw, this);
-}
-
-output::~output()
-{
-    wl_event_source_remove(drawEventSource_);
-    wl_global_destroy(global_);
-}
-
-void output::render()
-{
-    lastRedraw_.reset();
-
-    renderer* machine = iroRenderer();
-    if(!machine)
-    {
-        iroWarning("output::render: no valid renderer");
-        return;
-    }
-
-    //timer t;
-
-    iroShell()->render(machine->getDrawContext(*this), mappedSurfaces_);
-    machine->applyOutput(*this);
-}
-
-void output::scheduleRepaint()
-{
-    if(!repaintScheduled_)
-    {
-        unsigned int time = (1 / maxFps) - lastRedraw_.getElapsedTime().asMilliseconds(); //framtime - elapsedTime
-        if(time < 0) time = 0;
-
-        wl_event_source_timer_update(drawEventSource_, time);
-    }
-
-    repaintScheduled_ = 1;
-}
-
-void output::mapSurface(surfaceRes& surf)
-{
     mappedSurfaces_.push_back(&surf);
     scheduleRepaint();
 }
 
-void output::unmapSurface(surfaceRes& surf)
+bool Output::surfaceMapped(const SurfaceRes& surf) const
+{
+	for(auto& s : mappedSurfaces_)
+		if(s == &surf) return 1;
+
+	return 0;
+}
+
+bool Output::unmapSurface(SurfaceRes& surf)
 {
     for(unsigned int i(0); i < mappedSurfaces_.size(); i++)
     {
         if(mappedSurfaces_[i] == &surf)
-            mappedSurfaces_.erase(mappedSurfaces_.begin() + i);
+		{
+			mappedSurfaces_.erase(mappedSurfaces_.begin() + i);
+			scheduleRepaint();
+			return 1;
+		}
     }
-    scheduleRepaint();
+
+	return 0;
 }
 
-surfaceRes* output::getSurfaceAt(const vec2i& pos)
+SurfaceRes* Output::surfaceAt(const nytl::vec2i& pos) const
 {
-    for(surfaceRes* res : mappedSurfaces_)
+    for(auto& res : mappedSurfaces_)
     {
-        if(res->getExtents().contains(pos))
+        if(contains(res->extents(), pos))
             return res;
     }
+
     return nullptr;
 }
 
-vec2i output::getPosition() const
+const nytl::vec2i& Output::position() const
 {
     return position_;
 }
 
-vec2ui output::getSize() const
+const nytl::vec2ui& Output::size() const
 {
     return size_;
 }
 
-rect2i output::getExtents() const
+nytl::rect2i Output::extents() const
 {
-    return rect2i(getPosition(), getSize());
+    return nytl::rect2i(position(), size());
 }
-
-///////////////////////7
-outputRes::outputRes(output& out, wl_client& client, unsigned int id, unsigned int version) : resource(client, id, &wl_output_interface, nullptr, version), output_(out)
-{
 
 }

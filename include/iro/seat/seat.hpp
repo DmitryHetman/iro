@@ -1,70 +1,66 @@
 #pragma once
 
 #include <iro/include.hpp>
+#include <iro/util/global.hpp>
 #include <iro/compositor/resource.hpp>
 
-////////////////////////////////
-enum class seatMode : unsigned char
-{
-    normal = 1,
-    resize = 2,
-    move = 3,
-    dnd = 4
-};
+#include <nytl/vec.hpp>
 
-class seat
+namespace iro
+{
+
+///The seat class represents a unix input connection. It can handle one pointer, keyboard or
+///touch field.
+class Seat : public Global
 {
 protected:
+	Compositor* compositor_;
     std::string name_;
 
-    pointer* pointer_;
-    keyboard* keyboard_;
+	Event* modeEvent_ = nullptr;
 
-    event* modeEvent_ = nullptr; //event that brand seat in current state, if normal state its == nullptr
-    seatMode mode_ = seatMode::normal;
-    union
-    {
-        struct { shellSurfaceRes* grab_; unsigned int resizeEdges_ = 0; }; //resize and resize
-        struct { }; //dnd
-    };
+    std::unique_ptr<Pointer> pointer_;
+    std::unique_ptr<Keyboard> keyboard_;
+    std::unique_ptr<Touch> touch_;
 
 public:
-    seat();
-    ~seat();
+    Seat(Compositor& comp, const nytl::vec3b& caps = {1, 1, 1});
+	~Seat();
 
-    pointer* getPointer() const { return pointer_; }
-    keyboard* getKeyboard() const { return keyboard_; }
+    Pointer* pointer() const { return pointer_.get(); }
+    Keyboard* keyboard() const { return keyboard_.get(); }
+    Touch* touch() const { return touch_.get(); }
 
-    void cancelGrab();
-    void resizeShellSurface(unsigned int serial, seatRes* res, shellSurfaceRes* shellSurf, unsigned int edges);
-    void moveShellSurface(unsigned int serial, seatRes* res, shellSurfaceRes* shellSurf);
-
-    seatMode getMode() const { return mode_; }
-    shellSurfaceRes* getGrab() const { return grab_; }
-    unsigned int getResizeEdges() const { return (mode_ == seatMode::resize) ? resizeEdges_ : 0; }
+	Compositor& compositor() const { return *compositor_; }
+    Event* modeEvent() const { return modeEvent_; }
 };
 
-////////////////////////////////
-class seatRes : public resource
+
+///The SeatRes represents a clients resource for a seat global.
+class SeatRes : public Resource
 {
 protected:
-    seat& seat_;
+    Seat* seat_;
 
-    pointerRes* pointer_ = nullptr;
-    keyboardRes* keyboard_ = nullptr;
+    PointerRes* pointer_ {nullptr};
+    KeyboardRes* keyboard_ {nullptr};
+    TouchRes* touch_ {nullptr};
 
 public:
-    seatRes(seat& s, wl_client& client, unsigned int id, unsigned int version);
-    ~seatRes();
+    SeatRes(Seat& s, wl_client& client, unsigned int id, unsigned int version);
+    ~SeatRes();
 
-    void createPointer(unsigned int id);
-    void createKeyboard(unsigned int id);
+    bool createPointer(unsigned int id);
+    bool createKeyboard(unsigned int id);
+    bool createTouch(unsigned int id);
 
-    pointerRes* getPointerRes() const { return pointer_; }
-    keyboardRes* getKeyboardRes() const { return keyboard_; }
+    PointerRes* pointerResource() const { return pointer_; }
+    KeyboardRes* keyboardResource() const { return keyboard_; }
+    TouchRes* touchResource() const { return touch_; }
 
-    seat& getSeat() const { return seat_; }
+    Seat& seat() const { return *seat_; }
 
-    //res
-    virtual resourceType getType() const override { return resourceType::seat; }
+    virtual unsigned int type() const override { return resourceType::seat; }
 };
+
+}

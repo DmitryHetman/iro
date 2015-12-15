@@ -2,22 +2,60 @@
 
 #include <iro/seat/seat.hpp>
 #include <iro/seat/event.hpp>
+#include <iro/seat/cursorSurface.hpp>
+#include <iro/compositor/compositor.hpp>
 #include <iro/compositor/surface.hpp>
 #include <iro/compositor/client.hpp>
-#include <iro/compositor/shellSurface.hpp>
 #include <iro/backend/backend.hpp>
 #include <iro/backend/output.hpp>
 
-#include <iro/util/log.hpp>
+#include <nytl/log.hpp>
+#include <nytl/make_unique.hpp>
 
 #include <wayland-server-protocol.h>
 
-//////////////////////////
-void pointerSetCursor(wl_client* client, wl_resource* resource, unsigned int serial, wl_resource* surface, int hotspot_x, int hotspot_y)
+namespace iro
 {
+
+//wayland implementation
+void pointerSetCursor(wl_client*, wl_resource* resource, unsigned int serial, 
+		wl_resource* surface, int hx, int hy)
+{
+	PointerRes* ptr = Resource::validateDisconnect<PointerRes>(resource, "setCursor");
+	if(!ptr) return;
+
+	if(!ptr->pointer().activeResource() || 
+			&ptr->client() != &ptr->pointer().activeResource()->client())
+	{
+		nytl::sendWarning("pointerSetCursor: requesting client does not have pointer focus");
+		return;
+	}
+
+	if(!surface)
+	{
+		ptr->pointer().resetCursor();
+		return;
+	}
+
+	SurfaceRes* surf = Resource::validateDisconnect<SurfaceRes>(surface, "setCursor2");
+	if(!surf) return;
+
+	if(surf->roleType() != surfaceRoleType::none && surf->roleType() != surfaceRoleType::cursor)
+	{
+		nytl::sendWarning("pointerSetCursor: invalid surface role");
+		wl_resource_post_error(resource, WL_POINTER_ERROR_ROLE, "invalid role");
+		return;
+	}
+
+	ptr->pointer().cursor(*surf, nytl::vec2i(hx, hy));
 }
-void pointerRelease(wl_client* client, wl_resource* resource)
+
+void pointerRelease(wl_client*, wl_resource* resource)
 {
+	PointerRes* ptr = Resource::validateDisconnect<PointerRes>(resource, "pointerRelease");
+	if(!ptr) return;
+
+	ptr->destroy();
 }
 
 const struct wl_pointer_interface pointerImplementation
@@ -26,216 +64,169 @@ const struct wl_pointer_interface pointerImplementation
     &pointerRelease
 };
 
-////////////////////////////////////777
-pointer::pointer(seat& s) : seat_(s)
+//Pointer implementation
+Pointer::Pointer(Seat& s) : seat_(&s)
 {
 }
 
-pointer::~pointer()
+Pointer::~Pointer()
 {
 }
 
-void pointer::setOver(surfaceRes* newOne)
+Compositor& Pointer::compositor() const
+{
+	return seat().compositor();
+}
+
+void Pointer::setOver(SurfaceRes* newOne)
 {
     //send leave
     if(over_.get())
     {
-        if(!over_.get()->getClient().getPointerRes())
-            iroWarning("pointer::sendActive: ", "Left surface without associated pointerRes");
+		auto* surf = over_.get();
+		auto* ptrRes = surf->client().pointerResource();
 
+        if(!ptrRes)
+		{
+			nytl::sendWarning("pointer::sendActive: left surface without pointerRes");
+		}
         else
         {
-            pointerFocusEvent* ev = new pointerFocusEvent(0, over_.get());
-            wl_pointer_send_leave(&over_.get()->getClient().getPointerRes()->getWlResource(), iroNextSerial(ev), &over_.get()->getWlResource());
+            auto& ev = compositor().event(nytl::make_unique<PointerFocusEvent>(0, surf), 1);
+            wl_pointer_send_leave(&ptrRes->wlResource(), ev.serial, &surf->wlResource());
         }
     }
 
-    surfaceRes* old = over_.get();
+    SurfaceRes* old = over_.get();
     over_.set(newOne);
 
     //send enter
     if(newOne)
     {
-        if(!newOne->getClient().getPointerRes())
-            iroWarning("pointer::sendActive: ", "Entered surface without associated pointerRes");
+		auto* ptrRes = newOne->client().pointerResource();
 
+        if(!ptrRes)
+		{
+			nytl::sendWarning("pointer::sendActive: Entered surface without pointerRes");
+		}
         else
         {
-            pointerFocusEvent* ev = new pointerFocusEvent(1, newOne);
-            vec2i pos; //todo
-            wl_pointer_send_enter(&newOne->getClient().getPointerRes()->getWlResource(), iroNextSerial(ev), &newOne->getWlResource(), pos.x, pos.y);
+			nytl::vec2i pos; //todo, relative pos
+
+			auto& ev = compositor().event(nytl::make_unique<PointerFocusEvent>(1, newOne), 1);
+            wl_pointer_send_enter(&ptrRes->wlResource(), ev.serial, &newOne->wlResource(), 
+					pos.x, pos.y);
         }
     }
 
     focusCallback_(old, newOne);
 }
 
-void pointer::sendMove(vec2i pos)
+void Pointer::sendMove(const nytl::vec2i& pos)
 {
-    vec2i delta = pos - position_;
-    position_ = pos;
+	//nytl::vec2i delta = pos - position_;
+	position_ = pos;
 
-    moveCallback_(pos);
+	moveCallback_(position_);
 
-    /* TODO
-    output* overOut = outputAt(x,y);
-    if(!overOut)return;
-    */
+	if(!compositor().backend())
+	{
+		nytl::sendWarning("pointer::sendMove: invalid backend, cant get output");
+		return;
+	}
 
-    output* overOut = iroBackend()->getOutputs()[0];
-    overOut->scheduleRepaint();
+	Output* overOut = compositor().backend()->outputAt(position_);
+	if(!overOut) return;
 
-    if(seat_.getMode() == seatMode::normal)
-    {
-        surfaceRes* surf = overOut->getSurfaceAt(position_);
-        if(surf != over_.get())
-        {
-            setOver(surf);
-        }
+	if(!seat().modeEvent())
+	{
+		SurfaceRes* surf = overOut->surfaceAt(position_);
+		if(surf != over_.get()) setOver(surf);
 
-        if(!getActiveRes())
-            return;
-
-        vec2i vec = getPositionWl();
-        wl_pointer_send_motion(&getActiveRes()->getWlResource(), iroTime(), vec.x, vec.y);
-    }
-
-    else if(seat_.getMode() == seatMode::move)
-    {
-        if(!seat_.getGrab())
-        {
-            iroWarning("pointer::sendMove: ", "seat in move mode without any grab surface. Resetting");
-            getSeat().cancelGrab();
-        }
-        else
-        {
-            getSeat().getGrab()->move(delta);
-        }
-    }
-
-    else if(seat_.getMode() == seatMode::resize)
-    {
-        if(!seat_.getGrab())
-        {
-            iroWarning("pointer::sendMove: ", "seat in resize mode without any grab surface. Resetting");
-            getSeat().cancelGrab();
-        }
-        else
-        {
-            //todo!
-            if(!over_.get())
-            {
-                getSeat().cancelGrab();
-            }
-
-            int w = over_.get()->getExtents().width();
-            int h = over_.get()->getExtents().height();
-
-            if(!w || !h) return;
-
-            unsigned int edges = getSeat().getResizeEdges();
-
-            if(edges & WL_SHELL_SURFACE_RESIZE_BOTTOM)
-                h = position_.y - over_.get()->getPosition().y;
-
-            else if(edges & WL_SHELL_SURFACE_RESIZE_TOP)
-                h = over_.get()->getExtents().bottom() - position_.y;
-
-            if(edges & WL_SHELL_SURFACE_RESIZE_RIGHT)
-                w = position_.x - over_.get()->getPosition().y;
-
-            else if(edges & WL_SHELL_SURFACE_RESIZE_LEFT)
-                w = over_.get()->getExtents().right() - position_.x;
-
-            if(w < 0) w = 0;
-            if(h < 0) h = 0;
-
-            wl_shell_surface_send_configure(&getSeat().getGrab()->getWlResource(), getSeat().getResizeEdges(), w, h);
-        }
-    }
+		if(activeResource())
+		{
+			auto wlpos = wlFixedPosition();
+			wl_pointer_send_motion(&activeResource()->wlResource(), compositor().time(), 
+					wlpos.x, wlpos.y);
+		}	
+	}
 }
 
-void pointer::sendMove(int x, int y)
+void Pointer::sendButton(unsigned int button, bool press)
 {
-   sendMove(vec2i(x,y));
+	if(activeResource() && !seat().modeEvent())
+	{
+		auto& ev = compositor().event(nytl::make_unique<PointerButtonEvent>(press,
+				button, &activeResource()->client()), 1);
+
+		wl_pointer_send_button(&activeResource()->wlResource(), ev.serial, compositor().time(), 
+				button ,press);
+	}
+
+	buttonCallback_(button, press);
 }
 
-void pointer::sendButtonPress(unsigned int button)
+void Pointer::sendAxis(unsigned int axis, double value)
 {
-    if(!getActiveRes() || getSeat().getMode() != seatMode::normal)
-    {
-        buttonPressCallback_(button);
-        return;
-    }
+    if(activeResource() && !seat().modeEvent())
+	{
+		wl_pointer_send_axis(&activeResource()->wlResource(), compositor().time(), axis, value);
+	}
 
-    pointerButtonEvent* ev = new pointerButtonEvent(1, button, &getActiveRes()->getClient());
-    wl_pointer_send_button(&getActiveRes()->getWlResource(), iroNextSerial(ev), iroTime(), button, 1);
-
-    buttonPressCallback_(button);
-    //keyboard focus
-}
-
-void pointer::sendButtonRelease(unsigned int button)
-{
-    if(!getActiveRes() || getSeat().getMode() != seatMode::normal)
-    {
-        buttonReleaseCallback_(button);
-        return;
-    }
-
-    pointerButtonEvent* ev = new pointerButtonEvent(0, button, &getActiveRes()->getClient());
-    wl_pointer_send_button(&getActiveRes()->getWlResource(), iroNextSerial(ev), iroTime(), button, 0);
-
-    buttonReleaseCallback_(button);
-}
-
-void pointer::sendAxis(unsigned int axis, double value)
-{
     axisCallback_(axis, value);
-
-    if(!getActiveRes() || getSeat().getMode() != seatMode::normal)
-        return;
-
-    wl_pointer_send_axis(&getActiveRes()->getWlResource(), iroTime(), axis, value);
 }
 
-void pointer::setCursor(surfaceRes& surf)
+void Pointer::cursor(SurfaceRes& surf, const nytl::vec2i& hotspot)
 {
-    if(surf.getRoleType() != surfaceRoleType::cursor)
+    if(surf.roleType() != surfaceRoleType::cursor)
     {
-        iroWarning("pointer::setCursor: tried to set cursor to a surface without cursor role");
-        return;
+		if(surf.roleType() == surfaceRoleType::none)
+		{
+			surf.role(nytl::make_unique<CursorSurfaceRole>());
+		}
+		else
+		{
+			nytl::sendWarning("pointer::setCursor: cursor has different role");
+			return;
+		}
     }
+
+	auto* crole = static_cast<CursorSurfaceRole*>(surf.role());
+	crole->hotspot(hotspot);
 
     cursor_.set(&surf);
 }
 
-void pointer::resetCursor()
+void Pointer::resetCursor()
 {
-    cursor_.set(nullptr);
+	cursor_.set(nullptr);
 }
 
-vec2i pointer::getPositionWl() const
+nytl::vec2i Pointer::wlFixedPosition() const
 {
-    return vec2i(wl_fixed_from_int(position_.x), wl_fixed_from_int(position_.y));
+    return nytl::vec2i(wl_fixed_from_int(position_.x), wl_fixed_from_int(position_.y));
 }
 
-pointerRes* pointer::getActiveRes() const
+PointerRes* Pointer::activeResource() const
 {
-    return (over_.get()) ? over_.get()->getClient().getPointerRes() : nullptr;
+    return (over_.get()) ? over_.get()->client().pointerResource() : nullptr;
 }
 
-//////////////////////////////////////
-pointerRes::pointerRes(seatRes& sr, wl_client& client, unsigned int id) : resource(client, id, &wl_pointer_interface, &pointerImplementation), seatRes_(sr)
+//pointer resource
+PointerRes::PointerRes(SeatRes& seatRes, unsigned int id)
+	: Resource(seatRes.wlClient(), id, &wl_pointer_interface, &pointerImplementation, 
+		seatRes.version()), seatRes_(&seatRes)
 {
 }
 
-seat& pointerRes::getSeat() const
+Seat& PointerRes::seat() const
 {
-    return seatRes_.getSeat();
+	return seatRes().seat();
 }
 
-pointer& pointerRes::getPointer() const
+Pointer& PointerRes::pointer() const
 {
-    return *getSeat().getPointer();
+	return *seat().pointer();
+}
+
 }

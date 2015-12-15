@@ -3,57 +3,58 @@
 #include <iro/include.hpp>
 #include <iro/compositor/resource.hpp>
 
-#include <nyutil/nonCopyable.hpp>
-#include <nyutil/callback.hpp>
+#include <nytl/nonCopyable.hpp>
+#include <nytl/callback.hpp>
 
-//////////////////////////////////////////
-class keyboard : public nonCopyable
+namespace iro
+{
+
+///Represnts a physical keyboard
+class Keyboard : public nytl::nonCopyable
 {
 protected:
-    friend seat; //manages keyboard
-    keyboard(seat& s);
-    ~keyboard();
-
-    seat& seat_;
-    surfaceRes* focus_ = nullptr;
+    Seat* seat_;
+    SurfaceRes* focus_ = nullptr;
 
     //callbacks
-    callback<void(unsigned int)> keyPressCallback_;
-    callback<void(unsigned int)> keyReleaseCallback_;
-
-    callback<void(surfaceRes*, surfaceRes*)> focusCallback_;
+	nytl::callback<void(unsigned int, bool)> keyCallback_;
+	nytl::callback<void(SurfaceRes*, SurfaceRes*)> focusCallback_;
 
 public:
-    void sendKeyPress(unsigned int key);
-    void sendKeyRelease(unsigned int key);
+	Keyboard(Seat& seat);
+	~Keyboard();
 
-    void sendFocus(surfaceRes* newFocus);
-    surfaceRes* getFocus() const { return focus_; }
-    keyboardRes* getActiveRes() const;
+    void sendKey(unsigned int key, bool press);
+    void sendFocus(SurfaceRes* newFocus);
 
-    seat& getSeat() const { return seat_; }
+    SurfaceRes* focus() const { return focus_; }
+    KeyboardRes* activeResource() const;
 
-    //cbs
-    std::unique_ptr<connection> onKeyPress(std::function<void(unsigned int key)> func){ return keyPressCallback_.add(func); }
-    std::unique_ptr<connection> onKeyRelease(std::function<void(unsigned int key)> func){ return keyReleaseCallback_.add(func); }
+    Seat& seat() const { return *seat_; }
+	Compositor& compositor() const;
 
-    std::unique_ptr<connection> onFocus(std::function<void(surfaceRes* old, surfaceRes*)> func){ return focusCallback_.add(func); }
+    //callbacks
+    template<typename F> nytl::connection onKey(F&& f)
+		{ return keyCallback_.add(f); }
+    template<typename F> nytl::connection onFocus(F&& f)
+		{ return focusCallback_.add(f); }
 };
-//////////////////////////////////////////
-class keyboardRes : public resource
+
+///Represents a clients keyboard resource.
+class KeyboardRes : public Resource
 {
 protected:
-    friend seatRes;
-    keyboardRes(seatRes& sr, wl_client& client, unsigned int id);
-
-    seatRes& seatRes_;
+	SeatRes* seatRes_;
 
 public:
-    seatRes& getSeatRes() const { return seatRes_; }
+	KeyboardRes(SeatRes& seatRes, unsigned int id);
+	~KeyboardRes() = default;
 
-    seat& getSeat() const;
-    keyboard& getKeyboard() const;
+    SeatRes& seatRes() const { return *seatRes_; }
+    Keyboard& keyboard() const;
+    Seat& seat() const;
 
-    //res
-    virtual resourceType getType() const override { return resourceType::keyboard; }
+    virtual unsigned int type() const override { return resourceType::keyboard; }
 };
+
+}

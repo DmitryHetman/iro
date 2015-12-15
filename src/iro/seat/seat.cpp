@@ -2,27 +2,41 @@
 
 #include <iro/seat/keyboard.hpp>
 #include <iro/seat/pointer.hpp>
+#include <iro/seat/touch.hpp>
 #include <iro/seat/event.hpp>
+#include <iro/compositor/compositor.hpp>
+#include <iro/compositor/client.hpp>
 
-#include <iro/util/log.hpp>
+#include <nytl/log.hpp>
+#include <nytl/make_unique.hpp>
 
 #include <wayland-server-protocol.h>
-
 #include <stdexcept>
-#include <iostream>
 
-void seatGetPointer(wl_client* client, wl_resource* resource, unsigned int id)
+namespace iro
 {
-    seatRes* res = (seatRes*) wl_resource_get_user_data(resource);
-    res->createPointer(id);
+
+//wayland interface
+void seatGetPointer(wl_client*, wl_resource* resource, unsigned int id)
+{
+	SeatRes* seat = Resource::validateDisconnect<SeatRes>(resource, "seatGetPointer");
+	if(!seat) return;
+
+    seat->createPointer(id);
 }
-void seatGetKeyboard(wl_client* client, wl_resource* resource, unsigned int id)
+void seatGetKeyboard(wl_client*, wl_resource* resource, unsigned int id)
 {
-    seatRes* res = (seatRes*) wl_resource_get_user_data(resource);
-    res->createKeyboard(id);
+	SeatRes* seat = Resource::validateDisconnect<SeatRes>(resource, "seatGetKeyboard");
+	if(!seat) return;
+
+    seat->createKeyboard(id);
 }
-void seatGetTouch(wl_client* client, wl_resource* resource, unsigned int id)
+void seatGetTouch(wl_client*, wl_resource* resource, unsigned int id)
 {
+	SeatRes* seat = Resource::validateDisconnect<SeatRes>(resource, "seatGetTouch");
+	if(!seat) return;
+
+    seat->createTouch(id);
 }
 
 const struct wl_seat_interface seatImplementation
@@ -34,112 +48,142 @@ const struct wl_seat_interface seatImplementation
 
 void bindSeat(wl_client* client, void* data, unsigned int version, unsigned int id)
 {
-    new seatRes(*iroSeat(), *client, id, version);
+	Seat* seat = static_cast<Seat*>(data);
+	if(!seat)
+	{
+		nytl::sendWarning("bindSeat: invalid data");
+		return;
+	}
+
+    auto& clnt = seat->compositor().client(*client);
+	clnt.addResource(nytl::make_unique<SeatRes>(*seat, *client, id, version));
 }
 
-/////////////////////////
-seat::seat()
+
+//Seat implementation
+Seat::Seat(Compositor& comp, const nytl::vec3b& caps) 
+	: compositor_(&comp), pointer_(nullptr), keyboard_(nullptr), touch_(nullptr)
 {
-    wl_global_create(iroWlDisplay(), &wl_seat_interface, 1, this, &bindSeat);
+    wlGlobal_ = wl_global_create(&comp.wlDisplay(), &wl_seat_interface, wl_seat_interface.version, 
+			this, &bindSeat);
+	if(!wlGlobal_)
+	{
+		throw std::runtime_error("Seat::Seat: failed to create global");
+		return;
+	}
 
-    keyboard_ = new keyboard(*this);
-    pointer_ = new pointer(*this);
-
-    pointer_->onButtonRelease([=](unsigned int button){
-                                if(mode_ != seatMode::normal)
-                                {
-                                    std::cout << "release: " << button << " ev: " << ((pointerButtonEvent*)modeEvent_)->button << std::endl;
-                                    if(modeEvent_ && modeEvent_->type == eventType::pointerButton && ((pointerButtonEvent*)modeEvent_)->button == button)
-                                        cancelGrab();
-                                }
-                             });
+	if(caps[0]) pointer_ = nytl::make_unique<Pointer>(*this);
+	if(caps[1]) keyboard_ = nytl::make_unique<Keyboard>(*this);
+	//if(caps[2]) touch_ = nytl::make_unique<Touch>(*this);
 }
 
-seat::~seat()
+Seat::~Seat()
 {
-    if(keyboard_)delete keyboard_;
-    if(pointer_) delete pointer_;
 }
 
-void seat::moveShellSurface(unsigned int serial, seatRes* res, shellSurfaceRes* shellSurface)
+///Seat resource
+SeatRes::SeatRes(Seat& seat, wl_client& client, unsigned int id, unsigned int version) 
+	: Resource(client, id, &wl_seat_interface, &seatImplementation, version), seat_(&seat)
 {
-    std::cout << "started move" << std::endl;
+	unsigned int capabilities = 0;
+	if(seat.pointer()) capabilities |= WL_SEAT_CAPABILITY_POINTER;
+	if(seat.keyboard()) capabilities |= WL_SEAT_CAPABILITY_KEYBOARD;
+	if(seat.touch()) capabilities |= WL_SEAT_CAPABILITY_TOUCH;
 
-    event* ev = iroGetEvent(serial);
-    if(!ev)
-    {
-        //error?
-        return;
-    }
-
-    mode_ = seatMode::move;
-    modeEvent_ = ev;
-    grab_ = shellSurface;
+    wl_seat_send_capabilities(&wlResource(), capabilities);
 }
 
-void seat::resizeShellSurface(unsigned int serial, seatRes* res, shellSurfaceRes* shellSurface, unsigned int edges)
+SeatRes::~SeatRes()
 {
-    std::cout << "started resize" << std::endl;
-
-    event* ev = iroGetEvent(serial);
-    if(!ev)
-    {
-        //error?
-        return;
-    }
-
-    mode_ = seatMode::resize;
-    modeEvent_ = ev;
-    grab_ = shellSurface;
-    resizeEdges_ = edges;
 }
 
-void seat::cancelGrab()
+bool SeatRes::createPointer(unsigned int id)
 {
-    std::cout << "cancelGrtab()" << std::endl;
+	if(pointer_)
+	{
+		nytl::sendWarning("seatRes::createPointer: tried to create second pointerRes");
+		return 0;
+	}
 
-    if(mode_ == seatMode::normal)
-        iroWarning("seat::cancelGrab: ", "seat is already in normal mode");
+	if(!seat_->pointer())
+	{
+		nytl::sendWarning("seatRes::createPointer: seat has no capability for pointer");
+		return 0;
+	}
 
-    mode_ = seatMode::normal;
-    modeEvent_ = nullptr;
+	auto res = nytl::make_unique<PointerRes>(*this, id);
+	if(!res)
+	{
+		nytl::sendWarning("seatRes::createPointer: failed to create pointerRes");
+		return 0;
+	}
 
-    std::cout << "modeeee0: " << (int) mode_ << std::endl;
+	res->onDestruction([=]{ this->pointer_ = nullptr; });
+	pointer_ = res.get();
+
+	client().addResource(std::move(res));
+	return 1;
 }
 
-//////////////////////////
-seatRes::seatRes(seat& s, wl_client& client, unsigned int id, unsigned int version) : resource(client, id, &wl_seat_interface, &seatImplementation, version), seat_(s)
+bool SeatRes::createKeyboard(unsigned int id)
 {
-    wl_seat_send_capabilities(wlResource_, wl_seat_capability::WL_SEAT_CAPABILITY_KEYBOARD | wl_seat_capability::WL_SEAT_CAPABILITY_POINTER);
-}
-seatRes::~seatRes()
-{
-    if(pointer_) pointer_->destroy();
-    if(keyboard_) keyboard_->destroy();
+	if(keyboard_)
+	{
+		nytl::sendWarning("seatRes::createKeyboard: already exists");
+		return 0;
+	}
+
+	if(!seat_->keyboard())
+	{
+		nytl::sendWarning("seatRes::createKeyboard: seat has no capability for keyboard");
+		return 0;
+	}
+
+	auto res = nytl::make_unique<KeyboardRes>(*this, id);
+	if(!res)
+	{
+		nytl::sendWarning("seatRes::createKeyboard: failed to create keyboardRes");
+		return 0;
+	}
+
+	res->onDestruction([=]{ this->keyboard_ = nullptr; });
+	keyboard_ = res.get();
+
+	client().addResource(std::move(res));
+	return 1;
 }
 
-void seatRes::createPointer(unsigned int id)
+bool SeatRes::createTouch(unsigned int id)
 {
-    if(!pointer_)
-    {
-        pointer_ = new pointerRes(*this, getWlClient(), id);
-        //pointer_->onDestruct([=]{ pointer_ = nullptr; });
-    }
-    else
-    {
-        iroWarning("seatRes::createPointer: ", "tried to create second pointerRes");
-    }
+	/*
+	if(touch_)
+	{
+		nytl::sendWarning("seatRes::createTouch: already exists");
+		return 0;
+	}
+
+	if(!seat_->touch())
+	{
+		nytl::sendWarning("seatRes::createTouch: seat has no capability for touch");
+		return 0;
+	}
+
+	auto res = nytl::make_unique<TouchRes>(*this, id);
+	if(!res)
+	{
+		nytl::sendWarning("seatRes::createTouch: failed to create touchRes");
+		return 0;
+	}
+
+	res->onDestruction([=]{ this->touch_ = nullptr; });
+	touch_ = res.get();
+
+	client().addResource(std::move(res));
+	return 1;
+	*/
+
+	return 0;
 }
 
-void seatRes::createKeyboard(unsigned int id)
-{
-    if(!keyboard_)
-    {
-        keyboard_ = new keyboardRes(*this, getWlClient(), id);
-        //keyboard_->onDestruct([=]{ keyboard_ = nullptr; });
-    }
-    else
-    {
-        iroWarning("seatRes::createKeyboard: ", "tried to create second keyboardRes");
-    }
+
 }

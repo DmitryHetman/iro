@@ -3,15 +3,22 @@
 #include <iro/compositor/surface.hpp>
 #include <wayland-server-protocol.h>
 
-void subsurfaceDestroy(wl_client* client, wl_resource* resource)
+namespace iro
 {
-    subsurfaceRes* surf = (subsurfaceRes*) wl_resource_get_user_data(resource);
-    delete surf;
+
+void subsurfaceDestroy(wl_client*, wl_resource* resource)
+{
+	SubsurfaceRes* ssurf = Resource::validateDisconnect<SubsurfaceRes>(resource, "subsurfdestroy");
+	if(!ssurf) return;
+
+	ssurf->destroy();
 }
-void subsurfaceSetPosition(wl_client* client, wl_resource* resource, int x, int y)
+void subsurfaceSetPosition(wl_client*, wl_resource* resource, int x, int y)
 {
-    subsurfaceRes* surf = (subsurfaceRes*) wl_resource_get_user_data(resource);
-    surf->setPosition(vec2ui(x,y));
+	SubsurfaceRes* ssurf = Resource::validateDisconnect<SubsurfaceRes>(resource, "subsurfpos");
+	if(!ssurf) return;
+
+    ssurf->position(nytl::vec2ui(x,y));
 }
 void subsurfacePlaceAbove(wl_client* client, wl_resource* resource, wl_resource* sibling)
 {
@@ -21,15 +28,19 @@ void subsurfacePlaceBelow(wl_client* client, wl_resource* resource, wl_resource*
 {
     //todo
 }
-void subsurfaceSetSync(wl_client* client, wl_resource* resource)
+void subsurfaceSetSync(wl_client*, wl_resource* resource)
 {
-    subsurfaceRes* surf = (subsurfaceRes*) wl_resource_get_user_data(resource);
-    surf->setSync(1);
+	SubsurfaceRes* ssurf = Resource::validateDisconnect<SubsurfaceRes>(resource, "subsurfsync");
+	if(!ssurf) return;
+
+    ssurf->synced(1);
 }
-void subsurfaceSetDesync(wl_client* client, wl_resource* resource)
+void subsurfaceSetDesync(wl_client*, wl_resource* resource)
 {
-    subsurfaceRes* surf = (subsurfaceRes*) wl_resource_get_user_data(resource);
-    surf->setSync(0);
+	SubsurfaceRes* ssurf = Resource::validateDisconnect<SubsurfaceRes>(resource, "subsurfdesync");
+	if(!ssurf) return;
+
+    ssurf->synced(0);
 }
 const struct wl_subsurface_interface subsurfaceImplementation =
 {
@@ -42,6 +53,11 @@ const struct wl_subsurface_interface subsurfaceImplementation =
 };
 
 /////////////////////////////7
-subsurfaceRes::subsurfaceRes(surfaceRes& surf, wl_client& client, unsigned int id, surfaceRes& parent) : resource(client, id, &wl_subsurface_interface, &subsurfaceImplementation), surface_(surf), parent_(parent)
+SubsurfaceRes::SubsurfaceRes(SurfaceRes& surf, wl_client& client, unsigned int id, 
+		SurfaceRes& parent) 
+	: Resource(client, id, &wl_subsurface_interface, 
+		&subsurfaceImplementation), surface_(surf), parent_(parent)
 {
+}
+
 }

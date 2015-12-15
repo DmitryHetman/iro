@@ -1,34 +1,58 @@
 #pragma once
 
 #include <iro/include.hpp>
-#include <nyutil/nonCopyable.hpp>
-#include <nyutil/callback.hpp>
+#include <nytl/nonCopyable.hpp>
+#include <nytl/callback.hpp>
+#include <nytl/region.hpp>
 
 #include <vector>
+#include <memory>
 
-namespace backendType //not enum, can be extended
+namespace iro
 {
-    const unsigned char none = 0;
-    const unsigned char x11 = 1;
-    const unsigned char kms = 2;
-}
 
-class backend : public nonCopyable
+///The backend class is the abstract base class representing a compositor backend.
+///It is respsonsible for creating output and renderer as well as managing the internal
+///coordinate system.
+class Backend : public nytl::nonCopyable
 {
 protected:
-    std::vector<output*> outputs_;
+    std::vector<std::unique_ptr<Output>> outputs_;
 
-    callback<void(output&)> outputCreatedCallback_;
-    callback<void(output&)> outputDestroyedCallback_;
+	nytl::callback<void(Output&)> outputCreatedCallback_;
+	nytl::callback<void(Output&)> outputDestroyedCallback_;
+
+	bool destroyOutput(const Output& op);
+	void addOutput(std::unique_ptr<Output>&& op);
 
 public:
-    virtual ~backend();
+    Backend();
+    virtual ~Backend();
 
-    std::vector<output*> getOutputs() const { return outputs_; }
+	///Returns the output at the given position.
+	//todo: return all outputs for position? multiple for one pos allowed?
+    Output* outputAt(const nytl::vec2i& pos) const;
 
-    std::unique_ptr<connection> onOutputCreated(std::function<void(output&)> func){ return outputCreatedCallback_.add(func); }
-    std::unique_ptr<connection> onOutputDestroyed(std::function<void(output&)> func){ return outputDestroyedCallback_.add(func); }
+	///Returns all outputs that lay in the specified area.
+    std::vector<Output*> outputsAt(const nytl::rect2i& area) const;
 
-    virtual unsigned int getType() const = 0;
-    virtual void* getNativeDisplay() const = 0;
+	///Returns all outputs that lay in the specified area.
+    std::vector<Output*> outputsAt(const nytl::region2i& area) const;
+
+	///Returns all outputs that are owned by this backend.
+    std::vector<Output*> outputs() const;
+
+	///Registers a callback function that should be called when an output is created.
+    template<typename F> nytl::connection onOutputCreated(F&& f)
+		{ return outputCreatedCallback_.add(f); }
+
+	///Registers a callback function that should be called weh nan output is destroyed.
+    template<typename F> nytl::connection onOutputDestroyed(F&& f)
+		{ return outputDestroyedCallback_.add(f); }
+
+	///Creates a backend and renderer specific surface context.
+	virtual std::unique_ptr<SurfaceContext> createSurfaceContext() const = 0;
+	virtual WaylandEglContext* eglContext() const { return nullptr; }
 };
+
+}

@@ -2,18 +2,23 @@
 
 #include <iro/include.hpp>
 #include <iro/compositor/resource.hpp>
-#include <nyutil/region.hpp>
+#include <nytl/region.hpp>
 
-class regionRes : public resource
+namespace iro
+{
+
+///Resource that represents a region (basically a vector of rectangles). 
+///Internally it uses the nytl::region2i class.
+class RegionRes : public Resource
 {
 protected:
-    region region_;
+	nytl::region2i region_;
 
 public:
-    regionRes(wl_client& client, unsigned int id);
+    RegionRes(wl_client& client, unsigned int id);
 
-    region& getRegion(){ return region_; }
-    const region& getRegion() const { return region_; }
-
-    resourceType getType() const { return resourceType::region; }
+	nytl::region2i& region(){ return region_; }
+    const nytl::region2i& region() const { return region_; }
 };
+
+}

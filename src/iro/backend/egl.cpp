@@ -1,30 +1,45 @@
 #include <iro/backend/egl.hpp>
-#include <iro/backend/output.hpp>
 
-#include <nyutil/misc.hpp>
+#include <nytl/make_unique.hpp>
+#include <nytl/misc.hpp>
+#include <nytl/log.hpp>
 
-#include <iostream>
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+
 #include <stdexcept>
 
-PFNEGLBINDWAYLANDDISPLAYWL eglContext::eglBindWaylandDisplayWL = nullptr;
-PFNEGLUNBINDWAYLANDDISPLAYWL eglContext::eglUnbindWaylandDisplayWL = nullptr;
-PFNEGLQUERYWAYLANDBUFFERWL eglContext::eglQueryWaylandBufferWL = nullptr;
-PFNEGLCREATEIMAGEKHRPROC eglContext::eglCreateImageKHR = nullptr;
-PFNEGLDESTROYIMAGEKHRPROC eglContext::eglDestroyImageKHR = nullptr;
-
-///////////////////////////////////////////////////////////
-eglContext::eglContext(void* display) : ny::eglAppContext()
+namespace iro
 {
-    eglDisplay_ = eglGetDisplay((EGLNativeDisplayType)display);
-    if(!eglDisplay_)
+
+//WaylandEglContext::Impl
+//https://www.khronos.org/registry/gles/extensions/OES/OES_EGL_image_external.txt
+class WaylandEglContext::Impl
+{
+public:
+	PFNEGLBINDWAYLANDDISPLAYWL eglBindWaylandDisplayWL = nullptr;
+	PFNEGLUNBINDWAYLANDDISPLAYWL eglUnbindWaylandDisplayWL = nullptr;
+	PFNEGLQUERYWAYLANDBUFFERWL eglQueryWaylandBufferWL = nullptr;
+	PFNEGLCREATEIMAGEKHRPROC eglCreateImageKHR = nullptr;
+	PFNEGLDESTROYIMAGEKHRPROC eglDestroyImageKHR = nullptr;
+	void(*eglImageTargetTexture)(int, void*) = nullptr;
+};
+
+//WaylandEglContext
+WaylandEglContext::WaylandEglContext(void* display) 
+	: ny::EglContext(), impl_(nullptr)
+{
+	impl_ = nytl::make_unique<WaylandEglContext::Impl>();
+
+	ny::EglContext::eglDisplay_ = eglGetDisplay((EGLNativeDisplayType)display);
+    if(!eglDisplay())
     {
         throw std::runtime_error("could not get egl display");
         return;
     }
 
     EGLint major, minor;
-
-    if(!eglInitialize(eglDisplay_, &major, &minor))
+    if(!eglInitialize(eglDisplay(), &major, &minor))
     {
         throw std::runtime_error("could not initalize egl");
         return;
@@ -49,38 +64,34 @@ eglContext::eglContext(void* display) : ny::eglAppContext()
     };
 
     EGLint configCount;
-    if(!eglChooseConfig(eglDisplay_, attr, &eglConfig_, 1, &configCount))
+    if(!eglChooseConfig(eglDisplay(), attr, &eglConfig_, 1, &configCount) || 
+			configCount != 1)
     {
         throw std::runtime_error("could not get egl config");
         return;
     }
 
-    const EGLint contextAttr[] =
+	ny::EglContext::initEglContext(Api::openGLES);
+
+    if(eglExtensionSupported("EGL_WL_bind_wayland_display") 
+			&& eglExtensionSupported("EGL_KHR_image_base"))
     {
-      EGL_CONTEXT_CLIENT_VERSION, 2,
-      EGL_NONE
-    };
+        impl_->eglCreateImageKHR = 
+			(PFNEGLCREATEIMAGEKHRPROC) eglGetProcAddress("eglCreateImageKHR");
+        impl_->eglDestroyImageKHR = 
+			(PFNEGLDESTROYIMAGEKHRPROC) eglGetProcAddress("eglDestroyImageKHR");
+        impl_->eglBindWaylandDisplayWL = 
+			(PFNEGLBINDWAYLANDDISPLAYWL) eglGetProcAddress("eglBindWaylandDisplayWL");
+        impl_->eglUnbindWaylandDisplayWL = 
+			(PFNEGLUNBINDWAYLANDDISPLAYWL) eglGetProcAddress("eglUnbindWaylandDisplayWL");
+        impl_->eglQueryWaylandBufferWL = 
+			(PFNEGLQUERYWAYLANDBUFFERWL) eglGetProcAddress("eglQueryWaylandBufferWL");
+        impl_->eglImageTargetTexture = (void(*)(int, void*)) 
+			eglGetProcAddress("glEGLImageTargetTexture2DOES"); 
 
-    eglContext_ = eglCreateContext(eglDisplay_, eglConfig_, EGL_NO_CONTEXT, contextAttr);
-    if (!eglContext_)
-    {
-        throw std::runtime_error("could not create egl config");
-        return;
-    }
-
-    std::string ext = eglQueryString(eglDisplay_, EGL_EXTENSIONS);
-    extensions_ = split(ext, ' ');
-
-    if(hasExtension("EGL_WL_bind_wayland_display") && hasExtension("EGL_KHR_image_base"))
-    {
-        eglCreateImageKHR = (PFNEGLCREATEIMAGEKHRPROC) eglGetProcAddress("eglCreateImageKHR");
-        eglDestroyImageKHR = (PFNEGLDESTROYIMAGEKHRPROC) eglGetProcAddress("eglDestroyImageKHR");
-
-        eglBindWaylandDisplayWL = (PFNEGLBINDWAYLANDDISPLAYWL) eglGetProcAddress("eglBindWaylandDisplayWL");
-        eglUnbindWaylandDisplayWL = (PFNEGLUNBINDWAYLANDDISPLAYWL) eglGetProcAddress("eglUnbindWaylandDisplayWL");
-        eglQueryWaylandBufferWL = (PFNEGLQUERYWAYLANDBUFFERWL) eglGetProcAddress("eglQueryWaylandBufferWL");
-
-        if(!eglCreateImageKHR || !eglDestroyImageKHR || !eglBindWaylandDisplayWL || !eglUnbindWaylandDisplayWL || !eglQueryWaylandBufferWL)
+        if(!impl_->eglCreateImageKHR || !impl_->eglDestroyImageKHR || 
+			!impl_->eglBindWaylandDisplayWL || !impl_->eglUnbindWaylandDisplayWL || 
+			!impl_->eglQueryWaylandBufferWL)
         {
             throw std::runtime_error("could not load all needed egl extension functions");
             return;
@@ -91,43 +102,113 @@ eglContext::eglContext(void* display) : ny::eglAppContext()
         throw std::runtime_error("needed egl extensions extension not supported");
         return;
     }
-
-    eglBindWaylandDisplayWL(eglDisplay_, iroWlDisplay());
 }
 
-eglContext::~eglContext()
+WaylandEglContext::~WaylandEglContext()
 {
-    //eglUnbindWaylandDisplayWL(display_, iroCompositor()->iroWlDisplay());
+	if(!eglDisplay_) return;
+	if(eglContext_)
+	{
+		eglDestroyContext(eglDisplay_, eglContext_);
+		eglContext_ = nullptr;
+	}
 
-    eglMakeCurrent(eglDisplay_, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-    eglDestroyContext(eglDisplay_, eglContext_);
-    eglTerminate(eglDisplay_);
+	eglTerminate(eglDisplay());
+	eglDisplay_ = nullptr;
 }
 
-bool eglContext::hasExtension(const std::string& extension) const
+bool WaylandEglContext::bindWlDisplay(wl_display& disp)
 {
-    for(size_t i(0); i < extensions_.size(); i++)
-    {
-        if(extensions_[i] == extension)
-            return 1;
-    }
+	if(!impl_->eglBindWaylandDisplayWL)
+	{
+		nytl::sendWarning("WaylandEglContext::bindWlDisplay: function not loaded");
+		return 0;
+	}
 
-    return 0;
+	return impl_->eglBindWaylandDisplayWL(eglDisplay(), &disp);
 }
 
-bool eglContext::makeCurrent(EGLSurface surf)
+bool WaylandEglContext::unbindWlDisplay(wl_display& disp)
 {
-    if(eglContext_ && eglDisplay_ && surf) return eglMakeCurrent(eglDisplay_, surf, surf, eglContext_);
-    else return 0;
+	if(!impl_->eglUnbindWaylandDisplayWL)
+	{
+		nytl::sendWarning("WaylandEglContext::unbindWlDisplay: function not loaded");
+		return 0;
+	}
+
+	return impl_->eglUnbindWaylandDisplayWL(eglDisplay(), &disp);
 }
 
-bool eglContext::makeNotCurrent()
+int WaylandEglContext::queryWlBuffer(wl_resource& buf, int attribute)
 {
-    if(eglDisplay_) return eglMakeCurrent(eglDisplay_, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-    else return 0;
+	if(!impl_->eglQueryWaylandBufferWL)
+	{
+		nytl::sendWarning("WaylandEglContext::queryWlBuffer: function not loaded");
+		return 0;
+	}
+
+	int ret = 0;
+	impl_->eglQueryWaylandBufferWL(eglDisplay(), &buf, attribute, &ret);
+
+	return ret;
 }
 
-bool eglContext::isCurrent()
+void* WaylandEglContext::createImageKHR(wl_resource& res, const int* attrib, unsigned int target)
 {
-    return (eglGetCurrentContext() == eglContext_);
+	if(!impl_->eglCreateImageKHR)
+	{
+		nytl::sendWarning("WaylandEglContext::eglCreateImageKHR: function not loaded");
+		return nullptr;
+	}
+
+	return impl_->eglCreateImageKHR(eglDisplay(), eglContext(), target, &res, attrib);
+}
+
+bool WaylandEglContext::destroyImageKHR(void* image)
+{
+	if(!impl_->eglDestroyImageKHR)
+	{
+		nytl::sendWarning("WaylandEglContext::eglDestroyImageKHR: function not loaded");
+		return 0;
+	}
+
+	return impl_->eglDestroyImageKHR(eglDisplay(), image);
+}
+
+void WaylandEglContext::imageTargetTexture(void* image, unsigned int target)
+{
+	if(!impl_->eglImageTargetTexture)
+	{
+		nytl::sendWarning("WaylandEglContext::eglImageTargetTexture: function not loaded");
+		return;
+	}
+
+	impl_->eglImageTargetTexture(target, image);
+}
+
+bool WaylandEglContext::makeCurrentForSurface(void* eglsurf)
+{
+	eglSurface(eglsurf);
+	return makeCurrent();
+}
+
+void* WaylandEglContext::createSurface(void* window, const int* attrib)
+{
+	return eglCreateWindowSurface(eglDisplay(), eglConfig(), 
+			(EGLNativeWindowType) window, attrib);
+}
+
+void* WaylandEglContext::createSurface(unsigned int window, const int* attrib)
+{
+	return eglCreateWindowSurface(eglDisplay(), eglConfig(), 
+			(EGLNativeWindowType) window, attrib);
+}
+
+
+void WaylandEglContext::destroySurface(void* surface)
+{
+	eglDestroySurface(eglDisplay(), surface);
+}
+
+
 }

@@ -1,91 +1,45 @@
 #include <iro/compositor/compositor.hpp>
-#include <iro/compositor/subcompositor.hpp>
-#include <iro/compositor/shell.hpp>
 
 #include <iro/compositor/surface.hpp>
 #include <iro/compositor/region.hpp>
 #include <iro/compositor/client.hpp>
-
-#include <iro/seat/seat.hpp>
-#include <iro/util/log.hpp>
-
 #include <iro/backend/backend.hpp>
-#include <iro/backend/x11Backend.hpp>
-#include <iro/backend/kmsBackend.hpp>
+#include <iro/seat/event.hpp>
+
+#include <nytl/make_unique.hpp>
+#include <nytl/log.hpp>
 
 #include <wayland-server-protocol.h>
 
+#include <signal.h>
 #include <stdexcept>
 #include <iostream>
 
-compositor* compositor::object = nullptr;
-compositor* iroCompositor()
-{
-    return compositor::getObject();
-}
 
-subcompositor* getSubcompositor()
+namespace iro
 {
-    if(!iroCompositor()) return nullptr;
-    return iroCompositor()->getSubcompositor();
-}
 
-seat* iroSeat()
+//compositor resource
+class CompositorRes : public Resource
 {
-    if(!iroCompositor()) return nullptr;
-    return iroCompositor()->getSeat();
-}
+protected:
+	Compositor* compositor_;
 
-pointer* iroPointer()
-{
-    if(!iroSeat()) return nullptr;
-    return iroSeat()->getPointer();
-}
+public:
+	CompositorRes(Compositor& comp, wl_client& client, unsigned int id, unsigned int v);
+	Compositor& compositor() const { return *compositor_; }
+};
 
-keyboard* iroKeyboard()
+//wayland implementation
+void compositorCreateSurface(wl_client* client, wl_resource*, unsigned int id)
 {
-    if(!iroSeat()) return nullptr;
-    return iroSeat()->getKeyboard();
+	auto clnt = Client::findWarn(*client);
+	if(clnt) clnt->addResource(nytl::make_unique<SurfaceRes>(*client, id));
 }
-
-wl_display* iroWlDisplay()
+void compositorCreateRegion(wl_client* client, wl_resource*, unsigned int id)
 {
-    if(!iroCompositor()) return nullptr;
-    return iroCompositor()->getWlDisplay();
-}
-
-wl_event_loop* iroWlEventLoop()
-{
-    if(!iroCompositor()) return nullptr;
-    return iroCompositor()->getWlEventLoop();
-}
-
-unsigned int iroNextSerial(event* ev)
-{
-    if(iroCompositor() && ev) return iroCompositor()->registerEvent(*ev);
-    else if(iroWlDisplay()) return wl_display_next_serial(iroWlDisplay());
-    else return 0;
-}
-
-event* iroGetEvent(unsigned int serial)
-{
-    return (iroCompositor()) ? iroCompositor()->getEvent(serial) : nullptr;
-}
-
-void iroRegisterEvent(event& ev)
-{
-    if(iroCompositor())iroCompositor()->registerEvent(ev);
-    else iroWarning("iroRegisterEvent: no initialized compositor");
-}
-
-////////////////////////////////////////////////////////////////////////////////////
-void compositorCreateSurface(wl_client* client, wl_resource* resource, unsigned int id)
-{
-    new surfaceRes(*client, id);
-}
-void compositorCreateRegion(wl_client* client, wl_resource* resource, unsigned int id)
-{
-    new regionRes(*client, id);
+	auto clnt = Client::findWarn(*client);
+    if(clnt) clnt->addResource(nytl::make_unique<RegionRes>(*client, id));
 }
 
 const struct wl_compositor_interface compositorImplementation =
@@ -96,13 +50,35 @@ const struct wl_compositor_interface compositorImplementation =
 
 void bindCompositor(wl_client* client, void* data, unsigned int version, unsigned int id)
 {
-    new compositorRes(*client, id, version);
+	Compositor* comp = static_cast<Compositor*>(data);
+	if(!comp) return;
+
+    auto& clnt = comp->client(*client);
+	clnt.addResource(nytl::make_unique<CompositorRes>(*comp, *client, id, version));
 }
 
-/////////////////////////////////////////////////////////////////////////////////77
-
-compositor::compositor()
+int signalIntHandler(int, void* data)
 {
+	nytl::sendLog("Received signal SIGINT. Exiting the compositor");
+
+	if(!data) return 1;
+	static_cast<Compositor*>(data)->exit();
+
+	return 1;
+}
+
+
+//compositor resource implementation
+CompositorRes::CompositorRes(Compositor& comp, wl_client& clnt, unsigned int id, unsigned int v) 
+	: Resource(clnt, id, &wl_compositor_interface, &compositorImplementation, v), compositor_(&comp)
+{
+}
+
+//compositor implementation
+Compositor::Compositor()
+{
+	timer_.reset();
+	
     if(!(wlDisplay_ = wl_display_create()))
     {
         throw std::runtime_error("could not create wayland display");
@@ -115,85 +91,105 @@ compositor::compositor()
         throw std::runtime_error("could not initialize wayland shm");
     }
 
-    if(!wl_global_create(wlDisplay_, &wl_compositor_interface, 3, this, bindCompositor))
+	wlGlobal_ = wl_global_create(wlDisplay_, &wl_compositor_interface, 3, this, bindCompositor);
+    if(!wlGlobal_)
     {
-        throw std::runtime_error("could not create wayland compositor");
+        throw std::runtime_error("could not create wayland compositor global");
     }
 
-    object = this;
 
-    subcompositor_ = new subcompositor();
-    seat_ = new seat();
+	wl_event_loop_add_signal(&wlEventLoop(), SIGINT, signalIntHandler, this);
 }
 
-compositor::~compositor()
+Compositor::~Compositor()
 {
-    if(subcompositor_) delete subcompositor_;
-    if(seat_) delete seat_;
+	//cant destruct global after display was destroyed
+	if(wlGlobal_) 
+	{
+		wl_global_destroy(wlGlobal_);
+		wlGlobal_ = nullptr;
+	}
 
-    //if(wlDisplay_) wl_display_destroy(wlDisplay_);
+    if(wlDisplay_) wl_display_destroy(wlDisplay_);
 }
 
-void compositor::run()
+void Compositor::run()
 {
     wl_display_run(wlDisplay_);
 }
 
-wl_event_loop* compositor::getWlEventLoop() const
+void Compositor::exit()
 {
-    return wl_display_get_event_loop(wlDisplay_);
+	wl_display_terminate(wlDisplay_);
 }
 
-client& compositor::getClient(wl_client& wlc)
+wl_event_loop& Compositor::wlEventLoop() const
 {
-    if(clients_[&wlc] == nullptr)
-    {
-        clients_[&wlc] = new client(wlc);
-    }
-
-    return *clients_[&wlc];
+    return *wl_display_get_event_loop(wlDisplay_);
 }
 
-void compositor::unregisterClient(client& c)
+Client& Compositor::client(wl_client& wlc)
 {
-    auto it = clients_.find(&c.getWlClient());
-    if(it != clients_.end())
-    {
-        clients_.erase(it->first);
-    }
+	auto cr = clientRegistered(wlc);
+	if(cr) return *cr;
+
+	auto c = nytl::make_unique<Client>(*this, wlc);
+	auto& ret = *c;
+
+	clients_.push_back(std::move(c));
+	return ret;
 }
 
-bool compositor::registeredClient(wl_client& wlc)
+void Compositor::unregisterClient(Client& c)
 {
-    auto it = clients_.find(&wlc);
-
-    if(it == clients_.end()) return 0;
-    else return 1;
+	for(auto it = clients_.cbegin(); it != clients_.cend(); ++it)
+	{
+		if(it->get() == &c)
+		{
+			clients_.erase(it);
+			return;
+		}
+	}
 }
 
-event* compositor::getEvent(unsigned int serial) const
+Client* Compositor::clientRegistered(wl_client& wlc) const
 {
-    auto it = sentEvents_.find(serial);
-    if(it != sentEvents_.end())
-    {
-        return it->second;
-    }
-    return nullptr;
+	for(auto& c : clients_)
+		if(&c->wlClient() == &wlc)
+			return c.get();
+
+	return nullptr;
 }
 
-unsigned int compositor::registerEvent(event& ev)
+/*
+Backend& Compositor::backend(std::unique_ptr<Backend>&& ptr)
 {
-    if(sentEvents_.size() > 5000)
-    {
-        //clear it
-    }
+	backend_ = std::move(ptr);
+	return *backend_;
+}
+*/
 
-    unsigned int ret = wl_display_next_serial(wlDisplay_);
-    sentEvents_[ret] = &ev;
-    return ret;
+Event& Compositor::event(std::unique_ptr<Event>&& ptr, bool serial)
+{
+	auto& ret = *ptr;
+	if(serial)
+		ptr->serial = wl_display_next_serial(wlDisplay_);
+
+	eventList_.push_back(std::move(ptr));
+	return ret;
 }
 
-////////////////////////////////////
-compositorRes::compositorRes(wl_client& client, unsigned int id, unsigned int version) : resource(client, id, &wl_compositor_interface, &compositorImplementation, version)
+Event* Compositor::event(unsigned int serial) const
 {
+	for(auto& ev : eventList_)
+		if(ev->serial == serial) return ev.get();
+
+	return nullptr;
+}
+
+unsigned int Compositor::time() const
+{
+	return timer_.getElapsedTime().asMilliseconds();
+}
+
 }

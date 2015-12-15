@@ -2,77 +2,161 @@
 #include <iro/compositor/client.hpp>
 #include <iro/compositor/compositor.hpp>
 
-#include <iro/util/log.hpp>
+#include <nytl/log.hpp>
+#include <nytl/make_unique.hpp>
 
 #include <wayland-server-core.h>
+#include <wayland-server-protocol.h>
 
 #include <iostream>
 #include <stdexcept>
 
-void destroyResource(wl_resource* res)
+namespace iro
 {
-    resource* mres = (resource*) wl_resource_get_user_data(res);
-    if(mres) delete mres;
+
+struct Resource::listenerPOD
+{
+	wl_listener listener;
+	Resource* resource;
+};
+
+//callbacks
+void resourceDestroyListener(wl_listener* listener, void*)
+{
+	Resource::listenerPOD* pod;
+	pod = wl_container_of(listener, pod, listener);
+
+	if(!pod || !pod->resource)
+	{
+		nytl::sendWarning("resourceDestroyListener with invalid data paremeter");
+		return;
+	}
+
+	pod->resource->client().removeResource(*pod->resource);
 }
 
-/////////////////////////////////////////////////////////
-resource::resource(wl_resource& res) : wlResource_(&res)
+//static resource utility
+Resource* Resource::find(wl_resource& res)
 {
-    getClient().addResource(*this);
+	wl_listener* listener = wl_resource_get_destroy_listener(&res, &resourceDestroyListener);
+	if(listener)
+	{
+		Resource::listenerPOD* pod;
+		pod = wl_container_of(listener, pod, listener);	
+
+		if(pod) return pod->resource;
+		else return nullptr;
+	}
+	else
+	{
+		return nullptr;
+	}
 }
 
-resource::resource(wl_client& client, unsigned int id, const struct wl_interface* interface, const void* implementation, unsigned int version)
+void Resource::invalidObjectDisconnect(wl_resource& res, const std::string& info)
+{
+	std::string inf = info.empty() ? "" : " additional info: " + info;
+
+	auto* clnt = wl_resource_get_client(&res);
+	wl_resource_post_error(&res, WL_DISPLAY_ERROR_INVALID_OBJECT, "object %p is invalid or was"
+		   " used in an invalid context. Client will be disconnected.%s", &res, inf.c_str());
+
+	nytl::sendWarning("Resource::invalidObjectDisconnect: wl_client ", clnt, 
+			" used invalid object ", &res, " and will be disconnected.", inf);
+
+	//wl_client_destroy(clnt);	
+}
+
+//resource implementation
+Resource::Resource(wl_resource& res) : wlResource_(&res), listener_(nullptr)
+{
+	listener_ = nytl::make_unique<listenerPOD>();
+
+	listener_->listener.notify = resourceDestroyListener;
+	listener_->resource = this;
+
+	wl_resource_add_destroy_listener(&res, &listener_->listener);
+}
+
+Resource::Resource(wl_client& client, unsigned int id, const struct wl_interface* interface, 
+		const void* implementation, unsigned int version) : listener_(nullptr)
 {
     create(client, id, interface, implementation, version);
-    getClient().addResource(*this);
 }
 
-resource::~resource()
+Resource::~Resource()
 {
-    iroLog("destructing resource ",this, " with id ", getID()," of wl_client ", &getWlClient());
+	nytl::sendLog("destructing resource ",this, " with id ", id()," of wl_client ", &wlClient());
 
-    if(iroCompositor()->registeredClient(getWlClient())) getClient().removeResource(*this);
     destructionCallback_(*this);
+
+    if(wl_resource_get_user_data(wlResource_) == this)
+		wl_resource_set_user_data(wlResource_, nullptr);
+
+	if(listener_) wl_list_remove(&listener_->listener.link);
 }
 
-void resource::destroy()
+void Resource::destroy()
 {
-    wl_resource_destroy(wlResource_);
+    if(wlResource_)wl_resource_destroy(wlResource_);
 }
 
-void resource::create(wl_client& client, unsigned int id, const struct wl_interface* interface, const void* implementation, unsigned int version)
+void Resource::create(wl_client& client, unsigned int id, const wl_interface* interface, 
+		const void* implementation, unsigned int version)
 {
-    iroLog("new resource ",this, " with id ", id, " and type ", (interface) ? interface->name : "<unknown>", ", version ", version, " for wl_client ", &client);
+	nytl::sendLog("new resource ",this, " with id ", id, " and type ", (interface) ? 
+			interface->name : "<unknown>", ", version ", version, " for wl_client ", &client);
 
     wlResource_ = wl_resource_create(&client, interface, version, id);
     if(!wlResource_)
     {
-        //todo: really throw here?? its a runtime function
-        std::string error = "failed to create resource for " + std::string(interface->name) + ", id " + std::to_string(id) + ", version " + std::to_string(version);
+        //todo: really throw here?? its a runtime function...
+        std::string error = "failed to create resource for " + std::string(interface->name) + 
+			", id " + std::to_string(id) + ", version " + std::to_string(version);
+
         throw std::runtime_error(error);
         return;
     }
 
-    wl_resource_set_implementation(wlResource_, implementation, this, destroyResource);
+    wl_resource_set_implementation(wlResource_, implementation, this, nullptr);
+
+	listener_ = nytl::make_unique<listenerPOD>();
+	listener_->listener.notify = resourceDestroyListener;
+	listener_->resource = this;
+
+	wl_resource_add_destroy_listener(wlResource_, &listener_->listener);
 }
 
-wl_client& resource::getWlClient() const
+wl_client& Resource::wlClient() const
 {
     return *(wl_resource_get_client(wlResource_));
 }
 
-client& resource::getClient() const
+Client& Resource::client() const
 {
-    return iroCompositor()->getClient(getWlClient());
+    return *Client::find(wlClient());
 }
 
-unsigned int resource::getID() const
+Compositor& Resource::compositor() const
+{
+	return client().compositor();
+}
+
+unsigned int Resource::id() const
 {
     return wl_resource_get_id(wlResource_);
 }
 
-//////////////////
-bool operator==(const resource& r1, const resource& r2)
+unsigned int Resource::version() const
 {
-    return (r1.getID() == r2.getID() && &r1.getWlClient() == &r2.getWlClient());
+	return wl_resource_get_version(wlResource_);
+}
+
+//equal operator
+bool operator==(const Resource& r1, const Resource& r2)
+{
+    return (r1.id() == r2.id() && &r1.wlClient() == &r2.wlClient() && 
+			r1.wlResource() == r2.wlResource());
+}
+
 }

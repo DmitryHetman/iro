@@ -5,23 +5,29 @@
 #include <iro/compositor/buffer.hpp>
 #include <iro/compositor/callback.hpp>
 
-#include <nyutil/vec.hpp>
-#include <nyutil/region.hpp>
-#include <nyutil/rect.hpp>
+#include <nytl/vec.hpp>
+#include <nytl/region.hpp>
+#include <nytl/rect.hpp>
+#include <nytl/watchable.hpp>
 
 #include <vector>
+#include <memory>
 
-//state////////////////////////////////////////////////////
-class surfaceState
+namespace iro
+{
+
+///The surfaceState class represents the attributes a surface can have
+///that are changed with a surface::commit().
+class SurfaceState
 {
 public:
-    region opaque = region();
-    region input = region();
-    region damage = region();
-    vec2i offset = vec2i();
+	nytl::region2i opaque = nytl::region2i();
+	nytl::region2i input = nytl::region2i();
+	nytl::region2i damage = nytl::region2i();
+	nytl::vec2i offset = nytl::vec2i();
 
-    bufferRef buffer;
-    std::vector<callbackRef> frameCallbacks;
+    BufferRef buffer;
+    std::vector<CallbackRef> frameCallbacks;
 
     int scale = 1;
     unsigned int transform = 0;
@@ -29,10 +35,10 @@ public:
 
     void reset()
     {
-        opaque = region();
-        input = region();
-        damage = region();
-        offset = vec2i();
+        opaque = nytl::region2i();
+        input = nytl::region2i();
+        damage = nytl::region2i();
+        offset = nytl::vec2i();
         buffer.set(nullptr);
         frameCallbacks.clear(); //todo ?
         scale = 1;
@@ -40,76 +46,89 @@ public:
         zOrder = 0;
     }
 
-    surfaceState& operator=(const surfaceState& other);
+    SurfaceState& operator=(const SurfaceState& other);
 };
 
-//roleType
+
+///All possible roleType ids for a surface should be added to this namespace as
+///constexpr unsigned int.
 namespace surfaceRoleType
 {
-    const unsigned char none = 0;
-    const unsigned char shell = 1;
-    const unsigned char sub = 2;
-    const unsigned char cursor = 3;
-    const unsigned char dataSource = 4;
+    constexpr unsigned int none = 0;
+    constexpr unsigned int shell = 1;
+    constexpr unsigned int sub = 2;
+    constexpr unsigned int cursor = 3;
+    constexpr unsigned int dataSource = 4;
 }
 
-class surfaceRole
+///Base class for a surface role, such as subSurface or shellSurface
+class SurfaceRole
 {
 public:
-    virtual unsigned char getRoleType() const = 0;
-    virtual vec2i getPosition() const = 0;
-    virtual bool isMapped() const = 0;
+    virtual unsigned roleType() const = 0;
+    virtual nytl::vec2i position() const = 0;
+    virtual bool mapped() const = 0;
     virtual void commit() = 0;
 };
 
-//class///////////////////////////////////////////////////
-class surfaceRes : public resource
+///The surfaceRes class represents a client surface. 
+///It holds a current surfaceState and a pending surfaceState with all wayland
+///surface attributes, as well as keeps track of all outputs the surface is mapped on and
+///the role the surface has. Additionally the renderer can store its renderData inside the
+///surface.
+class SurfaceRes : public Resource
 {
-
-friend renderer;
-
 protected:
-    surfaceState commited_;
-    surfaceState pending_;
+    SurfaceState commited_;
+    SurfaceState pending_;
 
-    unsigned int roleType_ = surfaceRoleType::none;
-    surfaceRole* role_;
+	///All outputs this surface is currently mapped on.
+    std::vector<Output*> mappedOutputs_; 
+	nytl::vec2ui bufferSize_;
 
-    std::vector<output*> outputs_; //all outputs this surface is mapped on
-
-    //for renderer
-    renderData* renderData_ = nullptr; //cache data from the renderer
-    void frameDone();
+    ///Backend and renderer specific context.
+	std::unique_ptr<SurfaceContext> surfaceContext_;
+	std::unique_ptr<SurfaceRole> role_;
 
 public:
-    surfaceRes(wl_client& client, unsigned int id);
-    ~surfaceRes();
+    SurfaceRes(wl_client& client, unsigned int id);
+    ~SurfaceRes();
 
-    void addFrameCallback(callbackRes& cb);
-    void setInputRegion(region input);
-	void setOpaqueRegion(region output);
- 	void setBufferScale(int scale);
-	void setBufferTransform(unsigned int transform);
-    void attach(bufferRes& buff, vec2i pos);
-	void damage(rect2i dmg);
+	//those funtions affect pending state
+    void addFrameCallback(CallbackRes& cb);
+    void inputRegion(const nytl::region2i& input);
+	void opaqueRegion(const nytl::region2i& output);
+ 	void bufferScale(int scale);
+	void bufferTransform(unsigned int transform);
+    void attach(BufferRes& buff, const nytl::vec2i& pos);
+	void damage(const nytl::rect2i& dmg);
+
+	///Commits the pending surface state and makes it the current one.
     void commit();
 
-    region getInputRegion() const { return commited_.input; }
-    region getOpaqueRegion() const { return commited_.opaque; }
-    int getBufferScale() const { return commited_.scale; }
-    unsigned int getBufferTransform() const { return commited_.transform; }
-    bufferRes* getAttachedBuffer() const { return commited_.buffer.get(); }
-    region getDamage() const { return commited_.damage; }
+	//those functions inform about the current surface state
+    const nytl::region2i& inputRegion() const { return commited_.input; }
+    const nytl::region2i& opaqueRegion() const { return commited_.opaque; }
+    const nytl::region2i& damageRegion() const { return commited_.damage; }
+    int bufferScale() const { return commited_.scale; }
+    unsigned int bufferTransform() const { return commited_.transform; }
+    BufferRes* attachedBuffer() const { return commited_.buffer.get(); }
 
     bool isMapped() const;
+    void sendFrameDone();
 
-    surfaceRole* getRole() const { return role_; }
-    unsigned char getRoleType() const { return roleType_; }
+    SurfaceRole* role() const { return role_.get(); }
+	SurfaceRole& role(std::unique_ptr<SurfaceRole>&& role);
+    unsigned int roleType() const;
 
-    vec2i getPosition() const;
-    vec2ui getSize() const;
-    rect2i getExtents() const;
+	nytl::vec2i position() const;
+	nytl::vec2ui size() const;
+	nytl::rect2i extents() const;
+
+	SurfaceContext* surfaceContext() const { return surfaceContext_.get(); }
 
     //resource
-    resourceType getType() const { return resourceType::surface; }
+    virtual unsigned int type() const override { return resourceType::surface; }
 };
+
+}
