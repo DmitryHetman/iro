@@ -30,11 +30,11 @@ protected:
     wl_event_source* drmEventSource_ = nullptr;
 	std::unique_ptr<WaylandEglContext> eglContext_;
 
-    void onTTYEnter();
-    void onTTYLeave();
+    void onTerminalEnter();
+    void onTerminalLeave();
 
-    void onDRMPause();
-    void onDRMResume();
+    //void onDRMPause();
+    //void onDRMResume();
 
 public:
     KmsBackend(Compositor& comp, DeviceHandler& dev);
@@ -44,6 +44,7 @@ public:
     Device& drmDevice() const { return *drm_; }
 
 	Compositor& compositor() const { return *compositor_; }
+	void setCallbacks(TerminalHandler& tty);
 
 	virtual std::unique_ptr<SurfaceContext> createSurfaceContext() const override;
 	virtual WaylandEglContext* eglContext() const override { return eglContext_.get(); }
@@ -81,7 +82,6 @@ protected:
     void releaseFB(fb& obj);
     void createFB(fb& obj);
 
-    void resetCrtc();
     void swapBuffers();
 	void flipped();
 
@@ -90,6 +90,9 @@ public:
 	virtual ~KmsOutput();
 
 	KmsBackend& backend() const { return *backend_; }
+
+    void resetCrtc();
+	void setCrtc();
 
     virtual void sendInformation(const OutputRes& res) const override;
 	virtual void redraw() override;

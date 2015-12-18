@@ -126,7 +126,6 @@ void Pointer::sendMove(const nytl::vec2i& pos)
 {
 	//nytl::vec2i delta = pos - position_;
 	position_ = pos;
-
 	moveCallback_(position_);
 
 	if(!compositor().backend())
@@ -137,6 +136,8 @@ void Pointer::sendMove(const nytl::vec2i& pos)
 
 	Output* overOut = compositor().backend()->outputAt(position_);
 	if(!overOut) return;
+
+	overOut->scheduleRepaint();
 
 	if(!seat().modeEvent())
 	{

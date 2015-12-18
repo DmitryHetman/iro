@@ -48,6 +48,7 @@ class InputHandler;
 class TerminalHandler;
 class LogindHandler;
 class DBusHandler;
+class UDevHandler;
 class DeviceHandler;
 class Device;
 

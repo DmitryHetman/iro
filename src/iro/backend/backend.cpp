@@ -9,8 +9,6 @@ Backend::Backend() = default;
 Backend::~Backend()
 {
 	//before anything implicitly will be destructed
-	nytl::sendLog("Finished ~Backend, ", outputs_.size(), " left");
-	*nytl::sendLog.stream << std::endl;
 	outputs_.clear(); 
 }
 

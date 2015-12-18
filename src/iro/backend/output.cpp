@@ -74,10 +74,10 @@ void Output::scheduleRepaint()
 	static const unsigned int maxFPS = 60; //todo: general?
 	if(!repaintScheduled_)
 	{
-		int time = (1000 / maxFPS) - lastRedraw_.getElapsedTime().asMilliseconds();
-		if(time < 0) time = 1;
+		//int time = (1000 / maxFPS) - lastRedraw_.getElapsedTime().asMilliseconds();
+		//if(time < 0) time = 1;
 
-		wl_event_source_timer_update(redrawEventSource_, time);
+		wl_event_source_timer_update(redrawEventSource_, 20);
 		repaintScheduled_ = 1;
 	}
 }

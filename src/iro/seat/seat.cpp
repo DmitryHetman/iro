@@ -62,7 +62,7 @@ void bindSeat(wl_client* client, void* data, unsigned int version, unsigned int 
 
 //Seat implementation
 Seat::Seat(Compositor& comp, const nytl::vec3b& caps) 
-	: compositor_(&comp), pointer_(nullptr), keyboard_(nullptr), touch_(nullptr)
+	: compositor_(&comp), name_("seat0"), pointer_(nullptr), keyboard_(nullptr), touch_(nullptr)
 {
     wlGlobal_ = wl_global_create(&comp.wlDisplay(), &wl_seat_interface, wl_seat_interface.version, 
 			this, &bindSeat);

@@ -2,10 +2,12 @@
 #include <iro/backend/egl.hpp>
 #include <iro/backend/surfaceContext.hpp>
 #include <iro/backend/devices.hpp>
+#include <iro/backend/tty.hpp>
 #include <iro/compositor/compositor.hpp>
 
 #include <nytl/make_unique.hpp>
 #include <nytl/log.hpp>
+#include <nytl/misc.hpp>
 
 #include <ny/draw/gl/glDrawContext.hpp>
 
@@ -45,7 +47,7 @@ KmsBackend::KmsBackend(Compositor& comp, DeviceHandler& dev)
 	: Backend(), compositor_(&comp)
 {
     std::string path = "/dev/dri/card0";
-    drm_ = dev.createDevice(path, O_RDWR);
+    drm_ = dev.takeDevice(path, O_RDWR);
 
     if(!drm_ || !drm_->fd())
     {
@@ -54,6 +56,7 @@ KmsBackend::KmsBackend(Compositor& comp, DeviceHandler& dev)
     }
 
 	drmSetMaster(drm_->fd());
+	drm_->onPause([]{ nytl::sendLog("drm pause");});
 
     gbmDevice_ = gbm_create_device(drm_->fd());
     if(!gbmDevice_)
@@ -168,6 +171,30 @@ std::unique_ptr<SurfaceContext> KmsBackend::createSurfaceContext() const
 	return nytl::make_unique<DefaultSurfaceContext>(*eglContext_);
 }
 
+void KmsBackend::setCallbacks(TerminalHandler& handler)
+{
+	handler.beforeEnter(nytl::memberCallback(&KmsBackend::onTerminalEnter, this));
+	handler.beforeLeave(nytl::memberCallback(&KmsBackend::onTerminalLeave, this));
+}
+
+void KmsBackend::onTerminalEnter()
+{
+	for(auto& outp: outputs_)
+	{
+		auto* o = static_cast<KmsOutput*>(outp.get());
+		o->setCrtc();
+		o->scheduleRepaint();
+	}
+}
+
+void KmsBackend::onTerminalLeave()
+{
+	for(auto& outp: outputs_)
+	{
+		auto* o = static_cast<KmsOutput*>(outp.get());
+		o->resetCrtc();
+	}
+}
 
 //output
 KmsOutput::KmsOutput(KmsBackend& kms, drmModeConnector* c, drmModeEncoder* e, unsigned int id) 
@@ -218,9 +245,11 @@ KmsOutput::~KmsOutput()
     if(fbs_[0].valid())releaseFB(fbs_[0]);
     if(fbs_[1].valid())releaseFB(fbs_[1]);
     if(gbmSurface_)gbm_surface_destroy(gbmSurface_);
+}
 
-	nytl::sendLog("Finished ~KmsOutput");
-	*nytl::sendLog.stream << std::endl;
+void KmsOutput::setCrtc()
+{
+	crtcActive_ = 0;
 }
 
 void KmsOutput::resetCrtc()
@@ -305,6 +334,7 @@ void KmsOutput::swapBuffers()
 
 void KmsOutput::flipped()
 {
+	nytl::sendLog("KmsOutput::flipped");
     frontBuffer_ ^= 1;
     flipping_ = 0;
 

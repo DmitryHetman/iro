@@ -20,7 +20,6 @@ protected:
     SurfaceRef over_;
 	nytl::vec2i position_;
 
-    //if this is == nullptr, the default cursor will be used
     bool customCursor_ = 0; //cursor is used
     SurfaceRef cursor_;
 	nytl::vec2i hotspot_;

@@ -27,6 +27,8 @@ public:
     Seat(Compositor& comp, const nytl::vec3b& caps = {1, 1, 1});
 	~Seat();
 
+	const std::string& name() const { return name_; }
+
     Pointer* pointer() const { return pointer_.get(); }
     Keyboard* keyboard() const { return keyboard_.get(); }
     Touch* touch() const { return touch_.get(); }

@@ -5,6 +5,10 @@
 #include <iro/backend/egl.hpp>
 #include <iro/backend/devices.hpp>
 #include <iro/backend/tty.hpp>
+#include <iro/backend/input.hpp>
+#include <iro/backend/udev.hpp>
+#include <iro/backend/logind.hpp>
+#include <iro/backend/dbus.hpp>
 #include <iro/seat/seat.hpp>
 
 #include <nytl/log.hpp>
@@ -48,7 +52,9 @@ void intHandler(int)
 
 int main()
 {
-	std::ofstream logStream("log.txt");
+	std::ofstream logStream;
+	logStream.rdbuf()->pubsetbuf(0, 0);
+	logStream.open("log.txt");
 	try
 	{
 
@@ -61,9 +67,13 @@ int main()
 	iro::Compositor myCompositor;
 	iro::Seat mySeat(myCompositor);
 
+	std::unique_ptr<iro::DBusHandler> myDBusHandler = nullptr;
+	std::unique_ptr<iro::LogindHandler> myLogindHandler = nullptr;
 	std::unique_ptr<iro::DeviceHandler> myDeviceHandler = nullptr;
 	std::unique_ptr<iro::Backend> myBackend = nullptr;
 	std::unique_ptr<iro::TerminalHandler> myTerminalHandler = nullptr;
+	std::unique_ptr<iro::UDevHandler> myUDevHandler = nullptr;
+	std::unique_ptr<iro::InputHandler> myInputHandler = nullptr;
 
 
 	if(iro::X11Backend::available())
@@ -74,10 +84,19 @@ int main()
 	}
 	else
 	{
-		myDeviceHandler.reset(new iro::DeviceHandler());
-		myTerminalHandler.reset(new iro::TerminalHandler(*myDeviceHandler));
+		myDBusHandler.reset(new iro::DBusHandler(myCompositor));
+		myLogindHandler.reset(new iro::LogindHandler(*myDBusHandler));
+		myDeviceHandler.reset(new iro::DeviceHandler(*myDBusHandler, *myLogindHandler));
+		myTerminalHandler.reset(new iro::TerminalHandler(myCompositor, *myDeviceHandler));
 		myBackend.reset(new iro::KmsBackend(myCompositor, *myDeviceHandler));
+		myUDevHandler.reset(new iro::UDevHandler(myCompositor));
+		myInputHandler.reset(new iro::InputHandler(myCompositor, mySeat, 
+					*myUDevHandler, *myDeviceHandler));
+
+		static_cast<iro::KmsBackend*>(myBackend.get())->setCallbacks(*myTerminalHandler);
 	}
+
+	nytl::sendLog("finished backend setup");
 
 	if(!myBackend)
 	{
@@ -98,8 +117,10 @@ int main()
 	for(auto* outp : myBackend->outputs())
 		outp->onDraw(nytl::memberCallback(&iro::ShellModule::render, myShell));
 
+	nytl::sendLog("starting main loop");
 	myCompositor.run();
 	nytl::sendLog("Finished Iro Desktop");
+	*nytl::sendLog.stream << std::flush;
 
 	}
 	catch(const std::exception& err)
@@ -107,6 +128,6 @@ int main()
 		nytl::sendLog("Caught Exception: ", err.what());
 	}
 
-
+	*nytl::sendLog.stream << std::flush;
 	return 1;	
 }

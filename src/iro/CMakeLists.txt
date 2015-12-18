@@ -34,8 +34,10 @@ set(iro-src
 	backend/surfaceContext.cpp
 	backend/devices.cpp
 	backend/tty.cpp
-	#backend/logind.hpp
-	#backend/dbus.hpp
+	backend/input.cpp
+	backend/udev.cpp
+	backend/logind.cpp
+	backend/dbus.cpp
 
 	util/global.cpp
 
