@@ -23,17 +23,19 @@ protected:
 	nytl::callback<void()> afterEnter_;
 	nytl::callback<void()> afterLeave_;
 
-    bool activate();
     void enteredTTY();
     void leftTTY();
 
 public:
-    TerminalHandler(Compositor& comp, DeviceHandler& dev);
+    TerminalHandler(Compositor& comp);
     ~TerminalHandler();
 
     bool focus() const { return focus_; }
     unsigned int number() const { return number_; }
-    int tty() const { return tty_; }
+    int ttyFd() const { return tty_; }
+
+    bool activate(unsigned int vtNumber);
+    bool waitActive(unsigned int vtNumber);
 
     template<typename F> nytl::connection beforeEnter(F&& f){ return beforeEnter_.add(f); }
     template<typename F> nytl::connection beforeLeave(F&& f){ return beforeLeave_.add(f); }

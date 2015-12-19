@@ -26,6 +26,9 @@ public:
 
 	DeviceHandler& deviceHandler() const { return *deviceHandler_; }
 	Seat& seat() const { return *seat_; }
+
+	void suspend();
+	void resume();
 };
 
 }

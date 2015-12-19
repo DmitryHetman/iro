@@ -8,8 +8,6 @@
 
 //prototypes
 typedef struct DBusMessage DBusMessage;
-typedef struct DBusMessageIter DBusMessageIter;
-typedef struct DBusPendingCall DBusPendingCall;
 
 namespace iro
 {
@@ -50,17 +48,10 @@ protected:
 	DBusHandler* dbus_ = nullptr;
 	LogindHandler* logind_ = nullptr;
 
-	DBusPendingCall* pendingActive_ = nullptr;
-
 	std::string sessionPath() const;
 
 	void dbusPauseDevice(DBusMessage* msg);
 	void dbusResumeDevice(DBusMessage* msg);
-	void dbusPropertiesChanged(DBusMessage* msg);
-
-	void dbusGetActive();
-	void dbusParseActive(DBusMessage* m, DBusMessageIter* it);
-	static void dbusGetActiveCallback(DBusPendingCall* call, void* data);
 
 	Device* takeDeviceDBus(const std::string& path, int flags);
 	Device* takeDeviceNormal(const std::string& path, int flags);

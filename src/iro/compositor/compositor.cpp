@@ -67,6 +67,11 @@ int signalIntHandler(int, void* data)
 	return 1;
 }
 
+int compExit(void* data)
+{
+	nytl::sendLog("terminating compositor, 5 seconds passed");
+	static_cast<Compositor*>(data)->exit();
+}
 
 //compositor resource implementation
 CompositorRes::CompositorRes(Compositor& comp, wl_client& clnt, unsigned int id, unsigned int v) 
@@ -115,7 +120,15 @@ Compositor::~Compositor()
 
 void Compositor::run()
 {
-    wl_display_run(wlDisplay_);
+	wl_display_run(wlDisplay_);
+}
+
+void Compositor::run(const nytl::timeDuration& dur)
+{
+	auto* exitSrc = wl_event_loop_add_timer(&wlEventLoop(), compExit, this);
+	wl_event_source_timer_update(exitSrc, dur.asMilliseconds());
+
+	run();
 }
 
 void Compositor::exit()

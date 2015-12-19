@@ -52,9 +52,16 @@ LogindHandler::LogindHandler(DBusHandler& dbus) : dbus_(&dbus)
 	//
 	const std::string path("org.freedesktop.login1");
     if(!dbus.addSignalMatch(path, "org.freedesktop.login1.Manager", "SessionRemoved",
-		"/org/freedesktop/login1", nytl::memberCallback(&LogindHandler::sessionRemoved, this)))
+		"/org/freedesktop/login1", nytl::memberCallback(&LogindHandler::dbusSessionRemoved, this)))
 	{
         throw std::runtime_error("Logind: add Signal match for sessionRemoved failed");
+        return;
+	}
+
+    if(!dbus.addSignalMatch(path, "org.freedesktop.DBus.Properties", "PropertiesChanged", 
+		sessionPath(), nytl::memberCallback(&LogindHandler::dbusPropertiesChanged, this)))
+	{
+        throw std::runtime_error("Logind: add Signal match for PropertiesChanges failed");
         return;
 	}
 
@@ -109,7 +116,7 @@ LogindHandler::~LogindHandler()
 	}
 }
 
-void LogindHandler::sessionRemoved(DBusMessage* msg)
+void LogindHandler::dbusSessionRemoved(DBusMessage* msg)
 {
     const char* name;
     const char* obj;
@@ -127,6 +134,169 @@ void LogindHandler::sessionRemoved(DBusMessage* msg)
 Compositor& LogindHandler::compositor() const
 {
 	return dbusHandler().compositor();
+}
+
+void LogindHandler::dbusPropertiesChanged(DBusMessage* m)
+{
+	nytl::sendLog("props changes");
+
+    DBusMessageIter iter;
+    if (!dbus_message_iter_init(m, &iter) || dbus_message_iter_get_arg_type(&iter) != 
+			DBUS_TYPE_STRING) 
+		goto error0;
+
+    const char *interface;
+    dbus_message_iter_get_basic(&iter, &interface);
+
+    if (!dbus_message_iter_next(&iter) || 
+			dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
+        goto error0;
+
+    DBusMessageIter sub;
+    dbus_message_iter_recurse(&iter, &sub);
+
+    DBusMessageIter entry;
+    while (dbus_message_iter_get_arg_type(&sub) == DBUS_TYPE_DICT_ENTRY)
+    {
+        dbus_message_iter_recurse(&sub, &entry);
+
+        if(dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
+            goto error0;
+
+        const char *name;
+        dbus_message_iter_get_basic(&entry, &name);
+        if(!dbus_message_iter_next(&entry))
+            goto error0;
+
+        if(std::string(name) == "Active")
+        {
+            dbusParseActive(m, &entry);
+            return;
+        }
+
+        dbus_message_iter_next(&sub);
+    }
+
+    if (!dbus_message_iter_next(&iter) || 
+			dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
+        goto error0;
+
+    dbus_message_iter_recurse(&iter, &sub);
+
+    while (dbus_message_iter_get_arg_type(&sub) == DBUS_TYPE_STRING)
+    {
+        const char *name;
+        dbus_message_iter_get_basic(&sub, &name);
+
+        if(std::string(name) == "Active")
+        {
+            dbusGetActive();
+            return;
+        }
+
+        dbus_message_iter_next(&sub);
+    }
+
+    return;
+
+error0:
+	nytl::sendWarning("LoigndHandler: cannot parse PropertiesChanged dbus signal");
+}
+
+void LogindHandler::dbusGetActiveCallback(DBusPendingCall* pending, void* data)
+{
+	if(!data)
+	{
+		nytl::sendWarning("nytl error dummy");
+		return;
+	}
+	LogindHandler* dh = static_cast<LogindHandler*>(data);
+
+	dbus_pending_call_unref(dh->dbusPendingActive_);
+	dh->dbusPendingActive_ = nullptr;
+
+	DBusMessage *m;
+	if (!(m = dbus_pending_call_steal_reply(pending)))
+	{
+		nytl::sendWarning("nytl error dummy");
+		return;
+	}
+
+	DBusMessageIter iter;
+	if(dbus_message_get_type(m) == DBUS_MESSAGE_TYPE_METHOD_RETURN && 
+		dbus_message_iter_init(m, &iter))
+      dh->dbusParseActive(m, &iter);
+
+   dbus_message_unref(m);
+}
+
+void LogindHandler::dbusGetActive()
+{
+	DBusMessage *m;
+   	if(!(m = dbus_message_new_method_call("org.freedesktop.login1", sessionPath().c_str(), 
+			"org.freedesktop.DBus.Properties", "Get")))
+	{
+		nytl::sendWarning("nytl error dummy");
+		return;
+	}
+
+   	const char *iface = "org.freedesktop.login1.Session";
+  	const char *name = "Active";
+   	if (!dbus_message_append_args(m, DBUS_TYPE_STRING, &iface, DBUS_TYPE_STRING, 
+		&name, DBUS_TYPE_INVALID))
+	{
+		nytl::sendWarning("nytl error dummy");
+		dbus_message_unref(m);
+		return;
+	}
+
+	DBusPendingCall *pending;
+	if (!dbus_connection_send_with_reply(&dbusHandler().dbusConnection(), m, &pending, -1))
+	{
+		nytl::sendWarning("nytl error dummy");
+		dbus_message_unref(m);
+		return;
+	}
+
+	if (!dbus_pending_call_set_notify(pending, &LogindHandler::dbusGetActiveCallback, 
+				this, nullptr))
+	{
+		nytl::sendWarning("nytl error dummy");
+		dbus_pending_call_cancel(pending);
+		dbus_pending_call_unref(pending);
+		dbus_message_unref(m);
+		return;
+	}
+
+	if (dbusPendingActive_)
+	{
+		dbus_pending_call_cancel(dbusPendingActive_);
+		dbus_pending_call_unref(dbusPendingActive_);
+	}
+
+	dbusPendingActive_ = pending;
+}
+
+void LogindHandler::dbusParseActive(DBusMessage* msg, DBusMessageIter* it)
+{
+	if(dbus_message_iter_get_arg_type(it) != DBUS_TYPE_VARIANT)
+	{
+		nytl::sendWarning("nytl error dummy");
+		return;
+	}
+
+   DBusMessageIter sub;
+   dbus_message_iter_recurse(it, &sub);
+
+   if(dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_BOOLEAN)
+   {
+		nytl::sendWarning("nytl error dummy");
+		return;
+   }
+
+   dbus_bool_t b;
+   dbus_message_iter_get_basic(&sub, &b);
+   activeCallback_(static_cast<bool>(b));
 }
 
 }

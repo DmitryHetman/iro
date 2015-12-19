@@ -28,8 +28,11 @@ public:
     Compositor();
     ~Compositor();
 
-    ///runs the wayland event loop
+    ///Runs the wayland display until it stops or exit() is called.
     void run();
+
+    ///Runs the wayland display for the given amount of time.
+    void run(const nytl::timeDuration& time);
 
 	///terminates the display event loop
 	void exit();

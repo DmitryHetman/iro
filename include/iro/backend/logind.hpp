@@ -2,16 +2,19 @@
 
 #include <iro/include.hpp>
 #include <nytl/nonCopyable.hpp>
+#include <nytl/callback.hpp>
 
 #include <string>
 
 //prototypes
 typedef struct DBusMessage DBusMessage;
+typedef struct DBusMessageIter DBusMessageIter;
+typedef struct DBusPendingCall DBusPendingCall;
 
 namespace iro
 {
 
-///Manages the session taking with logind.
+///Manages the session with logind.
 class LogindHandler : public nytl::nonCopyable
 {
 protected:
@@ -19,8 +22,15 @@ protected:
 	std::string session_;
 	std::string sessionPath_;
 
-	void sessionRemoved(DBusMessage* msg);
-	void propertiesChanged(DBusMessage* msg);
+	DBusPendingCall* dbusPendingActive_ = nullptr;
+	nytl::callback<void(bool)> activeCallback_;
+
+	void dbusSessionRemoved(DBusMessage* msg);
+
+	void dbusPropertiesChanged(DBusMessage* msg);
+	void dbusGetActive();
+	void dbusParseActive(DBusMessage* m, DBusMessageIter* it);
+	static void dbusGetActiveCallback(DBusPendingCall* call, void* data);
 
 public:
 	LogindHandler(DBusHandler& dbus);
@@ -28,6 +38,8 @@ public:
 
 	DBusHandler& dbusHandler() const { return *dbus_; };
 	Compositor& compositor() const;
+
+	template<typename F> nytl::connection onActive(F&& f){ return activeCallback_.add(f); }
 
 	const std::string& sessionPath() const { return sessionPath_; }
 	const std::string& session() const { return session_; }

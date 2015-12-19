@@ -56,7 +56,8 @@ KmsBackend::KmsBackend(Compositor& comp, DeviceHandler& dev)
     }
 
 	drmSetMaster(drm_->fd());
-	drm_->onPause([]{ nytl::sendLog("drm pause");});
+	drm_->onPause([=]{ nytl::sendLog("drm pause"); drmDropMaster(drm_->fd()); });
+	drm_->onResume([=]{ nytl::sendLog("drm resume"); drmSetMaster(drm_->fd()); });
 
     gbmDevice_ = gbm_create_device(drm_->fd());
     if(!gbmDevice_)

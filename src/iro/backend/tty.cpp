@@ -27,20 +27,21 @@ namespace iro
 {
 
 //util
-TerminalHandler* gInstance = nullptr;
-
 int TerminalHandler::ttySignalhandler(int signal, void* data)
 {
 	nytl::sendLog("SIGUSR ", signal);
+	if(!data) return 1;
 
-    if(signal == SIGUSR1) gInstance->enteredTTY();
-    else if(signal == SIGUSR2) gInstance->leftTTY();
+	TerminalHandler* handler = static_cast<TerminalHandler*>(data);
+
+    if(signal == SIGUSR1) handler->enteredTTY();
+    else if(signal == SIGUSR2) handler->leftTTY();
 
 	return 1;
 }
 
 //TerminalHandler
-TerminalHandler::TerminalHandler(Compositor& comp, DeviceHandler& dev)
+TerminalHandler::TerminalHandler(Compositor& comp)
 {
     const char* number = getenv("XDG_VTNR");
     if(!number)
@@ -71,13 +72,13 @@ TerminalHandler::TerminalHandler(Compositor& comp, DeviceHandler& dev)
     }
 
     //set it up
-    if(!activate())
+    if(ioctl(tty_, VT_ACTIVATE, number_) == -1 || ioctl(tty_, VT_WAITACTIVE, number_) == -1)
     {
         throw std::runtime_error("Could not activate tty");
         return;
     }
     focus_ = 1;
-
+/*
 	if (ioctl(fd, KDSKBMUTE, 1) == -1 && ioctl(fd, KDSKBMODE, K_OFF) == -1) 
 	{
 	    throw std::runtime_error("failed to set tty keyboard mode");
@@ -89,6 +90,7 @@ TerminalHandler::TerminalHandler(Compositor& comp, DeviceHandler& dev)
         throw std::runtime_error("Could not set tty to graphics mode");
         return;
     }
+*/
 
     vt_mode mode;
     mode.mode = VT_PROCESS;
@@ -101,19 +103,8 @@ TerminalHandler::TerminalHandler(Compositor& comp, DeviceHandler& dev)
         return;
     }
 
-    //sig handler
-	/*
-    struct sigaction action;
-    action.sa_handler = ttySignalhandler;
-
-    sigaction(SIGUSR1, &action, nullptr);
-    sigaction(SIGUSR2, &action, nullptr);
-*/
 	wl_event_loop_add_signal(&comp.wlEventLoop(), SIGUSR1, ttySignalhandler, this);
 	wl_event_loop_add_signal(&comp.wlEventLoop(), SIGUSR2, ttySignalhandler, this);
-
-	//set global ~
-	gInstance = this;
 }
 
 TerminalHandler::~TerminalHandler()
@@ -130,15 +121,14 @@ TerminalHandler::~TerminalHandler()
 	if(tty_ > 0) close(tty_);
 }
 
-bool TerminalHandler::activate()
+bool TerminalHandler::activate(unsigned int vtNumber)
 {
-    if(focus_) return 1;
+    return (ioctl(tty_, VT_ACTIVATE, vtNumber) != -1);
+}
 
-    if(ioctl(tty_, VT_ACTIVATE, number_) == -1) return 0;
-    if(ioctl(tty_, VT_WAITACTIVE, number_) == -1) return 0;
-    focus_ = 1;
-
-    return 1;
+bool TerminalHandler::waitActive(unsigned int vtNumber)
+{
+    return (ioctl(tty_, VT_WAITACTIVE, vtNumber) != -1);
 }
 
 void TerminalHandler::enteredTTY()
@@ -150,13 +140,6 @@ void TerminalHandler::enteredTTY()
     focus_ = 1;
 
     afterEnter_();
-/*
-    struct sigaction action;
-    action.sa_handler = ttySignalhandler;
-
-    sigaction(SIGUSR1, &action, nullptr);
-    sigaction(SIGUSR2, &action, nullptr);
-	*/
 }
 
 void TerminalHandler::leftTTY()
@@ -168,13 +151,7 @@ void TerminalHandler::leftTTY()
     focus_ = 0;
 
     afterLeave_();
-/*
-    struct sigaction action;
-    action.sa_handler = ttySignalhandler;
-
-    sigaction(SIGUSR1, &action, nullptr);
-    sigaction(SIGUSR2, &action, nullptr);
-	*/
+	nytl::sendLog("left tty completed ", number_);
 }
 
 }

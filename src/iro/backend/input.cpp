@@ -89,6 +89,16 @@ int InputHandler::inputEventCallback(int, unsigned int, void* data)
 	return static_cast<InputHandler*>(data)->inputEvent();
 }
 
+void InputHandler::suspend()
+{
+	libinput_suspend(libinput_);
+}
+
+void InputHandler::resume()
+{
+	libinput_resume(libinput_);
+}
+
 int InputHandler::inputEvent()
 {
 	Pointer* pointer = seat().pointer();

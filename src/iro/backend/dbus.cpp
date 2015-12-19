@@ -119,7 +119,6 @@ DBusHandler::~DBusHandler()
 
 unsigned int DBusHandler::filterMessage(DBusMessage* msg)
 {
-	nytl::sendLog("dbus filter: ", dbus_message_get_member(msg));
 	for(auto& cb : signalCallbacks_)
 	{
 		if(dbus_message_is_signal(msg, cb.interface.c_str(), cb.member.c_str()))
