@@ -33,6 +33,8 @@ bool DefaultSurfaceContext::attachShmBuffer(wl_shm_buffer& shmBuffer, nytl::vec2
 	size.x = wl_shm_buffer_get_width(&shmBuffer);
 	size.y = wl_shm_buffer_get_height(&shmBuffer);
 
+	nytl::sendLog("shm surface with size ", size);
+
     //data
     wl_shm_buffer_begin_access(&shmBuffer);
 	unsigned char* data = static_cast<unsigned char*>(wl_shm_buffer_get_data(&shmBuffer));
@@ -69,15 +71,26 @@ bool DefaultSurfaceContext::attachEglBuffer(wl_resource& eglBuffer, nytl::vec2ui
 		GLuint tex;
 		glActiveTexture(GL_TEXTURE0);
 		glGenTextures(1, &tex);
-		texture_.glTexture(tex);
+
+		texture_.glTexture(tex, size);
 		texture_.bind();
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, (int) GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, (int) GL_CLAMP_TO_EDGE);
+
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, (int) GL_CLAMP_TO_EDGE);
+		/////glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, (int) GL_CLAMP_TO_EDGE);
+		
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, static_cast<GLint>(GL_REPEAT));
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, static_cast<GLint>(GL_REPEAT));
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, static_cast<GLint>(GL_LINEAR));
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, static_cast<GLint>(GL_LINEAR));
+
 	}
 	else
 	{
 		texture_.bind();
 	}
+
+	nytl::sendLog("egl texture: ", texture_.glTexture());
         
 	EGLint attribs[] = {EGL_WAYLAND_PLANE_WL, 0, EGL_NONE};
     void* img = eglContext_->createImageKHR(eglBuffer, attribs, EGL_WAYLAND_BUFFER_WL);
