@@ -52,7 +52,7 @@ void Keyboard::sendKey(unsigned int key, bool press)
 	//check grab
 	if(grabbed_)
 	{
-		grab_.keyCallback(key, press);
+		if(grab_.keyFunction)grab_.keyFunction(key, press);
 		if(grab_.exclusive) return;
 	}
 
@@ -111,9 +111,10 @@ bool Keyboard::grab(const Keyboard::Grab& grb, bool force)
 	if(grabbed_)
 	{
 		if(!force) return 0;
-		grab_.grabEndCallback(1);
+		if(grab_.grabEndFunction)grab_.grabEndFunction(1);
 	}
 
+	grabbed_ = 1;
 	grab_ = grb;
 	return 1;
 }
@@ -122,7 +123,7 @@ bool Keyboard::releaseGrab()
 {
 	if(grabbed_)
 	{
-		grab_.grabEndCallback(0);
+		if(grab_.grabEndFunction)grab_.grabEndFunction(0);
 		grabbed_ = 0;
 
 		return 1;

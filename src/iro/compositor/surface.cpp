@@ -31,7 +31,7 @@ SurfaceState& SurfaceState::operator=(const SurfaceState& other)
     frameCallbacks.clear();
     for(auto& ref : other.frameCallbacks)
     {
-        if(ref.get())frameCallbacks.push_back(CallbackRef(*ref.get()));
+        if(ref)frameCallbacks.push_back(ref);
     }
 
     scale = other.scale;
@@ -158,9 +158,9 @@ SurfaceRes::~SurfaceRes()
 nytl::vec2i SurfaceRes::position() const
 {
     if(role_)
-        return role_->position() + pending_.offset;
+        return role_->position() + commited_.offset;
 
-    return pending_.offset;
+    return commited_.offset;
 }
 
 nytl::vec2ui SurfaceRes::size() const
@@ -192,7 +192,7 @@ void SurfaceRes::sendFrameDone()
 
 void SurfaceRes::addFrameCallback(CallbackRes& cb)
 {
-    pending_.frameCallbacks.push_back(CallbackRef(cb));
+    pending_.frameCallbacks.push_back(&cb);
 }
 
 void SurfaceRes::bufferScale(int scale)
@@ -267,6 +267,7 @@ void SurfaceRes::commit()
 		}
 
         mappedOutputs_ = bckn->outputsAt(extents());
+		nytl::sendLog("surface commited, position ", position());
 		nytl::sendLog("mapping surfaceRes ", this, " on ", mappedOutputs_.size(), " outputs");
         for(auto* o : mappedOutputs_)
         {

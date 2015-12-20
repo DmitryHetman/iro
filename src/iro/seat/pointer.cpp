@@ -145,7 +145,7 @@ void Pointer::sendMove(const nytl::vec2i& pos)
 	//grab check
 	if(grabbed_)
 	{
-		grab_.moveCallback(position_, delta);
+		if(grab_.moveFunction)grab_.moveFunction(position_, delta);
 		if(grab_.exclusive)
 		{
 			return;
@@ -173,7 +173,7 @@ void Pointer::sendButton(unsigned int button, bool press)
 	//grab check
 	if(grabbed_)
 	{
-		grab_.buttonCallback(button, press);
+		if(grab_.buttonFunction)grab_.buttonFunction(button, press);
 		if(grab_.exclusive) return;
 	}
 
@@ -196,7 +196,7 @@ void Pointer::sendAxis(unsigned int axis, double value)
 	//grab check
 	if(grabbed_)
 	{
-		grab_.axisCallback(axis, value);
+		if(grab_.axisFunction)grab_.axisFunction(axis, value);
 		if(grab_.exclusive) return;
 	}
 
@@ -251,10 +251,10 @@ bool Pointer::grab(const Pointer::Grab& grb, bool force)
 	if(grabbed_)
 	{
 		if(!force) return 0;
-
-		grab_.grabEndCallback(1);
+		if(grab_.grabEndFunction)grab_.grabEndFunction(1);
 	}
 
+	grabbed_ = 1;
 	grab_ = grb;
 	return 1;
 }
@@ -263,7 +263,7 @@ bool Pointer::releaseGrab()
 {
 	if(grabbed_)
 	{
-		grab_.grabEndCallback(0);
+		if(grab_.grabEndFunction)grab_.grabEndFunction(0);
 		grabbed_ = 0;
 
 		return 1;

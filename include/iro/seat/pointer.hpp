@@ -8,6 +8,8 @@
 #include <nytl/callback.hpp>
 #include <nytl/watchable.hpp>
 
+#include <functional>
+
 namespace iro
 {
 
@@ -18,11 +20,11 @@ public:
 	struct Grab
 	{
 		bool exclusive;
-		nytl::callback<void(const nytl::vec2i&, const nytl::vec2i&)> moveCallback;
-		nytl::callback<void(unsigned int button, bool press)> buttonCallback;
-		nytl::callback<void(unsigned int axis, double value)> axisCallback;
-		//nytl::callback<void(SurfaceRes*, SurfaceRes*)> focusCallback;
-		nytl::callback<void(bool)> grabEndCallback; //if parameter==1, there is a new grab
+		std::function<void(const nytl::vec2i&, const nytl::vec2i&)> moveFunction;
+		std::function<void(unsigned int button, bool press)> buttonFunction;
+		std::function<void(unsigned int axis, double value)> axisFunction;
+		//std::function<void(SurfaceRes*, SurfaceRes*)> focusCallback;
+		std::function<void(bool)> grabEndFunction; //if parameter==1, there is a new grab
 	};
 
 protected:

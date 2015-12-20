@@ -27,7 +27,7 @@ public:
 	nytl::vec2i offset = nytl::vec2i();
 
     BufferRef buffer;
-    std::vector<CallbackRef> frameCallbacks;
+    std::vector<CallbackRes*> frameCallbacks;
 
     int scale = 1;
     unsigned int transform = 0;
@@ -59,6 +59,7 @@ namespace surfaceRoleType
     constexpr unsigned int sub = 2;
     constexpr unsigned int cursor = 3;
     constexpr unsigned int dataSource = 4;
+	constexpr unsigned int xdgSurface = 5;
 }
 
 ///Base class for a surface role, such as subSurface or shellSurface

@@ -64,6 +64,8 @@ void Resource::invalidObjectDisconnect(wl_resource& res, const std::string& info
 	nytl::sendWarning("Resource::invalidObjectDisconnect: wl_client ", clnt, 
 			" used invalid object ", &res, " and will be disconnected.", inf);
 
+	//store event that client will be destroyed after event loop is fully dispatched - problems
+	//otherwise...
 	//wl_client_destroy(clnt);	
 }
 

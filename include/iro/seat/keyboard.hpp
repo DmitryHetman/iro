@@ -7,6 +7,8 @@
 #include <nytl/callback.hpp>
 #include <nytl/watchable.hpp>
 
+#include <functional>
+
 namespace iro
 {
 
@@ -17,9 +19,9 @@ public:
 	struct Grab
 	{
 		bool exclusive;
-		nytl::callback<void(unsigned int, bool)> keyCallback;
-		//nytl::callback<void(SurfaceRes*, SurfaceRes*)> focusCallback;
-		nytl::callback<void(bool)> grabEndCallback; //paremeter === new grabber
+		std::function<void(unsigned int, bool)> keyFunction;
+		//std::function<void(SurfaceRes*, SurfaceRes*)> focusFunction;
+		std::function<void(bool)> grabEndFunction; //paremeter === new grabber
 	};
 
 protected:

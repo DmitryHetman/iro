@@ -7,6 +7,7 @@
 #include <iro/compositor/compositor.hpp>
 
 #include <nytl/log.hpp>
+#include <nytl/make_unique.hpp>
 
 #include <wayland-server-core.h>
 #include <wayland-server-protocol.h>
@@ -115,19 +116,20 @@ const struct wl_shell_surface_interface shellSurfaceImplementation
 };
 
 //
-nytl::timeDuration ShellSurfaceRes::inactiveDuration = nytl::seconds(5);
-
-//
 ShellSurfaceRes::ShellSurfaceRes(SurfaceRes& surf, wl_client& client, unsigned int id) 
 	: Resource(client, id, &wl_shell_surface_interface, &shellSurfaceImplementation), surface_(surf)
 {
 }
 
-void ShellSurfaceRes::ping(unsigned int serial)
+unsigned int ShellSurfaceRes::ping()
 {
-    pingSerial_ = serial;
+	auto& ev = compositor().event(nytl::make_unique<PingEvent>(), 1);
+
+    pingSerial_ = ev.serial;
 	pingTime_ = nytl::now();
-    wl_shell_surface_send_ping(&wlResource(), serial);
+    wl_shell_surface_send_ping(&wlResource(), pingSerial_);
+
+	return pingSerial_;
 }
 
 void ShellSurfaceRes::pong(unsigned int serial)
@@ -145,6 +147,8 @@ void ShellSurfaceRes::pong(unsigned int serial)
 void ShellSurfaceRes::beginMove(SeatRes& seat, unsigned int serial)
 {
 	//todo: check current state, destroy callbacks/grabs
+	nytl::sendLog("shellsurfaceRes: begin move");
+
 	Seat* s = &seat.seat();
 	if(!seat.seat().pointer()) return;
 
@@ -159,19 +163,21 @@ void ShellSurfaceRes::beginMove(SeatRes& seat, unsigned int serial)
 	//release grab on destruction! store the status somewhere
 	Pointer::Grab myGrab;
 	myGrab.exclusive = 1;
-	myGrab.moveCallback.add([=](const nytl::vec2i&, const nytl::vec2i& delta)
+	myGrab.moveFunction = [=](const nytl::vec2i&, const nytl::vec2i& delta)
 			{
+				nytl::sendLog("move ", delta);
 				this->move(delta);	
-			});
+			};
 
 	if(ev->type == eventType::pointerButton)
 	{
 		auto* bEv = static_cast<PointerButtonEvent*>(ev);
-		myGrab.buttonCallback.add([=](unsigned int button, bool press)
+		myGrab.buttonFunction = [=](unsigned int button, bool press)
 				{
+					nytl::sendLog("release grab");
 					if(button == bEv->button && press != bEv->state) 
 						s->pointer()->releaseGrab();
-				});
+				};
 	}
 	else
 	{
@@ -180,6 +186,7 @@ void ShellSurfaceRes::beginMove(SeatRes& seat, unsigned int serial)
 	}
 
 	seat.seat().pointer()->grab(myGrab);
+	nytl::sendLog("shellsurfaceRes: begin move success");
 }
 
 void ShellSurfaceRes::beginResize(SeatRes& seat, unsigned int serial, unsigned int edges)
@@ -199,19 +206,19 @@ void ShellSurfaceRes::beginResize(SeatRes& seat, unsigned int serial, unsigned i
 	//release grab on destruction! store the status somewhere
 	Pointer::Grab myGrab;
 	myGrab.exclusive = 1;
-	myGrab.moveCallback.add([=](const nytl::vec2i&, const nytl::vec2i& delta)
+	myGrab.moveFunction = [=](const nytl::vec2i&, const nytl::vec2i& delta)
 			{
 				this->resize(delta);	
-			});
+			};
 
 	if(ev->type == eventType::pointerButton)
 	{
 		auto* bEv = static_cast<PointerButtonEvent*>(ev);
-		myGrab.buttonCallback.add([=](unsigned int button, bool press)
+		myGrab.buttonFunction = [=](unsigned int button, bool press)
 				{
 					if(button == bEv->button && press != bEv->state) 
 						s->pointer()->releaseGrab();
-				});
+				};
 	}
 	else
 	{

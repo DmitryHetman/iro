@@ -25,6 +25,9 @@ set(iro-src
 	compositor/client.cpp
 	compositor/shell.cpp
 	compositor/shellSurface.cpp
+	compositor/xdgShell.cpp
+	compositor/xdgSurface.cpp
+	compositor/xdgPopup.cpp
 
 	backend/egl.cpp
 	backend/backend.cpp
@@ -86,4 +89,5 @@ target_link_libraries(iro
 	${XCB_ICCCM_LIBRARY}
 	${PAM_LIBRARIES}
 	ny-draw
+	iro-protos
 )

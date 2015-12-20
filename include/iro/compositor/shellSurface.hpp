@@ -12,9 +12,6 @@ namespace iro
 ///Represents a wayland wl_shell_surface resource.
 class ShellSurfaceRes : public Resource
 {
-public:
-	static nytl::timeDuration inactiveDuration;
-
 protected:
 	SurfaceRes& surface_;
 
@@ -24,7 +21,7 @@ protected:
 	unsigned int pingSerial_ = 0;
 	nytl::timePoint pingTime_;
 
-	nytl::vec2i position_;
+	nytl::vec2i position_ {0,0};
 
 	unsigned int resizeEdges_;
 
@@ -68,7 +65,7 @@ protected:
 public:
 	ShellSurfaceRes(SurfaceRes& surf, wl_client& client, unsigned int id);
 
-	void ping(unsigned int serial);
+	unsigned int ping();
 	void pong(unsigned int serial);
 	void beginMove(SeatRes& seat, unsigned int serial);
 	void beginResize(SeatRes& seat, unsigned int serial, unsigned int edges);
@@ -84,7 +81,9 @@ public:
 	void title(const std::string& title){ title_ = title; }
 
 	nytl::vec2i position() const { return position_; }
-	bool inactive() const { return (!pingSerial_ || nytl::now() - pingTime_ < inactiveDuration ); }
+
+	bool activePing() const { return (pingSerial_ != 0); }
+	nytl::timeDuration pingTime() const { return nytl::now() - pingTime_; }
 };
 
 ///Represents the wayland surface role of a shell surface.

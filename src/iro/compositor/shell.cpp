@@ -26,7 +26,7 @@ public:
 };
 
 //
-void shellGetShellSurface(wl_client* client, wl_resource* shell, unsigned int id, wl_resource* surf)
+void shellGetShellSurface(wl_client*, wl_resource* shell, unsigned int id, wl_resource* surf)
 {
 	auto surface = Resource::validateDisconnect<SurfaceRes>(surf, "shellGetShellSurface");
 	if(!surface) return;	
@@ -34,7 +34,7 @@ void shellGetShellSurface(wl_client* client, wl_resource* shell, unsigned int id
 	auto shellR = Resource::validateDisconnect<ShellRes>(shell, "shellGetShellSurface2");
 	if(!shellR) return;
 
-	shellR->shell().getShellSurface(*surface, id, *client);
+	shellR->shell().getShellSurface(*surface, id);
 }
 
 const struct wl_shell_interface shellImplementation = 
@@ -65,20 +65,12 @@ Shell::Shell(Compositor& comp) : compositor_(&comp)
 	}
 }
 
-void Shell::getShellSurface(SurfaceRes& surface, unsigned int id, wl_client& clnt)
+void Shell::getShellSurface(SurfaceRes& surface, unsigned int id)
 {
-	auto shellSurfaceRes = nytl::make_unique<ShellSurfaceRes>(surface, clnt, id);
+	auto shellSurfaceRes = nytl::make_unique<ShellSurfaceRes>(surface, surface.wlClient(), id);
 	auto shellSurfaceRole = nytl::make_unique<ShellSurfaceRole>(*shellSurfaceRes);
 
-	auto client = Client::findWarn(clnt);
-	if(!client) return;
-	if(client != &surface.client())
-	{
-		nytl::sendWarning("Shell::getShellSurface: surface client and wl_client do no match");
-		return;
-	}
-
-	client->addResource(std::move(shellSurfaceRes));
+	surface.client().addResource(std::move(shellSurfaceRes));
 	surface.role(std::move(shellSurfaceRole));
 }
 

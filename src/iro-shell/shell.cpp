@@ -1,5 +1,6 @@
 #include <iro/compositor/shell.hpp>
 #include <iro/compositor/surface.hpp>
+#include <iro/compositor/xdgShell.hpp>
 #include <iro/backend/surfaceContext.hpp>
 #include <iro/backend/output.hpp>
 #include <iro/seat/seat.hpp>
@@ -20,7 +21,10 @@ class MyShellModule : public ShellModule
 protected:
 	Compositor* compositor_ = nullptr;
 	Seat* seat_ = nullptr;
-	Shell* myShell_ = nullptr;
+
+	std::unique_ptr<Shell> shell_;
+	std::unique_ptr<XdgShell> xdgShell_;
+
 	ny::GlTexture myTexture;
 	ny::GlTexture cursorTexture;
 
@@ -45,7 +49,6 @@ ShellModule* iro_shell_module()
 //impl
 MyShellModule::~MyShellModule()
 {
-	if(myShell_) delete myShell_;
 }
 
 void MyShellModule::init(Compositor& comp, Seat& seat)
@@ -53,7 +56,8 @@ void MyShellModule::init(Compositor& comp, Seat& seat)
 	compositor_ = &comp;
 	seat_ = &seat;
 
-	myShell_ = new Shell(comp);
+	shell_.reset(new Shell(comp));
+	xdgShell_.reset(new XdgShell(comp));
 }
 
 void MyShellModule::render(Output& outp, ny::DrawContext& dc)
@@ -80,6 +84,8 @@ void MyShellModule::render(Output& outp, ny::DrawContext& dc)
 	bool renderedCursor_ = 0;
 	for(auto& surf : outp.mappedSurfaces())
 	{
+		nytl::sendLog("surf position: ", surf->position());
+
 		ny::Rectangle surfaceRect(surf->extents());
 		dc.mask(surfaceRect);
 

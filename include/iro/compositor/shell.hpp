@@ -32,7 +32,8 @@ public:
 	Shell(Compositor& comp);
 	virtual ~Shell() = default;
 
-	virtual void getShellSurface(SurfaceRes& surface, unsigned int id, wl_client& client);
+	virtual void getShellSurface(SurfaceRes& surface, unsigned int id);
+
 	Compositor& compositor() const { return *compositor_; }
 };
 

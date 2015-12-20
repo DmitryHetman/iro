@@ -56,3 +56,4 @@ add_custom_target(uninstall COMMAND ${CMAKE_COMMAND} -P
 add_subdirectory(src/iro)
 add_subdirectory(src/iro-shell)
 add_subdirectory(src/iro-desktop)
+add_subdirectory(src/protos)
