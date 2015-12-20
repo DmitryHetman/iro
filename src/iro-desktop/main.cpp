@@ -173,7 +173,8 @@ int main()
 	
 
 	nytl::sendLog("starting main loop");
-	myCompositor.run(nytl::seconds(30));
+	//myCompositor.run(nytl::seconds(30));
+	myCompositor.run();
 	nytl::sendLog("Finished Iro Desktop");
 	*nytl::sendLog.stream << std::flush;
 

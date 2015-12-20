@@ -9,5 +9,4 @@ old/
 html/
 latex/
 log.txt
-wallpaper.png
-cursor.png
+*.png

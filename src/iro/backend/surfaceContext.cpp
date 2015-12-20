@@ -75,9 +75,6 @@ bool DefaultSurfaceContext::attachEglBuffer(wl_resource& eglBuffer, nytl::vec2ui
 		texture_.glTexture(tex, size);
 		texture_.bind();
 
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, (int) GL_CLAMP_TO_EDGE);
-		/////glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, (int) GL_CLAMP_TO_EDGE);
-		
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, static_cast<GLint>(GL_REPEAT));
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, static_cast<GLint>(GL_REPEAT));
 
@@ -102,7 +99,7 @@ bool DefaultSurfaceContext::attachEglBuffer(wl_resource& eglBuffer, nytl::vec2ui
 	}
 
 	eglContext_->imageTargetTexture(img, static_cast<unsigned int>(GL_TEXTURE_2D));
-	//eglContext_->makeNotCurrent();
+	eglContext_->makeNotCurrent();
 
 	return 1;
 }

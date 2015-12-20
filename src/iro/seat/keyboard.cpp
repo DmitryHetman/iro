@@ -32,7 +32,7 @@ const struct wl_keyboard_interface keyboardImplementation
 };
 
 //Keyboard implementation
-Keyboard::Keyboard(Seat& seat) : seat_(&seat), focus_(nullptr)
+Keyboard::Keyboard(Seat& seat) : seat_(&seat)
 {
 }
 
@@ -49,6 +49,14 @@ void Keyboard::sendKey(unsigned int key, bool press)
 {
 	nytl::sendLog("Key ", key, " ", press);
 
+	//check grab
+	if(grabbed_)
+	{
+		grab_.keyCallback(key, press);
+		if(grab_.exclusive) return;
+	}
+
+	//exit on ESC key
 	//only for debug - should NOT be in releases.
     if(key == KEY_ESC && press)
     {
@@ -57,6 +65,7 @@ void Keyboard::sendKey(unsigned int key, bool press)
         return;
     }
 
+	//send key to client
     if(activeResource())
 	{
 		auto& ev = compositor().event(nytl::make_unique<KeyboardKeyEvent>(press, 
@@ -64,7 +73,8 @@ void Keyboard::sendKey(unsigned int key, bool press)
 		wl_keyboard_send_key(&activeResource()->wlResource(), ev.serial, 
 			compositor().time(), key, press);
 	}
-        
+     
+	//callback	
     keyCallback_(key, press);
 }
 
@@ -72,26 +82,53 @@ void Keyboard::sendFocus(SurfaceRes* newFocus)
 {
     if(activeResource())
     {
-        auto& ev = compositor().event(nytl::make_unique<KeyboardFocusEvent>(0, focus_, 
+        auto& ev = compositor().event(nytl::make_unique<KeyboardFocusEvent>(0, focus_.get(), 
 				&focus_->client()), 1);
         wl_keyboard_send_leave(&activeResource()->wlResource(), ev.serial, &focus_->wlResource());
     }
 
-    focusCallback_(focus_, newFocus);
-    focus_ = newFocus;
+	SurfaceRes* old = focus_.get();
+    focus_.set(newFocus);
 
     if(activeResource())
     {
-        auto& ev = compositor().event(nytl::make_unique<KeyboardFocusEvent>(1, focus_, 
+        auto& ev = compositor().event(nytl::make_unique<KeyboardFocusEvent>(1, focus_.get(), 
 				&focus_->client()), 1);
         wl_keyboard_send_enter(&activeResource()->wlResource(), ev.serial, 
 				&focus_->wlResource(), nullptr);
     }
+
+    focusCallback_(old, newFocus);
 }
 
 KeyboardRes* Keyboard::activeResource() const
 {
     return (focus_) ? focus_->client().keyboardResource() : nullptr;
+}
+
+bool Keyboard::grab(const Keyboard::Grab& grb, bool force)
+{
+	if(grabbed_)
+	{
+		if(!force) return 0;
+		grab_.grabEndCallback(1);
+	}
+
+	grab_ = grb;
+	return 1;
+}
+
+bool Keyboard::releaseGrab()
+{
+	if(grabbed_)
+	{
+		grab_.grabEndCallback(0);
+		grabbed_ = 0;
+
+		return 1;
+	}
+
+	return 0;
 }
 
 //Keyboard Resource

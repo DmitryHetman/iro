@@ -24,6 +24,10 @@ protected:
 	unsigned int pingSerial_ = 0;
 	nytl::timePoint pingTime_;
 
+	nytl::vec2i position_;
+
+	unsigned int resizeEdges_;
+
 	unsigned int state_;
 	union
 	{
@@ -57,13 +61,17 @@ protected:
 		} maximized_;
 	};
 
+	//
+	void move(const nytl::vec2i& delta);
+	void resize(const nytl::vec2i& delta);
+
 public:
 	ShellSurfaceRes(SurfaceRes& surf, wl_client& client, unsigned int id);
 
 	void ping(unsigned int serial);
 	void pong(unsigned int serial);
-	void move(SeatRes& seat, unsigned int serial);
-	void resize(SeatRes& seat, unsigned int serial, unsigned int edges);
+	void beginMove(SeatRes& seat, unsigned int serial);
+	void beginResize(SeatRes& seat, unsigned int serial, unsigned int edges);
 
 	void setToplevel();
 	void setTransient(SurfaceRes& parent, const nytl::vec2i& pos, unsigned int flags);
@@ -75,7 +83,7 @@ public:
 	void className(const std::string& name){ class_ = name; }
 	void title(const std::string& title){ title_ = title; }
 
-	nytl::vec2i position() const { return {0, 0}; }
+	nytl::vec2i position() const { return position_; }
 	bool inactive() const { return (!pingSerial_ || nytl::now() - pingTime_ < inactiveDuration ); }
 };
 

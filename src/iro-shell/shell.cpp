@@ -91,6 +91,8 @@ void MyShellModule::render(Output& outp, ny::DrawContext& dc)
 
 		if(surf->roleType() == surfaceRoleType::cursor)
 			renderedCursor_ = 1;
+
+		surf->sendFrameDone();
 	}
 
 	if(!renderedCursor_)

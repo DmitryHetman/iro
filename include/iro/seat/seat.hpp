@@ -17,14 +17,12 @@ protected:
 	Compositor* compositor_;
     std::string name_;
 
-	Event* modeEvent_ = nullptr;
-
     std::unique_ptr<Pointer> pointer_;
     std::unique_ptr<Keyboard> keyboard_;
     std::unique_ptr<Touch> touch_;
 
 public:
-    Seat(Compositor& comp, const nytl::vec3b& caps = {1, 1, 1});
+    Seat(Compositor& comp, const nytl::vec3b& capas = {1, 1, 1});
 	~Seat();
 
 	const std::string& name() const { return name_; }
@@ -34,7 +32,6 @@ public:
     Touch* touch() const { return touch_.get(); }
 
 	Compositor& compositor() const { return *compositor_; }
-    Event* modeEvent() const { return modeEvent_; }
 };
 
 

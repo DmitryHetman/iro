@@ -21,6 +21,7 @@ namespace iro
 void pointerSetCursor(wl_client*, wl_resource* resource, unsigned int serial, 
 		wl_resource* surface, int hx, int hy)
 {
+	//todo: serial and stuff
 	PointerRes* ptr = Resource::validateDisconnect<PointerRes>(resource, "setCursor");
 	if(!ptr) return;
 
@@ -124,9 +125,11 @@ void Pointer::setOver(SurfaceRes* newOne)
 
 void Pointer::sendMove(const nytl::vec2i& pos)
 {
-	//nytl::vec2i delta = pos - position_;
+	//todo
+	
+	//redraw, position and stuff
+	nytl::vec2i delta = pos - position_;
 	position_ = pos;
-	moveCallback_(position_);
 
 	if(!compositor().backend())
 	{
@@ -139,23 +142,43 @@ void Pointer::sendMove(const nytl::vec2i& pos)
 
 	overOut->scheduleRepaint();
 
-	if(!seat().modeEvent())
+	//grab check
+	if(grabbed_)
 	{
-		SurfaceRes* surf = overOut->surfaceAt(position_);
-		if(surf != over_.get()) setOver(surf);
-
-		if(activeResource())
+		grab_.moveCallback(position_, delta);
+		if(grab_.exclusive)
 		{
-			auto wlpos = wlFixedPosition();
-			wl_pointer_send_motion(&activeResource()->wlResource(), compositor().time(), 
-					wlpos.x, wlpos.y);
-		}	
+			return;
+		}
 	}
+
+	//focus check	
+	SurfaceRes* surf = overOut->surfaceAt(position_);
+	if(surf != over_.get()) setOver(surf);
+
+	//send movement to client
+	if(activeResource())
+	{
+		auto wlpos = wlFixedPosition();
+		wl_pointer_send_motion(&activeResource()->wlResource(), compositor().time(), 
+				wlpos.x, wlpos.y);
+	}	
+	
+	//callbacks
+	moveCallback_(position_, delta);
 }
 
 void Pointer::sendButton(unsigned int button, bool press)
 {
-	if(activeResource() && !seat().modeEvent())
+	//grab check
+	if(grabbed_)
+	{
+		grab_.buttonCallback(button, press);
+		if(grab_.exclusive) return;
+	}
+
+	//send button to client
+	if(activeResource())
 	{
 		auto& ev = compositor().event(nytl::make_unique<PointerButtonEvent>(press,
 				button, &activeResource()->client()), 1);
@@ -164,16 +187,26 @@ void Pointer::sendButton(unsigned int button, bool press)
 				button ,press);
 	}
 
+	//callbacks
 	buttonCallback_(button, press);
 }
 
 void Pointer::sendAxis(unsigned int axis, double value)
 {
-    if(activeResource() && !seat().modeEvent())
+	//grab check
+	if(grabbed_)
+	{
+		grab_.axisCallback(axis, value);
+		if(grab_.exclusive) return;
+	}
+
+	//send axis to client
+    if(activeResource())
 	{
 		wl_pointer_send_axis(&activeResource()->wlResource(), compositor().time(), axis, value);
 	}
 
+	//callback
     axisCallback_(axis, value);
 }
 
@@ -210,7 +243,33 @@ nytl::vec2i Pointer::wlFixedPosition() const
 
 PointerRes* Pointer::activeResource() const
 {
-    return (over_.get()) ? over_.get()->client().pointerResource() : nullptr;
+    return (over_) ? over_->client().pointerResource() : nullptr;
+}
+
+bool Pointer::grab(const Pointer::Grab& grb, bool force)
+{
+	if(grabbed_)
+	{
+		if(!force) return 0;
+
+		grab_.grabEndCallback(1);
+	}
+
+	grab_ = grb;
+	return 1;
+}
+
+bool Pointer::releaseGrab()
+{
+	if(grabbed_)
+	{
+		grab_.grabEndCallback(0);
+		grabbed_ = 0;
+
+		return 1;
+	}
+
+	return 0;
 }
 
 //pointer resource

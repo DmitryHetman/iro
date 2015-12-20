@@ -5,6 +5,7 @@
 
 #include <nytl/nonCopyable.hpp>
 #include <nytl/callback.hpp>
+#include <nytl/watchable.hpp>
 
 namespace iro
 {
@@ -12,9 +13,21 @@ namespace iro
 ///Represnts a physical keyboard
 class Keyboard : public nytl::nonCopyable
 {
+public:
+	struct Grab
+	{
+		bool exclusive;
+		nytl::callback<void(unsigned int, bool)> keyCallback;
+		//nytl::callback<void(SurfaceRes*, SurfaceRes*)> focusCallback;
+		nytl::callback<void(bool)> grabEndCallback; //paremeter === new grabber
+	};
+
 protected:
     Seat* seat_;
-    SurfaceRes* focus_ = nullptr;
+    SurfaceRef focus_;
+
+	bool grabbed_ = 0;
+	Grab grab_;
 
     //callbacks
 	nytl::callback<void(unsigned int, bool)> keyCallback_;
@@ -27,11 +40,14 @@ public:
     void sendKey(unsigned int key, bool press);
     void sendFocus(SurfaceRes* newFocus);
 
-    SurfaceRes* focus() const { return focus_; }
+    SurfaceRes* focus() const { return focus_.get(); }
     KeyboardRes* activeResource() const;
 
     Seat& seat() const { return *seat_; }
 	Compositor& compositor() const;
+
+	bool grab(const Grab& grb, bool force = 1);
+	bool releaseGrab();
 
     //callbacks
     template<typename F> nytl::connection onKey(F&& f)

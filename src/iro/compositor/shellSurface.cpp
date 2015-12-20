@@ -1,6 +1,10 @@
 #include <iro/compositor/shellSurface.hpp>
 #include <iro/backend/output.hpp>
 #include <iro/seat/seat.hpp>
+#include <iro/seat/pointer.hpp>
+#include <iro/seat/keyboard.hpp>
+#include <iro/seat/event.hpp>
+#include <iro/compositor/compositor.hpp>
 
 #include <nytl/log.hpp>
 
@@ -24,7 +28,7 @@ void shellSurfaceMove(wl_client*, wl_resource* res, wl_resource* seat,
 	auto* seatRes = Resource::validateDisconnect<SeatRes>(seat, "shellSurfaceMove2");
 	if(!seatRes || !ssurfRes) return;
 
-	ssurfRes->move(*seatRes, serial);
+	ssurfRes->beginMove(*seatRes, serial);
 }
 void shellSurfaceResize(wl_client*, wl_resource* res, wl_resource* seat, 
 		unsigned int serial, unsigned int edges)
@@ -33,7 +37,7 @@ void shellSurfaceResize(wl_client*, wl_resource* res, wl_resource* seat,
 	auto* seatRes = Resource::validateDisconnect<SeatRes>(seat, "shellSurfaceResize2");
 	if(!seatRes || !ssurfRes) return;
 
-	ssurfRes->resize(*seatRes, serial, edges);
+	ssurfRes->beginResize(*seatRes, serial, edges);
 }
 void shellSurfaceSetToplevel(wl_client*, wl_resource* res)
 {
@@ -138,12 +142,85 @@ void ShellSurfaceRes::pong(unsigned int serial)
 	pingSerial_ = 0;
 }
 
-void ShellSurfaceRes::move(SeatRes& seat, unsigned int serial)
+void ShellSurfaceRes::beginMove(SeatRes& seat, unsigned int serial)
 {
+	//todo: check current state, destroy callbacks/grabs
+	Seat* s = &seat.seat();
+	if(!seat.seat().pointer()) return;
+
+	Event* ev = seat.seat().compositor().event(serial);
+	if(!ev)
+	{
+		//todo: warn or even kick client here
+		nytl::sendWarning("ShellSurfaceMove: invalid serial");
+		return;
+	}	
+
+	//release grab on destruction! store the status somewhere
+	Pointer::Grab myGrab;
+	myGrab.exclusive = 1;
+	myGrab.moveCallback.add([=](const nytl::vec2i&, const nytl::vec2i& delta)
+			{
+				this->move(delta);	
+			});
+
+	if(ev->type == eventType::pointerButton)
+	{
+		auto* bEv = static_cast<PointerButtonEvent*>(ev);
+		myGrab.buttonCallback.add([=](unsigned int button, bool press)
+				{
+					if(button == bEv->button && press != bEv->state) 
+						s->pointer()->releaseGrab();
+				});
+	}
+	else
+	{
+		nytl::sendWarning("ShellSurfaceMove: invalid event type");
+		return;
+	}
+
+	seat.seat().pointer()->grab(myGrab);
 }
 
-void ShellSurfaceRes::resize(SeatRes& seat, unsigned int serial, unsigned int edges)
+void ShellSurfaceRes::beginResize(SeatRes& seat, unsigned int serial, unsigned int edges)
 {
+	//todo: check current state, destroy callbacks/grabs
+	Seat* s = &seat.seat();
+	if(!seat.seat().pointer()) return;
+
+	Event* ev = seat.seat().compositor().event(serial);
+	if(!ev)
+	{
+		//todo: warn or even kick client here
+		nytl::sendWarning("ShellSurfaceResize: invalid serial");
+		return;
+	}	
+
+	//release grab on destruction! store the status somewhere
+	Pointer::Grab myGrab;
+	myGrab.exclusive = 1;
+	myGrab.moveCallback.add([=](const nytl::vec2i&, const nytl::vec2i& delta)
+			{
+				this->resize(delta);	
+			});
+
+	if(ev->type == eventType::pointerButton)
+	{
+		auto* bEv = static_cast<PointerButtonEvent*>(ev);
+		myGrab.buttonCallback.add([=](unsigned int button, bool press)
+				{
+					if(button == bEv->button && press != bEv->state) 
+						s->pointer()->releaseGrab();
+				});
+	}
+	else
+	{
+		nytl::sendWarning("ShellSurfaceResize: invalid event type");
+		return;
+	}
+
+	resizeEdges_ = edges;
+	seat.seat().pointer()->grab(myGrab);
 }
 
 void ShellSurfaceRes::setToplevel()
@@ -161,6 +238,16 @@ void ShellSurfaceRes::setPopup(SeatRes& seat, unsigned int serial, SurfaceRes& p
 }
 void ShellSurfaceRes::setMaximized(OutputRes& output)
 {
+}
+
+void ShellSurfaceRes::move(const nytl::vec2i& delta)
+{
+	position_ += delta;
+}
+
+void ShellSurfaceRes::resize(const nytl::vec2i& delta)
+{
+
 }
 
 }

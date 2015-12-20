@@ -14,17 +14,31 @@ namespace iro
 ///Represents a physical pointer.
 class Pointer : public nytl::nonCopyable
 {
+public:
+	struct Grab
+	{
+		bool exclusive;
+		nytl::callback<void(const nytl::vec2i&, const nytl::vec2i&)> moveCallback;
+		nytl::callback<void(unsigned int button, bool press)> buttonCallback;
+		nytl::callback<void(unsigned int axis, double value)> axisCallback;
+		//nytl::callback<void(SurfaceRes*, SurfaceRes*)> focusCallback;
+		nytl::callback<void(bool)> grabEndCallback; //if parameter==1, there is a new grab
+	};
+
 protected:
     Seat* seat_;
 
     SurfaceRef over_;
 	nytl::vec2i position_;
 
+	bool grabbed_ = 0;
+	Grab grab_;
+
     bool customCursor_ = 0; //cursor is used
     SurfaceRef cursor_;
 	nytl::vec2i hotspot_;
 
-	nytl::callback<void(const nytl::vec2i& pos)> moveCallback_;
+	nytl::callback<void(const nytl::vec2i& pos, const nytl::vec2i& delta)> moveCallback_;
 	nytl::callback<void(unsigned int button, bool press)> buttonCallback_;
 	nytl::callback<void(unsigned int axis, double value)> axisCallback_;
 	nytl::callback<void(SurfaceRes*, SurfaceRes*)> focusCallback_;
@@ -52,6 +66,9 @@ public:
 
 	nytl::vec2i position() const { return position_; }
 	nytl::vec2i wlFixedPosition() const;
+
+	bool grab(const Grab& grab, bool force = 1);
+	bool releaseGrab();
 
     //callbacks
 	template<typename F> nytl::connection onMove(F&& f)
