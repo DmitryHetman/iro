@@ -91,6 +91,7 @@ SeatRes::SeatRes(Seat& seat, wl_client& client, unsigned int id, unsigned int ve
 	if(seat.touch()) capabilities |= WL_SEAT_CAPABILITY_TOUCH;
 
     wl_seat_send_capabilities(&wlResource(), capabilities);
+	wl_seat_send_name(&wlResource(), seat.name().c_str());
 }
 
 SeatRes::~SeatRes()

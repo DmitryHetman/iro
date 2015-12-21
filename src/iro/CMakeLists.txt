@@ -48,6 +48,9 @@ set(iro-src
 	seat/keyboard.cpp
 	seat/pointer.cpp
 	seat/touch.cpp
+	seat/cursorSurface.cpp
+
+	xwayland/xwm.cpp
 )
 
 #iro
