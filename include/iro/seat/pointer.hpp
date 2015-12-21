@@ -68,6 +68,7 @@ public:
 
 	nytl::vec2i position() const { return position_; }
 	nytl::vec2i wlFixedPosition() const;
+	nytl::vec2i wlFixedPositionRelative() const;
 
 	bool grab(const Grab& grab, bool force = 1);
 	bool releaseGrab();
