@@ -183,7 +183,7 @@ void SurfaceRes::sendFrameDone()
         if(cb)
         {
             wl_callback_send_done(&cb->wlResource(), compositor().time());
-            cb->destroy();
+            //cb->destroy(); //? clients get sigsev with this one. why?
         }
     }
 
@@ -252,6 +252,8 @@ void SurfaceRes::commit()
 				nytl::sendWarning("SurfaceRes::commit: attaching the buffer failed");
 				return;
 			}
+
+			commited_.buffer->sendRelease();
 		}
 		else
 		{

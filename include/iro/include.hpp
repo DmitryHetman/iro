@@ -41,8 +41,11 @@ class Backend;
 class Output;
 class Client;
 class Event;
+class Subcompositor;
 
 class SurfaceContext;
+
+class XWindowManager;
 
 class InputHandler;
 class TerminalHandler;

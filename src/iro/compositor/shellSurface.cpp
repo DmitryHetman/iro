@@ -1,10 +1,10 @@
 #include <iro/compositor/shellSurface.hpp>
+#include <iro/compositor/compositor.hpp>
 #include <iro/backend/output.hpp>
 #include <iro/seat/seat.hpp>
 #include <iro/seat/pointer.hpp>
 #include <iro/seat/keyboard.hpp>
 #include <iro/seat/event.hpp>
-#include <iro/compositor/compositor.hpp>
 
 #include <nytl/log.hpp>
 #include <nytl/make_unique.hpp>
@@ -165,7 +165,6 @@ void ShellSurfaceRes::beginMove(SeatRes& seat, unsigned int serial)
 	myGrab.exclusive = 1;
 	myGrab.moveFunction = [=](const nytl::vec2i&, const nytl::vec2i& delta)
 			{
-				nytl::sendLog("move ", delta);
 				this->move(delta);	
 			};
 
@@ -174,7 +173,6 @@ void ShellSurfaceRes::beginMove(SeatRes& seat, unsigned int serial)
 		auto* bEv = static_cast<PointerButtonEvent*>(ev);
 		myGrab.buttonFunction = [=](unsigned int button, bool press)
 				{
-					nytl::sendLog("release grab");
 					if(button == bEv->button && press != bEv->state) 
 						s->pointer()->releaseGrab();
 				};
@@ -186,7 +184,6 @@ void ShellSurfaceRes::beginMove(SeatRes& seat, unsigned int serial)
 	}
 
 	seat.seat().pointer()->grab(myGrab);
-	nytl::sendLog("shellsurfaceRes: begin move success");
 }
 
 void ShellSurfaceRes::beginResize(SeatRes& seat, unsigned int serial, unsigned int edges)

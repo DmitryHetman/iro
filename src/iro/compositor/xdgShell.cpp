@@ -36,7 +36,7 @@ void xdgShellGetSurface(wl_client*, wl_resource* resource, uint32_t id, wl_resou
 	auto* surf = Resource::validateDisconnect<SurfaceRes>(surface, "xShellSurface2");
 	if(!xshellres || !surf) return;
 
-	xshellres->xdgShell().getXdgSurface(*surf, id);
+	xshellres->xdgShell().getXdgSurface(*surf, id, xshellres->version());
 }
 
 void xdgShellGetPopup(wl_client* client, wl_resource* resource, uint32_t id, wl_resource* surface,
@@ -48,7 +48,8 @@ void xdgShellGetPopup(wl_client* client, wl_resource* resource, uint32_t id, wl_
 	auto* seatR = Resource::validateDisconnect<SeatRes>(seat, "xShellSurface4");
 	if(!xshellres || !surf || !parentR || !seatR) return;
 
-	xshellres->xdgShell().getXdgPopup(*surf, id,* parentR,* seatR, serial, {x,y});
+	xshellres->xdgShell().getXdgPopup(*surf, id,* parentR,* seatR, serial, {x,y},
+			xshellres->version());
 }
 
 void xdgShellPong(wl_client* client, wl_resource* resource, uint32_t serial)
@@ -87,17 +88,17 @@ XdgShell::XdgShell(Compositor& comp) : compositor_(&comp)
 	}
 }
 
-void XdgShell::getXdgSurface(SurfaceRes& surface, unsigned int id)
+void XdgShell::getXdgSurface(SurfaceRes& surf, unsigned int id, unsigned int version)
 {
-	auto xdgSurfaceRes = nytl::make_unique<XdgSurfaceRes>(surface, surface.wlClient(), id);
+	auto xdgSurfaceRes = nytl::make_unique<XdgSurfaceRes>(surf, surf.wlClient(), id, version);
 	auto xdgSurfaceRole = nytl::make_unique<XdgSurfaceRole>(*xdgSurfaceRes);
 
-	surface.client().addResource(std::move(xdgSurfaceRes));
-	surface.role(std::move(xdgSurfaceRole));
+	surf.client().addResource(std::move(xdgSurfaceRes));
+	surf.role(std::move(xdgSurfaceRole));
 }
 
 void XdgShell::getXdgPopup(SurfaceRes& surface, unsigned int id, SurfaceRes& parent, SeatRes& seat,
-		unsigned int serial, const nytl::vec2i& position)
+		unsigned int serial, const nytl::vec2i& position, unsigned int version)
 {
 	//TODO
 	/*

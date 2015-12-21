@@ -20,9 +20,9 @@ public:
 	XdgShell(Compositor& comp);
 	virtual ~XdgShell() = default;
 
-	virtual void getXdgSurface(SurfaceRes& surface, unsigned int id);
+	virtual void getXdgSurface(SurfaceRes& surface, unsigned int id, unsigned int version);
 	virtual void getXdgPopup(SurfaceRes& surface, unsigned int id, SurfaceRes& parent, 
-			SeatRes& seat, unsigned int serial, const nytl::vec2i& position);
+			SeatRes& seat, unsigned int serial, const nytl::vec2i& position, unsigned int version);
 
 	Compositor& compositor() const { return *compositor_; }
 };

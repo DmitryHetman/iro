@@ -24,6 +24,8 @@ protected:
 	Backend* backend_;
     std::vector<std::unique_ptr<Event>> eventList_; 
 
+	std::unique_ptr<Subcompositor> subcompositor_;
+
 public:
     Compositor();
     ~Compositor();
@@ -75,6 +77,9 @@ public:
 	///Returns the current wayland time stamp. Returns the time since compositor start in
 	///milliseconds. Used for some wayland event functions.
 	unsigned int time() const;
+
+	///Returns the subcompositor object associated with this compositor.
+	Subcompositor& subcompositor() const { return *subcompositor_; }
 };
 
 }

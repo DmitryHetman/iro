@@ -11,6 +11,7 @@
 #include <iro/backend/dbus.hpp>
 #include <iro/seat/seat.hpp>
 #include <iro/seat/keyboard.hpp>
+#include <iro/xwayland/xwm.hpp>
 
 #include <nytl/log.hpp>
 #include <nytl/make_unique.hpp>
@@ -69,8 +70,11 @@ void idleSwitch(void* data)
 
 int main()
 {
+	char buffer[64];
+
 	std::ofstream logStream;
-	logStream.rdbuf()->pubsetbuf(0, 0);
+	//logStream.rdbuf()->pubsetbuf(buffer, sizeof(buffer));
+	logStream.rdbuf()->pubsetbuf(nullptr, 0);
 	logStream.open("log.txt");
 	try
 	{
@@ -150,6 +154,10 @@ int main()
 	}
 
 	nytl::sendLog("finished backend setup");
+
+	auto xwm = nytl::make_unique<iro::XWindowManager>(myCompositor, mySeat);
+
+	nytl::sendLog("set up x window manager");
 
 	if(!myBackend)
 	{

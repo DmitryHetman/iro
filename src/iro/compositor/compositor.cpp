@@ -2,6 +2,7 @@
 
 #include <iro/compositor/surface.hpp>
 #include <iro/compositor/region.hpp>
+#include <iro/compositor/subcompositor.hpp>
 #include <iro/compositor/client.hpp>
 #include <iro/backend/backend.hpp>
 #include <iro/seat/event.hpp>
@@ -71,6 +72,7 @@ int compExit(void* data)
 {
 	nytl::sendLog("terminating compositor, 5 seconds passed");
 	static_cast<Compositor*>(data)->exit();
+	return 1;
 }
 
 //compositor resource implementation
@@ -104,6 +106,8 @@ Compositor::Compositor()
 
 
 	wl_event_loop_add_signal(&wlEventLoop(), SIGINT, signalIntHandler, this);
+
+	subcompositor_.reset(new Subcompositor(*this));
 }
 
 Compositor::~Compositor()
