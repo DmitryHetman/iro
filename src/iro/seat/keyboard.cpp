@@ -5,13 +5,22 @@
 #include <iro/compositor/surface.hpp>
 #include <iro/compositor/client.hpp>
 #include <iro/compositor/compositor.hpp>
+#include <iro/util/os.hpp>
 
 #include <nytl/log.hpp>
 #include <nytl/make_unique.hpp>
 
 #include <wayland-server-protocol.h>
 
+#include <xkbcommon/xkbcommon.h>
 #include <linux/input.h>
+
+#include <unistd.h>
+#include <sys/mman.h>
+#include <errno.h>
+#include <fcntl.h>
+
+#include <cstring>
 
 
 namespace iro
@@ -34,10 +43,80 @@ const struct wl_keyboard_interface keyboardImplementation
 //Keyboard implementation
 Keyboard::Keyboard(Seat& seat) : seat_(&seat)
 {
+	struct xkb_rule_names rules;
+	std::memset(&rules, 0, sizeof(rules));
+
+	rules.rules = getenv("XKB_DEFAULT_RULES");
+	rules.model = getenv("XKB_DEFAULT_MODEL");
+    rules.layout = getenv("XKB_DEFAULT_LAYOUT");
+	rules.variant = getenv("XKB_DEFAULT_VARIANT");
+	rules.options = getenv("XKB_DEFAULT_OPTIONS");
+
+	struct xkb_context* context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+	if(!context)
+	{
+	}
+
+	keymap_.xkb = xkb_map_new_from_names(context, &rules, XKB_KEYMAP_COMPILE_NO_FLAGS);
+	if(!keymap_.xkb)
+	{
+	}
+
+	xkb_context_unref(context);
+	context = nullptr;
+
+	char* keymapStrC = xkb_map_get_as_string(keymap_.xkb);
+	if(!keymapStrC)
+	{
+	}
+
+	std::string keymapStr(keymapStrC);
+	std::size_t mSize = keymapStr.size();
+
+	keymap_.fd = os_create_anonymous_file(keymapStr.size());
+	if(keymap_.fd < 0)
+	{
+	}
+
+	void* map = mmap(nullptr, mSize, PROT_READ | PROT_WRITE, MAP_SHARED, keymap_.fd, 0);	
+	if(!map)
+	{
+	}
+
+	keymap_.mapped = static_cast<char*>(map);
+	keymap_.mappedSize = mSize;
+
+	memcpy(keymap_.mapped, keymapStr.c_str(), keymap_.mappedSize - 1);
+
+	keymap_.state = xkb_state_new(keymap_.xkb);
 }
 
 Keyboard::~Keyboard()
 {
+	if(keymap_.state)
+	{
+		xkb_state_unref(keymap_.state);
+		keymap_.state = nullptr;
+	}
+
+	if(keymap_.xkb)
+	{
+		xkb_map_unref(keymap_.xkb);
+		keymap_.xkb = nullptr;
+	}
+
+	if(keymap_.mapped)
+	{
+		munmap(keymap_.mapped, keymap_.mappedSize);
+		keymap_.mappedSize = 0;
+		keymap_.mapped = nullptr;
+	}
+
+	if(keymap_.fd >= 0)
+	{
+		close(keymap_.fd);
+		keymap_.fd = -1;
+	}
 }
 
 Compositor& Keyboard::compositor() const
@@ -47,7 +126,9 @@ Compositor& Keyboard::compositor() const
 
 void Keyboard::sendKey(unsigned int key, bool press)
 {
-	nytl::sendLog("Key ", key, " ", press);
+	nytl::sendLog("Key ", key, " ", press, " -- ", focus_, " -- ", activeResource());
+
+	xkb_state_update_key(keymap_.state, key + 8, press ? XKB_KEY_DOWN : XKB_KEY_UP);
 
 	//check grab
 	if(grabbed_)
@@ -73,6 +154,10 @@ void Keyboard::sendKey(unsigned int key, bool press)
 		wl_keyboard_send_key(&activeResource()->wlResource(), ev.serial, 
 			compositor().time(), key, press);
 	}
+	else
+	{
+		nytl::sendLog("key with no active resource...");
+	}
      
 	//callback	
     keyCallback_(key, press);
@@ -94,8 +179,12 @@ void Keyboard::sendFocus(SurfaceRes* newFocus)
     {
         auto& ev = compositor().event(nytl::make_unique<KeyboardFocusEvent>(1, focus_.get(), 
 				&focus_->client()), 1);
+
+		wl_array keys;
+		wl_array_init(&keys);
+
         wl_keyboard_send_enter(&activeResource()->wlResource(), ev.serial, 
-				&focus_->wlResource(), nullptr);
+				&focus_->wlResource(), &keys);
     }
 
     focusCallback_(old, newFocus);
@@ -135,8 +224,11 @@ bool Keyboard::releaseGrab()
 //Keyboard Resource
 KeyboardRes::KeyboardRes(SeatRes& seatRes, unsigned int id)
 	: Resource(seatRes.wlClient(), id, &wl_keyboard_interface, &keyboardImplementation, 
-			seatRes.version())
+			seatRes.version()), seatRes_(&seatRes)
 {
+	wl_keyboard_send_keymap(&wlResource(), WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1, keyboard().keymapFd(),
+		   	keyboard().keymapSize());
+	wl_keyboard_send_repeat_info(&wlResource(), 0, 0);
 }
 
 Keyboard& KeyboardRes::keyboard() const

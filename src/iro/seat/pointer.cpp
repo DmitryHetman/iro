@@ -2,6 +2,7 @@
 
 #include <iro/seat/seat.hpp>
 #include <iro/seat/event.hpp>
+#include <iro/seat/keyboard.hpp>
 #include <iro/seat/cursorSurface.hpp>
 #include <iro/compositor/compositor.hpp>
 #include <iro/compositor/surface.hpp>
@@ -185,6 +186,12 @@ void Pointer::sendButton(unsigned int button, bool press)
 
 		wl_pointer_send_button(&activeResource()->wlResource(), ev.serial, compositor().time(), 
 				button, press);
+
+	}
+
+	if(seat().keyboard())
+	{
+		seat().keyboard()->sendFocus(over_.get());
 	}
 
 	//callbacks

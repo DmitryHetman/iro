@@ -9,6 +9,10 @@
 
 #include <functional>
 
+//prototypes
+struct xkb_keymap;
+struct xkb_state;
+
 namespace iro
 {
 
@@ -31,6 +35,31 @@ protected:
 	bool grabbed_ = 0;
 	Grab grab_;
 
+	struct
+	{
+		unsigned int depressed = 0;
+		unsigned int latched = 0;
+		unsigned int locked = 0;
+		unsigned int group = 0;
+	} mods_;
+
+	struct
+	{
+		wl_event_source* timer = nullptr;
+		unsigned int delay = 1000;
+		unsigned int repeatTime = 50;
+	} repeat_;
+
+	struct
+	{
+		xkb_keymap* xkb = nullptr;
+		int fd = -1;
+		std::size_t mappedSize = 0;
+		char* mapped = nullptr;
+
+		xkb_state* state = nullptr;
+	} keymap_;
+
     //callbacks
 	nytl::callback<void(unsigned int, bool)> keyCallback_;
 	nytl::callback<void(SurfaceRes*, SurfaceRes*)> focusCallback_;
@@ -51,6 +80,10 @@ public:
 	bool grab(const Grab& grb, bool force = 1);
 	bool releaseGrab();
 
+	//get
+	int keymapFd() const { return keymap_.fd; }
+	std::size_t keymapSize() const { return keymap_.mappedSize; }
+
     //callbacks
     template<typename F> nytl::connection onKey(F&& f)
 		{ return keyCallback_.add(f); }
@@ -62,7 +95,7 @@ public:
 class KeyboardRes : public Resource
 {
 protected:
-	SeatRes* seatRes_;
+	SeatRes* seatRes_ = nullptr;
 
 public:
 	KeyboardRes(SeatRes& seatRes, unsigned int id);
