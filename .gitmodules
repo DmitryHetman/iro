@@ -1,0 +1,6 @@
+[submodule "ny"]
+	path = ny
+	url = https://github.com/nyorain/ny
+[submodule "nytl"]
+	path = nytl
+	url = https://github.com/nyorain/nytl
