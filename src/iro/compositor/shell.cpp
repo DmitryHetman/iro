@@ -25,7 +25,9 @@ public:
 	Shell& shell() const { return *shell_; }
 };
 
-//
+namespace
+{
+
 void shellGetShellSurface(wl_client*, wl_resource* shell, unsigned int id, wl_resource* surf)
 {
 	auto surface = Resource::validateDisconnect<SurfaceRes>(surf, "shellGetShellSurface");
@@ -49,6 +51,8 @@ void bindShell(wl_client* client, void* data, unsigned int version, unsigned int
 
     auto& clnt = shell->compositor().client(*client);
 	clnt.addResource(nytl::make_unique<ShellRes>(*shell, *client, id, version));
+}
+
 }
 
 //ShellRes constructor

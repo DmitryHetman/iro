@@ -371,6 +371,7 @@ void X11Output::sendInformation(const OutputRes& res) const
 {
 	wl_output_send_geometry(&res.wlResource(), position_.x, position_.y, size_.x, size_.y, 
 			0, "", "", WL_OUTPUT_TRANSFORM_NORMAL);
+	wl_output_send_done(&res.wlResource());
 }
 
 

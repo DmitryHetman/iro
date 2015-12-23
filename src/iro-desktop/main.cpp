@@ -155,7 +155,6 @@ int main()
 
 	nytl::sendLog("finished backend setup");
 
-	auto xwm = nytl::make_unique<iro::XWindowManager>(myCompositor, mySeat);
 
 	nytl::sendLog("set up x window manager");
 
@@ -179,6 +178,7 @@ int main()
 	for(auto* outp : myBackend->outputs())
 		outp->onDraw(nytl::memberCallback(&iro::ShellModule::render, myShell));
 	
+	auto xwm = nytl::make_unique<iro::XWindowManager>(myCompositor, mySeat);
 
 	nytl::sendLog("starting main loop");
 	//myCompositor.run(nytl::seconds(30));
@@ -192,6 +192,6 @@ int main()
 		nytl::sendLog("Caught Exception: ", err.what());
 	}
 
-	*nytl::sendLog.stream << std::flush;
+	*nytl::sendLog.stream << "iro main extited normally. " << std::flush;
 	return 1;	
 }

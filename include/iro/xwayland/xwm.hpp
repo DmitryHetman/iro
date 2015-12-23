@@ -3,8 +3,8 @@
 #include <iro/include.hpp>
 #include <nytl/nonCopyable.hpp>
 
-#include <signal.h>
 #include <string>
+#include <memory>
 
 namespace iro
 {
@@ -19,17 +19,27 @@ protected:
 	unsigned int display_ = 0;
 	std::string displayName_ = "-";
 
+	wl_client* screenClient_ = nullptr;
+	wl_event_source* signalEventSource_ = nullptr;
+
+	struct ListenerPOD;
+	std::unique_ptr<ListenerPOD> destroyListener_;
+
 	int socks[2];
 	int wlSocks[2];
 	int xSocks[2];
 
-	//really ugly to have here - has to include signal.h
-	struct sigaction savedSignalHandler_;
+protected:
+	static int sigusrHandler(int, void*);
+	static void clientDestroyedHandler(wl_listener*, void*);
 
 protected:
 	void openDisplay();
 	void closeDisplay();
 	void executeXWayland();
+
+	void initWM();
+	void clientDestroyed();
 
 public:
 	XWindowManager(Compositor& comp, Seat& seat);
@@ -38,7 +48,6 @@ public:
 	Compositor& compositor() const { return *compositor_; }
 	Seat& seat() const { return *seat_; }
 
-	void initWM();
 };
 
 }

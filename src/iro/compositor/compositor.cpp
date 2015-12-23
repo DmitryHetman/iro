@@ -31,6 +31,9 @@ public:
 	Compositor& compositor() const { return *compositor_; }
 };
 
+namespace
+{
+
 //wayland implementation
 void compositorCreateSurface(wl_client* client, wl_resource*, unsigned int id)
 {
@@ -75,6 +78,8 @@ int compExit(void* data)
 	return 1;
 }
 
+}
+
 //compositor resource implementation
 CompositorRes::CompositorRes(Compositor& comp, wl_client& clnt, unsigned int id, unsigned int v) 
 	: Resource(clnt, id, &wl_compositor_interface, &compositorImplementation, v), compositor_(&comp)
@@ -106,7 +111,6 @@ Compositor::Compositor()
 
 
 	wl_event_loop_add_signal(&wlEventLoop(), SIGINT, signalIntHandler, this);
-
 	subcompositor_.reset(new Subcompositor(*this));
 }
 
@@ -118,6 +122,9 @@ Compositor::~Compositor()
 		wl_global_destroy(wlGlobal_);
 		wlGlobal_ = nullptr;
 	}
+
+	//before display gets destroyed
+	subcompositor_.reset();
 
     if(wlDisplay_) wl_display_destroy(wlDisplay_);
 }
@@ -177,14 +184,6 @@ Client* Compositor::clientRegistered(wl_client& wlc) const
 
 	return nullptr;
 }
-
-/*
-Backend& Compositor::backend(std::unique_ptr<Backend>&& ptr)
-{
-	backend_ = std::move(ptr);
-	return *backend_;
-}
-*/
 
 Event& Compositor::event(std::unique_ptr<Event>&& ptr, bool serial)
 {

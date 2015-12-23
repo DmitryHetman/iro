@@ -15,6 +15,9 @@
 namespace iro
 {
 
+namespace
+{
+
 void shellSurfacePong(wl_client*, wl_resource* res, unsigned int serial)
 {
     auto* ssurfRes = Resource::validateDisconnect<ShellSurfaceRes>(res, "shellsurfacepong");
@@ -114,6 +117,8 @@ const struct wl_shell_surface_interface shellSurfaceImplementation
     &shellSurfaceSetTitle,
     &shellSurfaceSetClass
 };
+
+}
 
 //
 ShellSurfaceRes::ShellSurfaceRes(SurfaceRes& surf, wl_client& client, unsigned int id) 

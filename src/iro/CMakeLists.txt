@@ -11,7 +11,7 @@ find_package(GLESv2 REQUIRED)
 find_package(Dbus REQUIRED)
 find_package(Systemd REQUIRED)
 find_package(X11_XCB REQUIRED)
-find_package(PAM REQUIRED)
+find_package(XKBCommon REQUIRED)
 
 set(iro-src
 	compositor/compositor.cpp
@@ -43,6 +43,7 @@ set(iro-src
 	backend/dbus.cpp
 
 	util/global.cpp
+	util/os.cpp
 
 	seat/seat.cpp
 	seat/keyboard.cpp
@@ -68,12 +69,12 @@ target_include_directories(iro PUBLIC
 	${UDEV_INCLUDE_DIRS}
 	${LIBINPUT_INCLUDE_DIRS}
 	${XCB_INCLUDE_DIRS}
-	${X11_INCLUDE_DIR}
+	${X11_INCLUDE_DIRS}
 	${DBUS_INCLUDE_DIRS}
-	${SYSTEMD_INCLUDE_DIR}
-	${X11_XCB_INCLUDE_DIR}
-	${XCB_ICCCM_INCLUDE_DIR}
-	${PAM_INCLUDE_DIR}
+	${SYSTEMD_INCLUDE_DIRS}
+	${X11_XCB_INCLUDE_DIRS}
+	${XCB_ICCCM_INCLUDE_DIRS}
+	${XKBCOMMON_LUDE_DIRS}
 )
 
 target_link_libraries(iro
@@ -89,8 +90,9 @@ target_link_libraries(iro
 	${SYSTEMD_LIBRARIES}
 	${DRM_LIBRARIES}
 	${X11_XCB_LIBRARIES}
-	${XCB_ICCCM_LIBRARY}
-	${PAM_LIBRARIES}
+	${XCB_ICCCM_LIBRARIEs}
+	${XKBCOMMON_LIBRARIES}
+	${CMAKE_DL_LIBS}
 	ny-draw
 	iro-protos
 )

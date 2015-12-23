@@ -1,6 +1,9 @@
 #include <iro/xwayland/xwm.hpp>
+#include <iro/compositor/compositor.hpp>
 
 #include <nytl/log.hpp>
+
+#include <wayland-server-core.h>
 
 #include <sys/types.h> 
 #include <sys/stat.h> 
@@ -20,29 +23,35 @@ namespace iro
 {
 
 //utility
+namespace
+{
+
 int openSocket(const sockaddr_un& addr, size_t path_size)
 {
 	int fd;
 	socklen_t size = offsetof(sockaddr_un, sun_path) + path_size + 1;
+	std::string path = (addr.sun_path[0] == '\0') ? 
+		std::string("\\0") + std::string((addr.sun_path + 1)) : std::string(addr.sun_path);
 
 	if((fd = socket(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0)) < 0)
 	{
-		nytl::sendWarning("XWM: failed to create socket ", addr.sun_path);
+		nytl::sendWarning("XWM: failed to create socket ", path, "; errno: ", errno);
 		return -1;
 	}
 
+	//in case someone forgot to clear it up
 	unlink(addr.sun_path);
 
 	if(bind(fd, reinterpret_cast<const sockaddr*>(&addr), size) < 0)
 	{
-		nytl::sendWarning("XWM: failed to bind socket to ", addr.sun_path);
+		nytl::sendWarning("XWM: failed to bind socket to ", path, "; errno: ", errno);
 		close(fd);
 		return -1;
 	}
 
    if(listen(fd, 1) < 0)
    {
-	   nytl::sendWarning("XWM: failed to listen to socket at ", addr.sun_path);
+	   nytl::sendWarning("XWM: failed to listen to socket at ", path, "; errno: ", errno);
 	   unlink(addr.sun_path);
 	   close(fd);
 	   return -1;
@@ -51,24 +60,49 @@ int openSocket(const sockaddr_un& addr, size_t path_size)
    return fd;
 }
 
-namespace
-{
-	XWindowManager* globalWM_;
+
 }
 
-void sigusrHandler(int)
+//XWM
+struct XWindowManager::ListenerPOD
+{
+	wl_listener listener;
+	XWindowManager* xwm;
+};
+
+int XWindowManager::sigusrHandler(int, void* data)
 {
 	nytl::sendLog("XWM: sigusr1 - XWayland init has finished");
-	globalWM_->initWM();
+
+	if(!data) static_cast<XWindowManager*>(data)->initWM();
+	return 1;
 }
 
-//X11WM implementation
+void XWindowManager::clientDestroyedHandler(struct wl_listener* listener, void*)
+{
+	nytl::sendLog("client destroyed...");
+
+	XWindowManager::ListenerPOD* pod;
+	pod = wl_container_of(listener, pod, listener);	
+
+	if(!pod || !pod->xwm)
+	{
+		nytl::sendWarning("XWM: clientDestroy notify with invalid listener data");
+		return;	
+	}	
+
+	pod->xwm->clientDestroyed();
+}
+
+//XWM implementation
 XWindowManager::XWindowManager(Compositor& comp, Seat& seat) : compositor_(&comp), seat_(&seat)
 {
 	openDisplay();
 	
 	//xwayland to wayland
+	//xwayland prints error if we use SOCK_CLOEXEC here. XXX?
 	if(socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, wlSocks) != 0)
+	//if(socketpair(AF_UNIX, SOCK_STREAM, 0, wlSocks) != 0)
 	{
 		throw std::runtime_error("X11WM: failed to create wl socketpair");
 	}
@@ -101,26 +135,50 @@ XWindowManager::XWindowManager(Compositor& comp, Seat& seat) : compositor_(&comp
 
 	wlSocks[1] = xSocks[1] = socks[0] = socks[1] = 0;
 
-	globalWM_ = this; //arrgh... do it with wayland loop?
-	struct sigaction action;
-	memset(&action, 0, sizeof(action));
-	action.sa_handler = sigusrHandler;
-	sigaction(SIGUSR1, &action, &savedSignalHandler_);
+	//create screen client
+	screenClient_ = wl_client_create(&compositor().wlDisplay(), wlSocks[0]);
+	if(!screenClient_)
+	{
+		throw std::runtime_error("X11WM: failed to create client");
+	}
+
+	destroyListener_.reset(new ListenerPOD);
+	destroyListener_->listener.notify = XWindowManager::clientDestroyedHandler;
+	destroyListener_->xwm = this;
+	wl_client_add_destroy_listener(screenClient_, &destroyListener_->listener);
+
+	//sigusr signal handler
+	signalEventSource_ = wl_event_loop_add_signal(&compositor().wlEventLoop(), 
+				SIGUSR1, &XWindowManager::sigusrHandler, this );
 }
 
 XWindowManager::~XWindowManager()
 {
+	if(signalEventSource_)
+	{
+		wl_event_source_remove(signalEventSource_);
+		signalEventSource_ = nullptr;
+	}
+	if(screenClient_) 
+	{
+		wl_client_destroy(screenClient_);
+		screenClient_ = nullptr;
+	}
+
 	closeDisplay();
 }
 
 void XWindowManager::openDisplay()
 {
 	int lockFd = -1;
-	unsigned int dpy;
+	unsigned int dpy = -1;
 	std::string lockFile;
 
-	//for loop
-	for(dpy = 0; dpy <= 32 && lockFd < 0; ++dpy)
+	//query on which display numbers X server are actually alive and choose the lowest free
+	//display number for the xwayland server.
+retry:
+	dpy += 1;
+	for(lockFd = -1; dpy <= 32 && lockFd < 0; ++dpy)
 	{
 		lockFile = "/tmp/.X" + std::to_string(dpy) + "-lock";
 
@@ -190,47 +248,45 @@ void XWindowManager::openDisplay()
 	{
 		unlink(lockFile.c_str());
 		close(lockFd);
-		
-		throw std::runtime_error("X11WM: Failed to write pid to lock file.");
+		goto retry;	
 	}	
 
 	close(lockFd);
 
 	//setup socket
-	struct sockaddr_un addr = { .sun_family = AF_LOCAL };
+	struct sockaddr_un addr;
+	addr.sun_family = AF_LOCAL;
 	addr.sun_path[0] = '\0';
 
-	std::string socketFile = "/tmp/.X11-unix/X" + std::to_string(dpy);
-
-	size_t pathSize = socketFile.size();
-	std::strcpy(&addr.sun_path[1], socketFile.c_str());
-
+	const char sockFormat[] = "/tmp/.X11-unix/X%d"; 
+	size_t pathSize = std::snprintf(addr.sun_path + 1, sizeof(addr.sun_path) - 1, sockFormat, dpy);
 	if((socks[0] = openSocket(addr, pathSize)) < 0) 
 	{
 		unlink(lockFile.c_str());
 		unlink(addr.sun_path + 1);
-		throw std::runtime_error("X11WM: Failed to open socket.");
+		goto retry;
     }
 
 	mkdir("/tmp/.X11-unix", 0777);
-
-	std::strcpy(&addr.sun_path[0], socketFile.c_str());
-	pathSize++;
-	if((socks[1] = openSocket(addr, pathSize)) < 0) 
+	pathSize = std::snprintf(addr.sun_path, sizeof(addr.sun_path), sockFormat, dpy);
+	if((socks[1] = openSocket(addr, pathSize + 1)) < 0) 
 	{
 		close(socks[0]);
         unlink(lockFile.c_str());
         unlink(addr.sun_path);
-		throw std::runtime_error("X11WM: Failed to open socket 2.");
+		goto retry;
     }
 
-	displayName_ = ":" + std::to_string(dpy);
 	display_ = dpy;
+	displayName_ = ":" + std::to_string(dpy);
 }
 
 void XWindowManager::closeDisplay()
 {
 	if(displayName_ == "-") return;
+
+	if(xSocks[0] > 0) close(xSocks[0]);
+	if(wlSocks[0] > 0) close(wlSocks[0]);
 
 	std::string socket = "/tmp/.X11-unix/X" + std::to_string(display_);
 	std::string lock = "/tmp/.X" + std::to_string(display_) + "-lock";
@@ -247,12 +303,18 @@ void XWindowManager::executeXWayland()
 	if(fcntl(wlSocks[1], F_SETFD, 0) != 0 ||
 		fcntl(xSocks[1], F_SETFD, 0) != 0 || 
 		fcntl(socks[0], F_SETFD, 0) != 0 ||
-		fcntl(socks[0], F_SETFD, 0) != 0)
+		fcntl(socks[1], F_SETFD, 0) != 0)
 	{
 		nytl::sendWarning("XWM::executeXWayland: fcntl failed");
 		return;
 	}
-
+	
+	//use dup instead of fctnl with SET 0?
+	//wlSocks[1] = dup(wlSocks[1]);
+	//xSocks[1] = dup(xSocks[1]);
+	//socks[0] = dup(socks[0]);
+	//socks[1] = dup(socks[1]);
+	
 	//if the signal handler for sigusr1 is sig_ign, the xserver will send a sigusr1 signal
 	//to its parent process after initializing, we need this for further setup
 	struct sigaction action;
@@ -282,8 +344,8 @@ void XWindowManager::executeXWayland()
 
 	//redirect stdour/stderr
 	//how about nytl::sendLog?
-	freopen("/dev/null", "w", stdout);
-	freopen("/dev/null", "w", stderr);
+	//freopen("/dev/null", "w", stdout);
+	//freopen("/dev/null", "w", stderr);
 
 	//execute the xwayland server process     
 	nytl::sendLog("XWM XWayland fork: starting XWayland on ", displayName_);
@@ -301,10 +363,14 @@ void XWindowManager::executeXWayland()
 
 void XWindowManager::initWM()
 {
-	sigaction(SIGUSR1, &savedSignalHandler_, nullptr);
-	setenv("DISPLAY", displayName_.c_str(), 0); //dont override it.
-
+	setenv("DISPLAY", displayName_.c_str(), 1); //override it?.
 	//init event loop and stuff
+}
+
+void XWindowManager::clientDestroyed()
+{
+	//x server exited (crashed)
+	//try to restart it
 }
 
 }

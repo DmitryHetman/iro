@@ -356,6 +356,8 @@ void KmsOutput::sendInformation(const OutputRes& res) const
         wl_output_send_mode(&res.wlResource(), flags, drmConnector_->modes[i].hdisplay, 
 				drmConnector_->modes[i].vdisplay, drmConnector_->modes[i].vrefresh * 1000);
     }
+
+	wl_output_send_done(&res.wlResource());
 }
 
 }

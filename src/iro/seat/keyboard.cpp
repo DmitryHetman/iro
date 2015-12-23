@@ -26,6 +26,9 @@
 namespace iro
 {
 
+namespace
+{
+
 //wayland implementation
 void keyboardRelease(wl_client*, wl_resource* resource)
 {
@@ -39,6 +42,8 @@ const struct wl_keyboard_interface keyboardImplementation
 {
     &keyboardRelease
 };
+
+}
 
 //Keyboard implementation
 Keyboard::Keyboard(Seat& seat) : seat_(&seat)
@@ -55,11 +60,15 @@ Keyboard::Keyboard(Seat& seat) : seat_(&seat)
 	struct xkb_context* context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 	if(!context)
 	{
+		nytl::sendWarning("Keyboard: failed to create xcb_context");
+		return;
 	}
 
 	keymap_.xkb = xkb_map_new_from_names(context, &rules, XKB_KEYMAP_COMPILE_NO_FLAGS);
 	if(!keymap_.xkb)
 	{
+		nytl::sendWarning("Keyboard: failed to create xkb keymap");
+		return;
 	}
 
 	xkb_context_unref(context);
@@ -68,6 +77,8 @@ Keyboard::Keyboard(Seat& seat) : seat_(&seat)
 	char* keymapStrC = xkb_map_get_as_string(keymap_.xkb);
 	if(!keymapStrC)
 	{
+		nytl::sendWarning("Keyboard: failed to get xkb keymap string");
+		return;
 	}
 
 	std::string keymapStr(keymapStrC);
@@ -76,11 +87,15 @@ Keyboard::Keyboard(Seat& seat) : seat_(&seat)
 	keymap_.fd = os_create_anonymous_file(keymapStr.size());
 	if(keymap_.fd < 0)
 	{
+		nytl::sendWarning("Keyboard: failed to open anonymous file for keymap mmap");
+		return;
 	}
 
 	void* map = mmap(nullptr, mSize, PROT_READ | PROT_WRITE, MAP_SHARED, keymap_.fd, 0);	
 	if(!map)
 	{
+		nytl::sendWarning("Keyboard: faield to mmap memory for keymap");
+		return;
 	}
 
 	keymap_.mapped = static_cast<char*>(map);

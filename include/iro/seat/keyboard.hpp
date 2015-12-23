@@ -16,7 +16,7 @@ struct xkb_state;
 namespace iro
 {
 
-///Represnts a physical keyboard
+///Represents a physical keyboard. Does automatically initialize a xbk keymap.
 class Keyboard : public nytl::nonCopyable
 {
 public:
@@ -56,7 +56,6 @@ protected:
 		int fd = -1;
 		std::size_t mappedSize = 0;
 		char* mapped = nullptr;
-
 		xkb_state* state = nullptr;
 	} keymap_;
 
@@ -81,6 +80,7 @@ public:
 	bool releaseGrab();
 
 	//get
+	xkb_keymap* xkbKeymap() const { return keymap_.xkb; }
 	int keymapFd() const { return keymap_.fd; }
 	std::size_t keymapSize() const { return keymap_.mappedSize; }
 

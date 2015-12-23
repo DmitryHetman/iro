@@ -22,6 +22,9 @@ public:
     virtual unsigned int type() const { return resourceType::subcompositor; }
 };
 
+namespace
+{
+
 //wayland implementation
 void subcompositorDestroy(wl_client*, wl_resource* resource)
 {
@@ -66,6 +69,8 @@ void bindSubcompositor(wl_client* client, void* data, unsigned int version, unsi
 
 	auto scRes = nytl::make_unique<SubcompositorRes>(*client, id, version);
 	subcomp->compositor().client(*client).addResource(std::move(scRes));
+}
+
 }
 
 //Subcompositor
