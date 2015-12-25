@@ -5,6 +5,10 @@
 
 #include <wayland-server-core.h>
 
+#include <xcb/composite.h>
+#include <xcb/xfixes.h>
+#include <xcb/xcbext.h>
+
 #include <sys/types.h> 
 #include <sys/stat.h> 
 #include <fcntl.h> 
@@ -25,6 +29,45 @@ namespace iro
 //utility
 namespace
 {
+
+enum atomName 
+{
+   WL_SURFACE_ID,
+   WM_DELETE_WINDOW,
+   WM_TAKE_FOCUS,
+   WM_PROTOCOLS,
+   WM_NORMAL_HINTS,
+   MOTIF_WM_HINTS,
+   UTF8_STRING,
+   CLIPBOARD,
+   CLIPBOARD_MANAGER,
+   WM_S0,
+   NET_WM_S0,
+   NET_WM_PID,
+   NET_WM_NAME,
+   NET_WM_STATE,
+   NET_WM_STATE_FULLSCREEN,
+   NET_WM_STATE_MODAL,
+   NET_WM_STATE_ABOVE,
+   NET_SUPPORTED,
+   NET_SUPPORTING_WM_CHECK,
+   NET_WM_WINDOW_TYPE,
+   NET_WM_WINDOW_TYPE_DESKTOP,
+   NET_WM_WINDOW_TYPE_DOCK,
+   NET_WM_WINDOW_TYPE_TOOLBAR,
+   NET_WM_WINDOW_TYPE_MENU,
+   NET_WM_WINDOW_TYPE_UTILITY,
+   NET_WM_WINDOW_TYPE_SPLASH,
+   NET_WM_WINDOW_TYPE_DIALOG,
+   NET_WM_WINDOW_TYPE_DROPDOWN_MENU,
+   NET_WM_WINDOW_TYPE_POPUP_MENU,
+   NET_WM_WINDOW_TYPE_TOOLTIP,
+   NET_WM_WINDOW_TYPE_NOTIFICATION,
+   NET_WM_WINDOW_TYPE_COMBO,
+   NET_WM_WINDOW_TYPE_DND,
+   NET_WM_WINDOW_TYPE_NORMAL,
+   ATOM_LAST
+};
 
 int openSocket(const sockaddr_un& addr, size_t path_size)
 {
@@ -154,10 +197,17 @@ XWindowManager::XWindowManager(Compositor& comp, Seat& seat) : compositor_(&comp
 
 XWindowManager::~XWindowManager()
 {
+	destroyWM();
+
 	if(signalEventSource_)
 	{
 		wl_event_source_remove(signalEventSource_);
 		signalEventSource_ = nullptr;
+	}
+	if(destroyListener_)
+	{
+		wl_list_remove(&destroyListener_->listener.link);
+		destroyListener_.reset();
 	}
 	if(screenClient_) 
 	{
@@ -361,16 +411,159 @@ void XWindowManager::executeXWayland()
 	nytl::sendLog("XWM XWayland fork: XWayland returned");
 }
 
-void XWindowManager::initWM()
-{
-	setenv("DISPLAY", displayName_.c_str(), 1); //override it?.
-	//init event loop and stuff
-}
-
 void XWindowManager::clientDestroyed()
 {
 	//x server exited (crashed)
 	//try to restart it
+	
+	destroyListener_.reset();
+	screenClient_ = nullptr;
+}
+
+void XWindowManager::initWM()
+{
+	if(signalEventSource_)
+	{
+		wl_event_source_remove(signalEventSource_);
+		signalEventSource_ = nullptr;
+	}
+
+	setenv("DISPLAY", displayName_.c_str(), 1); //override it?.
+
+	xConnection_ = xcb_connect_to_fd(xSocks[0], nullptr);
+	if(xcb_connection_has_error(xConnection_))
+	{
+	}
+
+   	struct 
+	{
+      std::string name;
+      atomName atom;
+   	} atmMap[ATOM_LAST] = {
+		{ "WL_SURFACE_ID", WL_SURFACE_ID },
+		{ "WM_DELETE_WINDOW", WM_DELETE_WINDOW },
+		{ "WM_TAKE_FOCUS", WM_TAKE_FOCUS },
+		{ "WM_PROTOCOLS", WM_PROTOCOLS },
+		{ "WM_NORMAL_HINTS", WM_NORMAL_HINTS },
+		{ "_MOTIF_WM_HINTS", MOTIF_WM_HINTS },
+		{ "UTF8_STRING", UTF8_STRING },
+		{ "CLIPBOARD", CLIPBOARD },
+		{ "CLIPBOARD_MANAGER", CLIPBOARD_MANAGER },
+		{ "WM_S0", WM_S0 },
+		{ "_NET_WM_CM_S0", NET_WM_S0 },
+		{ "_NET_WM_PID", NET_WM_PID },
+		{ "_NET_WM_NAME", NET_WM_NAME },
+		{ "_NET_WM_STATE", NET_WM_STATE },
+		{ "_NET_WM_STATE_FULLSCREEN", NET_WM_STATE_FULLSCREEN },
+		{ "_NET_WM_STATE_MODAL", NET_WM_STATE_MODAL },
+		{ "_NET_WM_STATE_ABOVE", NET_WM_STATE_ABOVE },
+		{ "_NET_SUPPORTED", NET_SUPPORTED },
+		{ "_NET_SUPPORTING_WM_CHECK", NET_SUPPORTING_WM_CHECK },
+		{ "_NET_WM_WINDOW_TYPE", NET_WM_WINDOW_TYPE },
+		{ "_NET_WM_WINDOW_TYPE_DESKTOP", NET_WM_WINDOW_TYPE_DESKTOP },
+		{ "_NET_WM_WINDOW_TYPE_DOCK", NET_WM_WINDOW_TYPE_DOCK },
+		{ "_NET_WM_WINDOW_TYPE_TOOLBAR", NET_WM_WINDOW_TYPE_TOOLBAR },
+		{ "_NET_WM_WINDOW_TYPE_MENU", NET_WM_WINDOW_TYPE_MENU },
+		{ "_NET_WM_WINDOW_TYPE_UTILITY", NET_WM_WINDOW_TYPE_UTILITY },
+		{ "_NET_WM_WINDOW_TYPE_SPLASH", NET_WM_WINDOW_TYPE_SPLASH },
+		{ "_NET_WM_WINDOW_TYPE_DIALOG", NET_WM_WINDOW_TYPE_DIALOG },
+		{ "_NET_WM_WINDOW_TYPE_DROPDOWN_MENU", NET_WM_WINDOW_TYPE_DROPDOWN_MENU },
+		{ "_NET_WM_WINDOW_TYPE_POPUP_MENU", NET_WM_WINDOW_TYPE_POPUP_MENU },
+		{ "_NET_WM_WINDOW_TYPE_TOOLTIP", NET_WM_WINDOW_TYPE_TOOLTIP },
+		{ "_NET_WM_WINDOW_TYPE_NOTIFICATION", NET_WM_WINDOW_TYPE_NOTIFICATION },
+		{ "_NET_WM_WINDOW_TYPE_COMBO", NET_WM_WINDOW_TYPE_COMBO },
+		{ "_NET_WM_WINDOW_TYPE_DND", NET_WM_WINDOW_TYPE_DND },
+		{ "_NET_WM_WINDOW_TYPE_NORMAL", NET_WM_WINDOW_TYPE_NORMAL },
+	};
+
+	xcb_intern_atom_cookie_t atmCookies[ATOM_LAST];
+	for(auto& atm : atmMap)
+	{
+		atmCookies[atm.atom] = 
+			xcb_intern_atom(xConnection_, 0, atm.name.length(), atm.name.c_str());
+	}
+
+	const xcb_setup_t* setup = xcb_get_setup(xConnection_);
+	xcb_screen_iterator_t screenIt = xcb_setup_roots_iterator(setup);
+	xScreen_ = screenIt.data;
+
+	uint32_t vals[] = 
+	{ 
+		XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY | 
+		XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | 
+		XCB_EVENT_MASK_PROPERTY_CHANGE
+	};
+
+ 	xcb_change_window_attributes_checked(xConnection_, xScreen_->root, XCB_CW_EVENT_MASK, vals);
+	xFixes_ = xcb_get_extension_data(xConnection_, &xcb_xfixes_id);
+	if(!xFixes_ || !xFixes_->present)
+	{
+	}
+
+	xcb_xfixes_query_version_reply_t* xfixesReply;
+	xfixesReply = xcb_xfixes_query_version_reply(xConnection_, 
+		xcb_xfixes_query_version(xConnection_, XCB_XFIXES_MAJOR_VERSION, 
+		XCB_XFIXES_MINOR_VERSION), nullptr);
+
+   free(xfixesReply);
+
+   const xcb_query_extension_reply_t* compositeExtension;
+   compositeExtension = xcb_get_extension_data(xConnection_, &xcb_composite_id);
+   if(!compositeExtension || !compositeExtension->present)
+   {
+   }
+
+   xcb_composite_redirect_subwindows_checked(xConnection_, xScreen_->root, 
+		   XCB_COMPOSITE_REDIRECT_MANUAL);
+
+	for(auto& atm : atmMap) 
+	{
+		xcb_generic_error_t* error;
+		xcb_intern_atom_reply_t* atomReply = xcb_intern_atom_reply(xConnection_, 
+				atmCookies[atm.atom], &error);
+/*
+		if(atomReply && !error)
+			atoms[map[i].atom] = atom_reply->atom;
+*/
+		if(atomReply) free(atomReply);
+	}
+
+	xcb_flush(xConnection_);
+
+	//event source
+	xEventLoopSource_ = wl_event_loop_add_fd(&compositor().wlEventLoop(), xSocks[0], 
+			WL_EVENT_READABLE, &XWindowManager::xEventLoopHandler, this);
+
+	wl_event_source_check(xEventLoopSource_);
+}
+
+void XWindowManager::destroyWM()
+{
+	if(xCursor_)
+	{
+		xcb_free_cursor(xConnection_, xCursor_);
+		xCursor_ = 0;
+	}
+	if(xWindow_)
+	{
+		xcb_destroy_window_checked(xConnection_, xWindow_);
+		xWindow_ = 0;
+	}
+	if(xConnection_)
+	{
+		xcb_disconnect(xConnection_);
+		xConnection_ = nullptr;
+	}
+}
+
+int XWindowManager::xEventLoopHandler(int, unsigned int, void* data)
+{
+	if(data) static_cast<XWindowManager*>(data)->xEventLoop();
+	return 1;
+}
+
+void XWindowManager::xEventLoop()
+{
 }
 
 }
