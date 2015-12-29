@@ -45,6 +45,13 @@ const struct wl_keyboard_interface keyboardImplementation
 
 }
 
+//static c callback
+int Keyboard::repeatTimerHandler(void* data)
+{
+	if(data) static_cast<Keyboard*>(data)->repeatTimerCallback();
+	return 1;
+}
+
 //Keyboard implementation
 Keyboard::Keyboard(Seat& seat) : seat_(&seat)
 {
@@ -104,10 +111,35 @@ Keyboard::Keyboard(Seat& seat) : seat_(&seat)
 	memcpy(keymap_.mapped, keymapStr.c_str(), keymap_.mappedSize - 1);
 
 	keymap_.state = xkb_state_new(keymap_.xkb);
+
+	const char *modifierNames[modifierCount] =
+	{
+	   XKB_MOD_NAME_SHIFT,
+	   XKB_MOD_NAME_CAPS,
+	   XKB_MOD_NAME_CTRL,
+	   XKB_MOD_NAME_ALT,
+	   "Mod2",
+	   "Mod3",
+	   XKB_MOD_NAME_LOGO,
+	   "Mod5",
+	};
+
+	for(unsigned int i = 0; i < modifierCount; ++i)
+      keymap_.mods[i] = xkb_map_mod_get_index(keymap_.xkb, modifierNames[i]);
+
+	//init repeat timer source
+	repeat_.timer = wl_event_loop_add_timer(&compositor().wlEventLoop(), 
+			&Keyboard::repeatTimerHandler, this);
 }
 
 Keyboard::~Keyboard()
 {
+	if(repeat_.timer)
+	{
+		wl_event_source_remove(repeat_.timer);
+		repeat_.timer = nullptr;
+	}
+
 	if(keymap_.state)
 	{
 		xkb_state_unref(keymap_.state);
@@ -139,11 +171,63 @@ Compositor& Keyboard::compositor() const
 	return seat().compositor();
 }
 
+void Keyboard::updateModifiers()
+{
+	unsigned int depressed = xkb_state_serialize_mods(keymap_.state, 
+		static_cast<xkb_state_component>(XKB_STATE_DEPRESSED));
+	unsigned int latched = xkb_state_serialize_mods(keymap_.state, 
+			static_cast<xkb_state_component>(XKB_STATE_LATCHED));
+	unsigned int locked = xkb_state_serialize_mods(keymap_.state, 
+			static_cast<xkb_state_component>(XKB_STATE_LOCKED));
+	unsigned int group = xkb_state_serialize_layout(keymap_.state, 
+			static_cast<xkb_state_component>(XKB_STATE_LAYOUT_EFFECTIVE));
+
+	if(mods_.depressed == depressed &&
+		mods_.latched == latched &&
+		mods_.locked == locked &&
+		mods_.group == group)
+      return;
+
+	mods_.depressed = depressed;
+	mods_.latched = latched;
+	mods_.locked = locked;
+	mods_.group = group;
+
+	if(activeResource())
+	{
+		auto& ev = compositor().event(nytl::make_unique<KeyboardModsEvent>(), 1);
+		wl_keyboard_send_modifiers(&activeResource()->wlResource(), ev.serial, 
+			depressed, latched, locked, group);
+	}
+
+	modifiers_ = static_cast<Modifier>(modMask(depressed | latched));
+	leds_ = static_cast<Led>(ledMask());
+}
+
 void Keyboard::sendKey(unsigned int key, bool press)
 {
 	nytl::sendLog("Key ", key, " ", press, " -- ", focus_, " -- ", activeResource());
 
 	xkb_state_update_key(keymap_.state, key + 8, press ? XKB_KEY_DOWN : XKB_KEY_UP);
+	bool previous = keys_[key];
+	keys_[key] = press;
+
+	if(previous && press)
+	{
+		//return;
+	}
+
+	//resetRepeat();
+	updateModifiers();
+
+	//check/init repeat
+	if(press)
+	{
+		if(xkb_keymap_key_repeats(keymap_.xkb, key + 8))
+		{
+			//beginRepeat();
+		}
+	}
 
 	//check grab
 	if(grabbed_)
@@ -178,6 +262,18 @@ void Keyboard::sendKey(unsigned int key, bool press)
     keyCallback_(key, press);
 }
 
+void Keyboard::wlPressedKeys(wl_array& arr)
+{
+	for(auto& k : keys_)
+	{
+		if(k.second)
+		{
+			uint32_t* arrayEntry = (uint32_t*) wl_array_add(&arr, sizeof(uint32_t));
+			if(arrayEntry) *arrayEntry = k.first;
+		}
+	}
+}
+
 void Keyboard::sendFocus(SurfaceRes* newFocus)
 {
     if(activeResource())
@@ -197,12 +293,81 @@ void Keyboard::sendFocus(SurfaceRes* newFocus)
 
 		wl_array keys;
 		wl_array_init(&keys);
+		wlPressedKeys(keys);
 
         wl_keyboard_send_enter(&activeResource()->wlResource(), ev.serial, 
 				&focus_->wlResource(), &keys);
     }
 
     focusCallback_(old, newFocus);
+}
+
+void Keyboard::beginRepeat()
+{
+	unsigned int delay = repeat_.repeating ? repeat_.rate : repeat_.delay;
+	wl_event_source_timer_update(repeat_.timer, delay);
+
+	repeat_.active = 0;
+}
+
+void Keyboard::resetRepeat()
+{
+	if(!repeat_.active) return;
+
+	repeat_.repeating = 0;
+	repeat_.active = 0;
+	wl_event_source_timer_update(repeat_.timer, 0);
+}
+
+void Keyboard::repeatTimerCallback()
+{
+	wl_event_source_timer_update(repeat_.timer, 0);
+	repeat_.active = 0;
+	repeat_.repeating = 1;
+
+	auto keysCopy = keys_;
+	keys_.clear();
+
+	for(auto& k : keysCopy)
+	{
+		if(!k.second) continue;
+		if(xkb_keymap_key_repeats(keymap_.xkb, k.first + 8))
+		{
+			xkb_state_update_key(keymap_.state, k.first + 8, XKB_KEY_UP);
+		}
+		else
+		{
+			keys_[k.first] = 1;
+		}
+	}
+
+	for(auto& k : keysCopy)
+	{
+		if(!k.second || !xkb_keymap_key_repeats(keymap_.xkb, k.first + 8)) continue;
+		sendKey(k.first, 1);
+	}
+}
+
+unsigned int Keyboard::modMask(unsigned int in) const
+{
+   uint32_t mods = 0;
+   for (uint32_t i = 0; i < modifierCount; ++i) {
+      if (keymap_.mods[i] != XKB_MOD_INVALID && (in & (1 << keymap_.mods[i])))
+         mods |= (1 << i);
+   }
+
+   return mods;
+}
+
+unsigned int Keyboard::ledMask() const
+{
+   uint32_t leds = 0;
+   for (uint32_t i = 0; i < ledCount; ++i) {
+      if (xkb_state_led_index_is_active(keymap_.state, keymap_.leds[i]))
+         leds |= (1 << i);
+   }
+
+   return leds;
 }
 
 KeyboardRes* Keyboard::activeResource() const
@@ -243,7 +408,11 @@ KeyboardRes::KeyboardRes(SeatRes& seatRes, unsigned int id)
 {
 	wl_keyboard_send_keymap(&wlResource(), WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1, keyboard().keymapFd(),
 		   	keyboard().keymapSize());
-	wl_keyboard_send_repeat_info(&wlResource(), 0, 0);
+
+	
+	if(version() >= WL_KEYBOARD_REPEAT_INFO_SINCE_VERSION)
+		wl_keyboard_send_repeat_info(&wlResource(), keyboard().repeatRate(), 
+			keyboard().repeatDelay());
 }
 
 Keyboard& KeyboardRes::keyboard() const

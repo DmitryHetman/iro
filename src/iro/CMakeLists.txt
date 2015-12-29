@@ -3,7 +3,7 @@ find_package(NYTL REQUIRED)
 find_package(Wayland REQUIRED)
 find_package(libinput REQUIRED)
 find_package(X11 REQUIRED)
-find_package(XCB REQUIRED)
+find_package(XCB REQUIRED COMPONENTS ewmh composite xkb image icccm)
 find_package(EGL REQUIRED)
 find_package(DRM REQUIRED)
 find_package(UDEV REQUIRED)
@@ -28,6 +28,7 @@ set(iro-src
 	compositor/xdgShell.cpp
 	compositor/xdgSurface.cpp
 	compositor/xdgPopup.cpp
+	compositor/window.cpp
 
 	backend/egl.cpp
 	backend/backend.cpp
@@ -44,6 +45,7 @@ set(iro-src
 
 	util/global.cpp
 	util/os.cpp
+	util/fork.cpp
 
 	seat/seat.cpp
 	seat/keyboard.cpp
@@ -52,6 +54,7 @@ set(iro-src
 	seat/cursorSurface.cpp
 
 	xwayland/xwm.cpp
+	xwayland/xwindow.cpp
 )
 
 #iro
