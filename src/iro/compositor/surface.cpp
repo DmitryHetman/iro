@@ -183,7 +183,7 @@ void SurfaceRes::sendFrameDone()
         if(cb)
         {
             wl_callback_send_done(&cb->wlResource(), compositor().time());
-            //cb->destroy(); //? clients get sigsev with this one. why?
+            cb->destroy();
         }
     }
 
@@ -238,13 +238,14 @@ void SurfaceRes::commit()
         role_->commit();
     }
 
+    for(auto* o : mappedOutputs_)
+    {
+        o->unmapSurface(*this);
+    }
+    mappedOutputs_.clear();
+
     if(commited_.buffer.get())
     {
-        for(auto* o : mappedOutputs_)
-        {
-            o->unmapSurface(*this);
-        }
-
         if(surfaceContext_)
 		{
 			if(!surfaceContext_->attachBuffer(*commited_.buffer.get(), bufferSize_))
@@ -261,6 +262,11 @@ void SurfaceRes::commit()
 			return;
 		}
 
+		if(!mapped())
+		{
+			return;
+		}
+
 		auto* bckn = compositor().backend();
 		if(!bckn)
 		{
@@ -269,38 +275,57 @@ void SurfaceRes::commit()
 		}
 
         mappedOutputs_ = bckn->outputsAt(extents());
-		nytl::sendLog("surface commited, position ", position());
-		nytl::sendLog("mapping surfaceRes ", this, " on ", mappedOutputs_.size(), " outputs");
+		nytl::sendLog("found mapOutputs: ", mappedOutputs_.size());
         for(auto* o : mappedOutputs_)
         {
             o->mapSurface(*this);
         }
     }
-    else
-    {
-        for(auto* o : mappedOutputs_)
-        {
-            o->unmapSurface(*this);
-        }
+}
 
-        mappedOutputs_.clear();
-    }
-
+void SurfaceRes::remap()
+{
 }
 
 SurfaceRole& SurfaceRes::role(std::unique_ptr<SurfaceRole>&& role)
 {
+	if(!role)
+	{
+		nytl::sendWarning("SurfaceRes::role: nullptr as parameter not allowed");
+		return *role; //aargh
+	}
+
+	if(roleType() == surfaceRoleType::none)
+	{
+		roleType_ = role->roleType();
+	}
+	else if(roleType() != role->roleType())
+	{
+		nytl::sendWarning("SurfaceRes::role: surface already has a different role");
+		return *role; //aargh
+	}
+
 	role_ = std::move(role);
 	return *role_;
 }
 
-unsigned int SurfaceRes::roleType() const
+void SurfaceRes::clearRole()
 {
-	if(role_) return role_->roleType();
-	return surfaceRoleType::none;
+	if(!role_)
+	{
+		nytl::sendWarning("SurfacEres::clearRole: surface has no role");
+		return;
+	}
+
+	role_.reset();
 }
 
-bool SurfaceRes::isMapped() const
+unsigned int SurfaceRes::roleType() const
+{
+	return roleType_;
+}
+
+bool SurfaceRes::mapped() const
 {
     return (commited_.buffer && role_ && role_->mapped());
 }

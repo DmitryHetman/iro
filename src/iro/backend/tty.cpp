@@ -123,12 +123,8 @@ TerminalHandler::~TerminalHandler()
 
 bool TerminalHandler::activate(unsigned int vtNumber)
 {
-    return (ioctl(tty_, VT_ACTIVATE, vtNumber) != -1);
-}
-
-bool TerminalHandler::waitActive(unsigned int vtNumber)
-{
-    return (ioctl(tty_, VT_WAITACTIVE, vtNumber) != -1);
+    return (ioctl(tty_, VT_ACTIVATE, vtNumber) != -1 &&
+			ioctl(tty_, VT_WAITACTIVE, vtNumber) != -1);
 }
 
 void TerminalHandler::enteredTTY()

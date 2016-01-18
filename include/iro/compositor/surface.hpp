@@ -21,18 +21,6 @@ namespace iro
 class SurfaceState
 {
 public:
-	nytl::region2i opaque = nytl::region2i();
-	nytl::region2i input = nytl::region2i();
-	nytl::region2i damage = nytl::region2i();
-	nytl::vec2i offset = nytl::vec2i();
-
-    BufferRef buffer;
-    std::vector<CallbackRes*> frameCallbacks;
-
-    int scale = 1;
-    unsigned int transform = 0;
-    int zOrder = 0;
-
     void reset()
     {
         opaque = nytl::region2i();
@@ -47,6 +35,19 @@ public:
     }
 
     SurfaceState& operator=(const SurfaceState& other);
+
+public:
+	nytl::region2i opaque = nytl::region2i();
+	nytl::region2i input = nytl::region2i();
+	nytl::region2i damage = nytl::region2i();
+	nytl::vec2i offset = nytl::vec2i();
+
+    BufferRef buffer;
+    std::vector<CallbackRes*> frameCallbacks;
+
+    int scale = 1;
+    unsigned int transform = 0;
+    int zOrder = 0;
 };
 
 
@@ -60,9 +61,12 @@ namespace surfaceRoleType
     constexpr unsigned int cursor = 3;
     constexpr unsigned int dataSource = 4;
 	constexpr unsigned int xdgSurface = 5;
+	constexpr unsigned int xdgPopup = 6;
 }
 
-///Base class for a surface role, such as subSurface or shellSurface
+///Base class for a surface role, such as subSurface or shellSurface.
+///Surface rols are expected to call clearRole() on their SurfaceRes when they get
+///destructed.
 class SurfaceRole
 {
 public:
@@ -89,6 +93,9 @@ protected:
 
     ///Backend and renderer specific context.
 	std::unique_ptr<SurfaceContext> surfaceContext_;
+
+	///The roleType of the surface. Once set (with a value != none) it cant be changed anymore.
+	unsigned int roleType_ = surfaceRoleType::none; 
 	std::unique_ptr<SurfaceRole> role_;
 
 public:
@@ -107,6 +114,9 @@ public:
 	///Commits the pending surface state and makes it the current one.
     void commit();
 
+	///Updates the surface mappings
+	void remap();
+
 	//those functions inform about the current surface state
     const nytl::region2i& inputRegion() const { return commited_.input; }
     const nytl::region2i& opaqueRegion() const { return commited_.opaque; }
@@ -115,11 +125,12 @@ public:
     unsigned int bufferTransform() const { return commited_.transform; }
     BufferRes* attachedBuffer() const { return commited_.buffer.get(); }
 
-    bool isMapped() const;
+    bool mapped() const;
     void sendFrameDone();
 
     SurfaceRole* role() const { return role_.get(); }
 	SurfaceRole& role(std::unique_ptr<SurfaceRole>&& role);
+	void clearRole();
     unsigned int roleType() const;
 
 	nytl::vec2i position() const;

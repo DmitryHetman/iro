@@ -90,8 +90,6 @@ Resource::~Resource()
 {
 	nytl::sendLog("destructing resource ",this, " with id ", id()," of wl_client ", &wlClient());
 
-    destructionCallback_(*this);
-
     if(wl_resource_get_user_data(wlResource_) == this)
 		wl_resource_set_user_data(wlResource_, nullptr);
 
@@ -100,7 +98,7 @@ Resource::~Resource()
 
 void Resource::destroy()
 {
-    if(wlResource_)wl_resource_destroy(wlResource_);
+    if(wlResource_) wl_resource_destroy(wlResource_);
 }
 
 void Resource::create(wl_client& client, unsigned int id, const wl_interface* interface, 

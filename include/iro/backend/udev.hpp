@@ -10,7 +10,8 @@ struct udev_monitor;
 namespace iro
 {
 
-///Wrapper around udev. Capable of e.g. detecting new hotplugged devices.
+///Wrapper around udev. Responsible for detecting new hotplugged devices and needed for creating
+///an inputHandler (libinput).
 class UDevHandler : public nytl::nonCopyable
 {
 protected:

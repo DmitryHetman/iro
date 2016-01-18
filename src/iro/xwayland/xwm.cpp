@@ -117,7 +117,7 @@ int XWindowManager::sigusrHandler(int, void* data)
 {
 	nytl::sendLog("XWM: sigusr1 - XWayland init has finished");
 
-	if(!data) static_cast<XWindowManager*>(data)->initWM();
+	if(data) static_cast<XWindowManager*>(data)->initWM();
 	return 1;
 }
 
@@ -521,13 +521,67 @@ void XWindowManager::initWM()
 		xcb_generic_error_t* error;
 		xcb_intern_atom_reply_t* atomReply = xcb_intern_atom_reply(xConnection_, 
 				atmCookies[atm.atom], &error);
-/*
+
 		if(atomReply && !error)
-			atoms[map[i].atom] = atom_reply->atom;
-*/
+			xAtoms_[atm.atom] = atomReply->atom;
+
 		if(atomReply) free(atomReply);
 	}
 
+	xWindow_ = xcb_generate_id(xConnection_);
+
+	constexpr unsigned int flags[] = {XCB_EVENT_MASK_PROPERTY_CHANGE};
+	xcb_create_window_checked(xConnection_, XCB_COPY_FROM_PARENT, xWindow_, xScreen_->root, 0, 0, 
+		1, 1, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, xScreen_->root_visual, XCB_CW_EVENT_MASK, flags);
+
+
+	xcb_atom_t supported[] = {
+		xAtoms_[NET_WM_S0],
+  	    xAtoms_[NET_WM_PID],
+  	    xAtoms_[NET_WM_NAME],
+  	    xAtoms_[NET_WM_STATE],
+  	    xAtoms_[NET_WM_STATE_FULLSCREEN],
+  	    xAtoms_[NET_SUPPORTING_WM_CHECK],
+  	    xAtoms_[NET_WM_WINDOW_TYPE],
+  	    xAtoms_[NET_WM_WINDOW_TYPE_DESKTOP],
+  	    xAtoms_[NET_WM_WINDOW_TYPE_DOCK],
+  	    xAtoms_[NET_WM_WINDOW_TYPE_TOOLBAR],
+  	    xAtoms_[NET_WM_WINDOW_TYPE_MENU],
+  	    xAtoms_[NET_WM_WINDOW_TYPE_UTILITY],
+  	    xAtoms_[NET_WM_WINDOW_TYPE_SPLASH],
+  	    xAtoms_[NET_WM_WINDOW_TYPE_DIALOG],
+  	    xAtoms_[NET_WM_WINDOW_TYPE_DROPDOWN_MENU],
+  	    xAtoms_[NET_WM_WINDOW_TYPE_POPUP_MENU],
+  	    xAtoms_[NET_WM_WINDOW_TYPE_TOOLTIP],
+  	    xAtoms_[NET_WM_WINDOW_TYPE_NOTIFICATION],
+  	    xAtoms_[NET_WM_WINDOW_TYPE_COMBO],
+  	    xAtoms_[NET_WM_WINDOW_TYPE_DND],
+		xAtoms_[NET_WM_WINDOW_TYPE_NORMAL],
+  	};
+
+	constexpr std::size_t supSize = sizeof(supported)/sizeof(*supported);
+
+  	xcb_change_property_checked(xConnection_, XCB_PROP_MODE_REPLACE, xScreen_->root,
+		xAtoms_[NET_SUPPORTED], XCB_ATOM_ATOM, 32, supSize, supported);
+  	xcb_change_property_checked(xConnection_, XCB_PROP_MODE_REPLACE, xScreen_->root,
+		xAtoms_[NET_SUPPORTING_WM_CHECK], XCB_ATOM_WINDOW, 32, 1, &xWindow_);
+  	xcb_change_property_checked(xConnection_, XCB_PROP_MODE_REPLACE, xWindow_,
+		xAtoms_[NET_SUPPORTING_WM_CHECK], XCB_ATOM_WINDOW, 32, 1, &xWindow_);
+  	xcb_change_property_checked(xConnection_, XCB_PROP_MODE_REPLACE, xWindow_,
+		xAtoms_[NET_WM_NAME], xAtoms_[UTF8_STRING], 8, strlen("xiro"), "xiro");
+  	xcb_set_selection_owner_checked(xConnection_, xWindow_, 
+		xAtoms_[CLIPBOARD_MANAGER], XCB_CURRENT_TIME);
+  	xcb_set_selection_owner_checked(xConnection_, xWindow_, xAtoms_[WM_S0],
+		XCB_CURRENT_TIME);
+  	xcb_set_selection_owner_checked(xConnection_, xWindow_, xAtoms_[NET_WM_S0],
+		XCB_CURRENT_TIME);
+
+  	uint32_t mask = XCB_XFIXES_SELECTION_EVENT_MASK_SET_SELECTION_OWNER |
+  	                XCB_XFIXES_SELECTION_EVENT_MASK_SELECTION_WINDOW_DESTROY |
+					XCB_XFIXES_SELECTION_EVENT_MASK_SELECTION_CLIENT_CLOSE;
+
+	xcb_xfixes_select_selection_input_checked(xConnection_, xWindow_, xAtoms_[CLIPBOARD], mask);
+		 
 	xcb_flush(xConnection_);
 
 	//event source
@@ -558,12 +612,31 @@ void XWindowManager::destroyWM()
 
 int XWindowManager::xEventLoopHandler(int, unsigned int, void* data)
 {
-	if(data) static_cast<XWindowManager*>(data)->xEventLoop();
-	return 1;
+	if(data) return static_cast<XWindowManager*>(data)->xEventLoop();
+	return 0;
 }
 
-void XWindowManager::xEventLoop()
+unsigned int XWindowManager::xEventLoop()
 {
+	unsigned int count = 0;
+	xcb_generic_event_t *event;
+
+	while((event = xcb_poll_for_event(xConnection_))) 
+	{
+		switch(event->response_type & ~0x80)
+		{
+			case XCB_CREATE_NOTIFY:
+			{
+				break;
+			}
+		}
+
+		free(event);
+		count++;
+	}
+
+	xcb_flush(xConnection_);
+	return count;
 }
 
 }

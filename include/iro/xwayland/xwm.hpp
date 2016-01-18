@@ -42,6 +42,8 @@ protected:
    	xcb_window_t xFocus_ = 0;
 	xcb_cursor_t xCursor_ = 0;
 
+	xcb_atom_t xAtoms_[100]; 
+
 	wl_event_source* xEventLoopSource_ = nullptr;
 
 protected:
@@ -58,7 +60,7 @@ protected:
 	void initWM();
 	void destroyWM();
 
-	void xEventLoop();
+	unsigned int xEventLoop();
 
 public:
 	XWindowManager(Compositor& comp, Seat& seat);

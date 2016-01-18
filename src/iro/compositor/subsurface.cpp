@@ -54,10 +54,38 @@ const struct wl_subsurface_interface subsurfaceImplementation =
 
 /////////////////////////////7
 SubsurfaceRes::SubsurfaceRes(SurfaceRes& surf, wl_client& client, unsigned int id, 
-		SurfaceRes& parent) 
-	: Resource(client, id, &wl_subsurface_interface, 
-		&subsurfaceImplementation), surface_(surf), parent_(parent)
+	SurfaceRes& parent) : Resource(client, id, &wl_subsurface_interface, &subsurfaceImplementation),
+	surface_(&surf), parent_(&parent)
 {
+	//listen to surface destruction
+	surfaceDestructionConnection_ = surf.onDestruction([=]
+		{
+			surface_ = nullptr;
+			surfaceDestructionConnection_.destroy();		
+		});
+
+	//listen to parent destruction
+	parentDestructionConnection_ = parent.onDestruction([=]
+		{
+			parent_ = nullptr;
+			parentDestructionConnection_.destroy();		
+
+			//need something like this in surface since it gets unmapped without a commit
+			//if(surface_) surface->updateMap();
+		});
+}
+
+SubsurfaceRes::~SubsurfaceRes()
+{
+	if(surface()) surface()->clearRole();
+
+	surfaceDestructionConnection_.destroy();	
+	parentDestructionConnection_.destroy();	
+}
+
+void SubsurfaceRes::commit()
+{
+	//TODO
 }
 
 }

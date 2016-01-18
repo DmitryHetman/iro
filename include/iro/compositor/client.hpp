@@ -88,6 +88,19 @@ public:
 
 	///Returns the compositor this client is connected to.
 	Compositor& compositor() const { return *compositor_; }
+
+	///Returns the process id of the clients process.
+	int pid() const;
+
+	///Returns the user id of the clients process.
+	int uid() const;
+
+	///Returns the group id of the clients process.
+	int gid() const;
+
+	///Tries to kill the process this client belongs to with the given signal (defaulted to SIGKILL).
+	///Returns true on success.
+	bool killProcess(unsigned int signal = 9) const;
 };
 
 }

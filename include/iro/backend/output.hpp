@@ -11,9 +11,9 @@
 
 #include <vector>
 
+//prototype
 namespace ny
 {
-	//prototype
 	class DrawContext;
 }
 

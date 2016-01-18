@@ -9,7 +9,7 @@
 #include <nytl/log.hpp>
 #include <nytl/misc.hpp>
 
-#include <ny/draw/gl/glDrawContext.hpp>
+#include <ny/draw/gl/drawContext.hpp>
 
 #include <wayland-server-core.h>
 #include <wayland-server-protocol.h>
@@ -184,7 +184,8 @@ void KmsBackend::onTerminalEnter()
 	{
 		auto* o = static_cast<KmsOutput*>(outp.get());
 		o->setCrtc();
-		o->scheduleRepaint();
+		//o->scheduleRepaint();
+		o->redraw();
 	}
 }
 

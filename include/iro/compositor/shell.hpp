@@ -19,6 +19,9 @@ class ShellModule
 public:
 	virtual void init(Compositor& comp, Seat& s) = 0;
 	virtual void render(Output&, ny::DrawContext& dc) = 0;
+
+	virtual void windowCreated(Window&) {}
+	virtual void windowDestroyed(Window&) {}
 };
 
 ///The Shell class represents a wl_shell and can be used as base class for shell implementations

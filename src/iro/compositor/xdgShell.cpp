@@ -100,14 +100,12 @@ void XdgShell::getXdgSurface(SurfaceRes& surf, unsigned int id, unsigned int ver
 void XdgShell::getXdgPopup(SurfaceRes& surface, unsigned int id, SurfaceRes& parent, SeatRes& seat,
 		unsigned int serial, const nytl::vec2i& position, unsigned int version)
 {
-	//TODO
-	/*
-	auto xdgPopupRes = nytl::make_unique<XdgPopupRes>(surface, surface.wlClient(), id);
-	auto xdgPopupRole = nytl::make_unique<XdgPopupRole>(*xdgSurfaceRes);
+	nytl::sendLog("xdgpopup");
+	auto xdgPopupRes = nytl::make_unique<XdgPopupRes>(surface, parent, id);
+	auto xdgPopupRole = nytl::make_unique<XdgPopupRole>(*xdgPopupRes);
 
 	surface.client().addResource(std::move(xdgPopupRes));
 	surface.role(std::move(xdgPopupRole));
-	*/
 }
 
 //XdgShellRes

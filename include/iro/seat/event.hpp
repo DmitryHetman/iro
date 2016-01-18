@@ -19,7 +19,8 @@ namespace eventType
     constexpr unsigned char pointerFocus = 0x02;
     constexpr unsigned char keyboardKey = 0x03;
     constexpr unsigned char keyboardFocus = 0x04;
-    constexpr unsigned char ping = 0x05;
+    constexpr unsigned char keyboardMods = 0x05;
+    constexpr unsigned char ping = 0x06;
 }
 
 ///The Event class represents a unique event that was sent to a client.
@@ -74,6 +75,13 @@ public:
 
     bool state;
     SurfaceRes* surface;
+};
+
+class KeyboardModsEvent : public Event
+{
+public:
+    KeyboardModsEvent(Client* c = nullptr) 
+		: Event(eventType::keyboardMods, c) {};
 };
 
 ///Event sent to the client to test if it is alive

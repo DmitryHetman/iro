@@ -7,11 +7,9 @@
 #include <iro/seat/pointer.hpp>
 #include <ny/draw/drawContext.hpp>
 #include <ny/draw/image.hpp>
-#include <ny/draw/gl/glTexture.hpp>
+#include <ny/draw/gl/texture.hpp>
+#include <ny/draw/gl/glad/glad.h>
 using namespace iro;
-
-#include <glpbinding/glp20/glp.h>
-using namespace glp20;
 
 #include <nytl/log.hpp>
 
@@ -28,11 +26,16 @@ protected:
 	ny::GlTexture myTexture;
 	ny::GlTexture cursorTexture;
 
+	unsigned int windowCount_ {0};
+
 public:
 	virtual ~MyShellModule();
 
 	virtual void init(Compositor& comp, Seat& s) override;
 	virtual void render(Output& outp, ny::DrawContext& dc) override;
+
+	virtual void windowCreated(Window& win) override { windowCount_++; }
+	virtual void windowDestroyed(Window& win) override { windowCount_--; }
 };
 
 //loadFunc
@@ -70,21 +73,31 @@ void MyShellModule::render(Output& outp, ny::DrawContext& dc)
 		myTexture.create(myImage);
 	}
 	
-	glEnable (GL_BLEND);
-	glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	ny::TextureBrush texBrush;
 	texBrush.extents.position = {0.f, 0.f};
 	texBrush.extents.size = outp.size();
 	texBrush.texture = &myTexture;
 
-	dc.clear(texBrush);
+	ny::Rectangle bg = texBrush.extents;
+	dc.mask(bg);
+	dc.fill(texBrush);
+
+	for(unsigned int i(0); i < windowCount_; ++i)
+	{
+		ny::Rectangle r({50 + 100.f * i, 50.f}, {80.f, 80.f});
+		dc.mask(r);
+		dc.fill(ny::Color(200, 150, 230));
+	}
 
 	nytl::sendLog("Shell: Drawing ", outp.mappedSurfaces().size(), " mapped surfaces");
-	bool renderedCursor_ = 0;
+	SurfaceRes* cursorSurface = nullptr;
 	for(auto& surf : outp.mappedSurfaces())
 	{
-		nytl::sendLog("surf position: ", surf->position());
+		if(surf->roleType() == surfaceRoleType::cursor)
+			cursorSurface = surf;
 
 		ny::Rectangle surfaceRect(surf->extents());
 		dc.mask(surfaceRect);
@@ -95,13 +108,24 @@ void MyShellModule::render(Output& outp, ny::DrawContext& dc)
 
 		dc.fill(surfaceBrush);
 
-		if(surf->roleType() == surfaceRoleType::cursor)
-			renderedCursor_ = 1;
-
 		surf->sendFrameDone();
 	}
 
-	if(!renderedCursor_)
+	if(cursorSurface)
+	{
+		SurfaceRes* surf = cursorSurface;
+		ny::Rectangle surfaceRect(surf->extents());
+		dc.mask(surfaceRect);
+
+		ny::TextureBrush surfaceBrush;
+		surfaceBrush.extents = surf->extents();
+		surfaceBrush.texture = surf->surfaceContext()->content();
+
+		dc.fill(surfaceBrush);
+
+		surf->sendFrameDone();
+	}
+	else
 	{
 		if(!cursorTexture.glTexture())
 		{

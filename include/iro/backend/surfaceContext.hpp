@@ -1,8 +1,11 @@
 #pragma once
 
 #include <iro/include.hpp>
-#include <ny/draw/gl/glTexture.hpp>
+
+#include <ny/draw/gl/texture.hpp>
+
 #include <nytl/nonCopyable.hpp>
+#include <nytl/vec.hpp>
 
 namespace iro
 {

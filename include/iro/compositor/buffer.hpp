@@ -15,7 +15,6 @@ public:
 	virtual ~BufferRes();
 
 	void sendRelease() const;
-
 	virtual unsigned int type() const override { return resourceType::buffer; }
 };
 

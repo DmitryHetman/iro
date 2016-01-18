@@ -33,6 +33,9 @@ protected:
 	Compositor* compositor_;
 	Seat* seat_;
 
+	unsigned char xkbEventBase_ = 0;
+
+	void xkbSetup();
 	int eventLoop();
 	X11Output* outputForWindow(const xcb_window_t& win);
 

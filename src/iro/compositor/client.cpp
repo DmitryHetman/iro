@@ -7,6 +7,8 @@
 
 #include <wayland-server-core.h>
 
+#include <signal.h>
+
 #include <algorithm>
 #include <iostream>
 
@@ -77,6 +79,7 @@ Client::~Client()
 	nytl::sendLog("destructing client ", this, " with wl_client ", &wlClient(), ", there are ", 
 			resources_.size(), " resources left");
 
+	resources_.clear();
 	destructionCallback_(*this);
 
 	if(listener_) wl_list_remove(&listener_->listener.link);
@@ -147,6 +150,32 @@ KeyboardRes* Client::keyboardResource() const
     }
 
     return nullptr;
+}
+
+int Client::pid() const
+{
+	pid_t pid;
+	wl_client_get_credentials(&wlClient(), &pid, nullptr, nullptr);
+	return pid;
+}
+
+int Client::uid() const
+{
+	uid_t uid;
+	wl_client_get_credentials(&wlClient(), nullptr, &uid, nullptr);
+	return uid;
+}
+
+int Client::gid() const
+{
+	gid_t gid;
+	wl_client_get_credentials(&wlClient(), nullptr, nullptr, &gid);
+	return gid;
+}
+
+bool Client::killProcess(unsigned int signal) const
+{
+	return kill(pid(), signal);
 }
 
 }

@@ -3,6 +3,7 @@
 #include <iro/include.hpp>
 #include <nytl/nonCopyable.hpp>
 #include <nytl/callback.hpp>
+#include <nytl/watchable.hpp>
 
 namespace iro
 {
@@ -51,7 +52,7 @@ namespace resourceType
  * (after creation, creating them without a valid wl_resource will trigger many problems), since 
  * they will be automatically destroyed if their corresponding wl_resource is destructed.
 **/
-class Resource : public nytl::nonCopyable
+class Resource : public nytl::nonCopyable, public nytl::watchable
 {
 public:
 	///POD structure used to get the associated resource object from a wl_resource pointer
@@ -135,11 +136,6 @@ public:
 
 	//Returns the compositor this resource belongs to
 	Compositor& compositor() const;
-
-    ///Adds a callback which should be called on resource destruction
-    ///The function f must have a signature compatible to void(Resource&)
-    template<typename F> nytl::connection onDestruction(F&& f)
-		{ return destructionCallback_.add(f); }
 
 	///Returns the id of the resource type.
 	virtual unsigned int type() const { return resourceType::unknown; }

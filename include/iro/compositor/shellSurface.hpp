@@ -3,29 +3,26 @@
 #include <iro/include.hpp>
 #include <iro/compositor/resource.hpp>
 #include <iro/compositor/surface.hpp>
+#include <iro/compositor/window.hpp>
 
 #include <nytl/time.hpp>
 
 namespace iro
 {
 
+//Abstract pinageable class for shellSurface and xdgShell, connect it to client 
+//(e.g. Client::active())
+
 ///Represents a wayland wl_shell_surface resource.
-class ShellSurfaceRes : public Resource
+class ShellSurfaceRes : public Resource, public Window
 {
 protected:
-	SurfaceRes& surface_;
-
-	std::string title_;
-	std::string class_;
+	SurfaceRes* surface_;
 
 	unsigned int pingSerial_ = 0;
 	nytl::timePoint pingTime_;
 
-	nytl::vec2i position_ {0,0};
-
-	unsigned int resizeEdges_;
-
-	unsigned int state_;
+	/*
 	union
 	{
 		struct {} dummy_;
@@ -57,50 +54,28 @@ protected:
 			OutputRes* output;
 		} maximized_;
 	};
-
-	//
-	void move(const nytl::vec2i& delta);
-	void resize(const nytl::vec2i& delta);
+	*/
 
 public:
 	ShellSurfaceRes(SurfaceRes& surf, wl_client& client, unsigned int id);
 
-	unsigned int ping();
-	void pong(unsigned int serial);
-	void beginMove(SeatRes& seat, unsigned int serial);
-	void beginResize(SeatRes& seat, unsigned int serial, unsigned int edges);
-
-	void setToplevel();
-	void setTransient(SurfaceRes& parent, const nytl::vec2i& pos, unsigned int flags);
-	void setFullscreen(unsigned int mthd, unsigned int frames, OutputRes& output);
-	void setPopup(SeatRes& seat, unsigned int serial, SurfaceRes& parent, 
-			const nytl::vec2i& pos, unsigned int flags);
-	void setMaximized(OutputRes& output);
-
-	void className(const std::string& name){ class_ = name; }
-	void title(const std::string& title){ title_ = title; }
-
-	nytl::vec2i position() const { return position_; }
-
 	bool activePing() const { return (pingSerial_ != 0); }
 	nytl::timeDuration pingTime() const { return nytl::now() - pingTime_; }
+	unsigned int ping();
+	void pong(unsigned int);
+
+	virtual SurfaceRes* surface() const { return surface_; }
+	virtual void close() override {} //todo
 };
 
 ///Represents the wayland surface role of a shell surface.
-class ShellSurfaceRole : public SurfaceRole
+class ShellSurfaceRole : public WindowSurfaceRole
 {
-protected:
-	ShellSurfaceRes& shellSurfaceRes_;
-
 public:
-	ShellSurfaceRole(ShellSurfaceRes& res) : shellSurfaceRes_(res) {};
+	ShellSurfaceRole(ShellSurfaceRes& res) : WindowSurfaceRole(res) {};
 
-    virtual nytl::vec2i position() const override { return shellSurfaceRes_.position(); }
-    virtual bool mapped() const override { return 1; } //todo?
-    virtual void commit() override {} //todo
     virtual unsigned int roleType() const override { return surfaceRoleType::shell; }
-
-	ShellSurfaceRes& shellSurfaceRes() const { return shellSurfaceRes_; }
+	ShellSurfaceRes& shellSurfaceRes() const { return static_cast<ShellSurfaceRes&>(window()); }
 };
 
 }

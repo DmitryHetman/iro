@@ -49,7 +49,7 @@ void pointerSetCursor(wl_client*, wl_resource* resource, unsigned int serial,
 		return;
 	}
 
-	//ptr->pointer().cursor(*surf, nytl::vec2i(hx, hy));
+	ptr->pointer().cursor(*surf, nytl::vec2i(hx, hy));
 }
 
 void pointerRelease(wl_client*, wl_resource* resource)
@@ -127,10 +127,10 @@ void Pointer::setOver(SurfaceRes* newOne)
 void Pointer::sendMove(const nytl::vec2i& pos)
 {
 	//todo
-	
 	//redraw, position and stuff
-	nytl::vec2i delta = pos - position_;
-	position_ = pos;
+	auto cpos = nytl::clamp(pos, nytl::vec2i{0, 0}, nytl::vec2i{1920, 1080});
+	nytl::vec2i delta = cpos - position_;
+	position_ = cpos;
 
 	if(!compositor().backend())
 	{
@@ -189,7 +189,7 @@ void Pointer::sendButton(unsigned int button, bool press)
 
 	}
 
-	if(seat().keyboard())
+	if(press && seat().keyboard())
 	{
 		seat().keyboard()->sendFocus(over_.get());
 	}
@@ -223,7 +223,7 @@ void Pointer::cursor(SurfaceRes& surf, const nytl::vec2i& hotspot)
     {
 		if(surf.roleType() == surfaceRoleType::none)
 		{
-			surf.role(nytl::make_unique<CursorSurfaceRole>(*this));
+			surf.role(nytl::make_unique<CursorSurfaceRole>(*this, surf));
 		}
 		else
 		{

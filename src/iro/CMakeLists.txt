@@ -7,7 +7,6 @@ find_package(XCB REQUIRED COMPONENTS ewmh composite xkb image icccm)
 find_package(EGL REQUIRED)
 find_package(DRM REQUIRED)
 find_package(UDEV REQUIRED)
-find_package(GLESv2 REQUIRED)
 find_package(Dbus REQUIRED)
 find_package(Systemd REQUIRED)
 find_package(X11_XCB REQUIRED)
@@ -61,14 +60,12 @@ set(iro-src
 add_library(iro SHARED ${iro-src})
 target_compile_features(iro PRIVATE cxx_range_for)
 
-
 target_include_directories(iro PUBLIC
 	${NYTL_INCLUDE_DIRS}
 	${WAYLAND_SERVER_INCLUDE_DIRS}
 	${GBM_INCLUDE_DIRS}
 	${DRM_INCLUDE_DIRS}
 	${EGL_INCLUDE_DIRS}
-	${GLESv2_INCLUDE_DIRS}
 	${UDEV_INCLUDE_DIRS}
 	${LIBINPUT_INCLUDE_DIRS}
 	${XCB_INCLUDE_DIRS}
@@ -84,7 +81,6 @@ target_link_libraries(iro
 	${WAYLAND_SERVER_LIBRARIES}
   	${LIBINPUT_LIBRARIES}
    	${UDEV_LIBRARIES}
-	${GLESv2_LIBRARIES}
 	${EGL_LIBRARIES}
 	${XCB_LIBRARIES}
 	${X11_LIBRARIES}

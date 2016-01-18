@@ -16,6 +16,7 @@ struct wl_event_source;
 struct wl_output;
 struct wl_shm_buffer;
 struct wl_listener;
+struct wl_array;
 
 //nytl predefs
 namespace nytl
@@ -42,6 +43,8 @@ class Output;
 class Client;
 class Event;
 class Subcompositor;
+class Window;
+class ShellModule;
 
 class SurfaceContext;
 
@@ -52,8 +55,10 @@ class TerminalHandler;
 class LogindHandler;
 class DBusHandler;
 class UDevHandler;
+class ForkHandler;
 class DeviceHandler;
 class Device;
+class Fork;
 
 class Resource;
 class SurfaceRes;

@@ -13,7 +13,7 @@
 namespace iro
 {
 
-///Represents a physical pointer.
+///Represents a physical pointer. 
 class Pointer : public nytl::nonCopyable
 {
 public:
@@ -23,7 +23,6 @@ public:
 		std::function<void(const nytl::vec2i&, const nytl::vec2i&)> moveFunction;
 		std::function<void(unsigned int button, bool press)> buttonFunction;
 		std::function<void(unsigned int axis, double value)> axisFunction;
-		//std::function<void(SurfaceRes*, SurfaceRes*)> focusCallback;
 		std::function<void(bool)> grabEndFunction; //if parameter==1, there is a new grab
 	};
 

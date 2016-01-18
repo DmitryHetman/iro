@@ -8,7 +8,7 @@
 #include <iro/backend/egl.hpp>
 #include <iro/backend/surfaceContext.hpp>
 
-#include <ny/draw/gl/glDrawContext.hpp>
+#include <ny/draw/gl/drawContext.hpp>
 
 #include <nytl/log.hpp>
 #include <nytl/make_unique.hpp>
@@ -18,6 +18,13 @@
 
 #include <X11/Xlib-xcb.h>
 #include <xcb/xcb_icccm.h>
+
+#define explicit explicit_
+#include <xcb/xkb.h>
+#undef explicit
+
+#include <xkbcommon/xkbcommon.h>
+
 #include <linux/input.h>
 
 #include <stdexcept>
@@ -104,6 +111,9 @@ X11Backend::X11Backend(Compositor& comp, Seat& seat)
         p.ret = (reply ? reply->atom : 0);
     }
 
+	//xkb
+	xkbSetup();
+
     //event source
     inputEventSource_ =  wl_event_loop_add_fd(&comp.wlEventLoop(), 
 			xcb_get_file_descriptor(xConnection_), WL_EVENT_READABLE, eventCallback, this);
@@ -112,6 +122,9 @@ X11Backend::X11Backend(Compositor& comp, Seat& seat)
         throw std::runtime_error("could not create wayland event source");
         return;
     }
+
+	//what does this? really needed?
+    wl_event_source_check(inputEventSource_);
 
 	//eglContext
 	eglContext_ = nytl::make_unique<WaylandEglContext>(xDisplay_);
@@ -123,8 +136,6 @@ X11Backend::X11Backend(Compositor& comp, Seat& seat)
 
 	eglContext_->bindWlDisplay(compositor_->wlDisplay());
 
-	//what does this? really needed?
-    wl_event_source_check(inputEventSource_);
 
 	xcb_flush(xConnection_);
 }
@@ -142,6 +153,68 @@ X11Backend::~X11Backend()
 
     if(inputEventSource_)wl_event_source_remove(inputEventSource_);
 	if(xDisplay_) XCloseDisplay(xDisplay_);
+}
+
+void X11Backend::xkbSetup()
+{
+	const xcb_query_extension_reply_t *ext;
+	if(!(ext = xcb_get_extension_data(xConnection_, &xcb_xkb_id)))
+	{
+		nytl::sendWarning("xkb setup fail");
+		return;
+	}
+
+	xkbEventBase_ = ext->first_event;
+	xcb_void_cookie_t select = xcb_xkb_select_events_checked(xConnection_,
+		XCB_XKB_ID_USE_CORE_KBD, XCB_XKB_EVENT_TYPE_STATE_NOTIFY, 0, 
+		XCB_XKB_EVENT_TYPE_STATE_NOTIFY, 0, 0, nullptr);
+
+	xcb_generic_error_t *error;
+	if((error = xcb_request_check(xConnection_, select))) 
+	{
+		nytl::sendWarning("xkb setup fail");
+		free(error);
+		return;
+	}
+
+	xcb_xkb_use_extension_reply_t *use_ext_reply;
+	xcb_xkb_use_extension_cookie_t use_ext = xcb_xkb_use_extension(xConnection_, 
+		XCB_XKB_MAJOR_VERSION, XCB_XKB_MINOR_VERSION);
+
+	if(!(use_ext_reply = xcb_xkb_use_extension_reply(xConnection_, use_ext, nullptr)))
+   	{
+   	 	nytl::sendWarning("xkb setup fail");
+   	 	free(error);
+   	}
+
+   	const bool supported = use_ext_reply->supported;
+   	free(use_ext_reply);
+
+   	if(!supported)
+   	{
+   	 	nytl::sendWarning("xkb setup fail");
+   	 	free(error);
+   	}
+
+   	xcb_xkb_per_client_flags_cookie_t pcf = xcb_xkb_per_client_flags(xConnection_, 
+   	 	XCB_XKB_ID_USE_CORE_KBD, XCB_XKB_PER_CLIENT_FLAG_DETECTABLE_AUTO_REPEAT, 
+   	 	XCB_XKB_PER_CLIENT_FLAG_DETECTABLE_AUTO_REPEAT, 0, 0, 0);
+
+   	xcb_xkb_per_client_flags_reply_t *pcf_reply;
+   	if(!(pcf_reply = xcb_xkb_per_client_flags_reply(xConnection_, pcf, NULL)))
+   	{
+   	 	nytl::sendWarning("xkb setup fail");
+   	 	free(error);
+   	}
+
+   	const bool hasRepeat = (pcf_reply->value & XCB_XKB_PER_CLIENT_FLAG_DETECTABLE_AUTO_REPEAT);
+   	free(pcf_reply);
+
+   	if(!hasRepeat)
+   	{
+   	 	nytl::sendWarning("xkb setup fail");
+   	 	free(error);
+   	}
 }
 
 std::unique_ptr<SurfaceContext> X11Backend::createSurfaceContext() const
@@ -245,7 +318,7 @@ int X11Backend::eventLoop()
 				if(!seat().keyboard()) break;
 
                 xcb_key_press_event_t* ev = (xcb_key_press_event_t*) event;
-                seat().keyboard()->sendKey(ev->detail - 8, 1);
+                seat().keyboard()->sendKey(ev->detail - 8, 0);
                 break;
             }
             case XCB_FOCUS_IN:
@@ -266,6 +339,22 @@ int X11Backend::eventLoop()
             }
             default: break;
         }
+
+		if(event->response_type == xkbEventBase_)
+		{
+			xcb_xkb_state_notify_event_t *ev = (xcb_xkb_state_notify_event_t*)event;
+			if(ev->xkbType == XCB_XKB_STATE_NOTIFY)
+			{
+				if(seat().keyboard())
+				{
+					auto& kb = *seat().keyboard();
+					xkb_state_update_mask(kb.xkbState(), kb.modMask(ev->baseMods), 
+						kb.modMask(ev->latchedMods), kb.modMask(ev->lockedMods), 0, 0, ev->group);
+						
+					seat().keyboard()->updateModifiers();
+				}	
+			}
+		}
 
         free(event);
 		++count;

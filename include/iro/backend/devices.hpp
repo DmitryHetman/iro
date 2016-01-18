@@ -14,10 +14,11 @@ namespace iro
 
 ///The Device class represents a socket to a phyical or virtual device.
 ///It is created an managed by a DeviceManager object.
-class Device
+class Device : public nytl::nonCopyable
 {
-	friend class DeviceHandler;
 protected:
+	friend class DeviceHandler;
+
 	nytl::callback<void(const Device&)> pauseCallback_;
 	nytl::callback<void(const Device&)> resumeCallback_;
 
@@ -27,20 +28,38 @@ protected:
 	DeviceHandler* handler_;
 
 public:
+	//Both functions are preserved to deviceHandler
+	Device() = default;
+	~Device() = default;
+
+	///Releases the device which closes the file desciptor and implicitly destroys the object.
     void release();
 
+	///Returns the path this device was created from.
 	const std::string& path() const { return path_; }
+
+	///Returns the fd of this device.
 	int fd() const { return fd_; }
+
+	///Returns whether the device is still active.
 	bool active() const { return active_; }
 
+	///Registers a callback for a function that should be called when the device gets paused.
+	///The signature of the given function must be compatible to void(const Device&)
     template<typename F> nytl::connection onPause(F&& fnc){ return pauseCallback_.add(fnc); }
+
+	///Registers a callback for a function that should be called when the device gets resumed.
+	///The signature of the given function must be compatible to void(const Device&)
     template<typename F> nytl::connection onResume(F&& fnc){ return resumeCallback_.add(fnc); }
 };
+
+//TODO: it does make more sense to write devicehandler as an interface and provide implementations
+//for it like e.g. fork, normal and dbus
 
 ///The DeviceHandler class manages devices. It can either make use of the root rights of the
 ///application by creating a fork and then using it for device creation/destruction or
 ///it can open/close devices over the logind/dbus interface.
-class DeviceHandler
+class DeviceHandler : public nytl::nonCopyable
 {
 protected:
 	std::vector<std::unique_ptr<Device>> devices_;
@@ -68,9 +87,9 @@ public:
 	///Constructs the DeviceHandler which will use the logind/dbus backend to manage its
 	///devices. 
 	DeviceHandler(DBusHandler& dbus, LogindHandler& logind);
-
 	~DeviceHandler();
 
+	//TODO: make it return a reference and throw on error
 	///Tries to create a device for path. Returns nullptr on failure.
 	Device* takeDevice(const std::string& path, int flags = 0);
 

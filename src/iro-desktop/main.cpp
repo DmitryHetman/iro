@@ -11,11 +11,14 @@
 #include <iro/backend/dbus.hpp>
 #include <iro/seat/seat.hpp>
 #include <iro/seat/keyboard.hpp>
+#include <iro/util/fork.hpp>
 #include <iro/xwayland/xwm.hpp>
 
 #include <nytl/log.hpp>
 #include <nytl/make_unique.hpp>
 #include <nytl/misc.hpp>
+#include <nytl/enumOps.hpp>
+using namespace nytl::enumOps;
 
 #include <wayland-server-core.h>
 
@@ -87,6 +90,7 @@ int main()
 
 	iro::Compositor myCompositor;
 	iro::Seat mySeat(myCompositor);
+	iro::ForkHandler myForkHandler(myCompositor);
 
 	std::unique_ptr<iro::DBusHandler> myDBusHandler = nullptr;
 	std::unique_ptr<iro::LogindHandler> myLogindHandler = nullptr;
@@ -95,7 +99,6 @@ int main()
 	std::unique_ptr<iro::TerminalHandler> myTerminalHandler = nullptr;
 	std::unique_ptr<iro::UDevHandler> myUDevHandler = nullptr;
 	std::unique_ptr<iro::InputHandler> myInputHandler = nullptr;
-
 
 	if(iro::X11Backend::available())
 	{
@@ -129,6 +132,9 @@ int main()
 						myInputHandler->suspend();
 					}
 				});
+		
+		std::cout << (int)mySeat.keyboard()->modifiers() << "\n"; 
+		std::cout << (int)(iro::Keyboard::Modifier::ctrl | iro::Keyboard::Modifier::alt) << "\n"; 
 
 		if(mySeat.keyboard())
 		{
@@ -136,7 +142,10 @@ int main()
 					{ 
 						if(!pressed) return;
 
-						nytl::sendLog(KEY_Q, " ", KEY_E, " ", key);
+						if(mySeat.keyboard()->modifiers() != 
+								(iro::Keyboard::Modifier::ctrl | iro::Keyboard::Modifier::alt))
+							return;
+
 						if(key == KEY_Q)
 						{
 							idleSwitchSource = wl_event_loop_add_idle(&myCompositor.wlEventLoop(), 
@@ -151,6 +160,20 @@ int main()
 						}
 					});
 		}
+	}
+
+	if(mySeat.keyboard())
+	{
+
+		mySeat.keyboard()->onKey([&](unsigned int key, bool pressed)
+			{ 
+				if(mySeat.keyboard()->modifiers() != iro::Keyboard::Modifier::ctrl) return;
+				if(pressed && key == KEY_T)
+				{
+					nytl::sendLog("starting weston terminal");
+					myForkHandler.exec("weston-terminal", {"--shell=/bin/bash"});
+				}
+			});
 	}
 
 	nytl::sendLog("finished backend setup");
@@ -173,6 +196,7 @@ int main()
 		return 0;
 	}
 	myShell->init(myCompositor, mySeat);
+	myCompositor.shell(*myShell);
 
 	
 	for(auto* outp : myBackend->outputs())

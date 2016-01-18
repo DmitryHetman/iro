@@ -21,8 +21,10 @@ protected:
     wl_display* wlDisplay_ = nullptr;
     std::vector<std::unique_ptr<Client>> clients_;
 	nytl::timer timer_;
-	Backend* backend_;
     std::vector<std::unique_ptr<Event>> eventList_; 
+
+	Backend* backend_ {nullptr};
+	ShellModule* shell_ {nullptr};
 
 	std::unique_ptr<Subcompositor> subcompositor_;
 
@@ -62,10 +64,16 @@ public:
 	///returns the used backend, or nullptr if none is set
 	Backend* backend() const { return backend_; }
 
-	///sets the used backend, and returns a reference to this object.
+	///Sets the used backend.
 	///Note that the backend can only be set before the compositor starts to run
-	///the mainLoop, after it this call will not have any effect.
+	///the mainLoop.
 	void backend(Backend& bck){ backend_ = &bck; }
+
+	///Registers the associated shellModule.
+	void shell(ShellModule& shell) { shell_ = &shell;}
+
+	///Returns the associated shell module.
+	ShellModule* shell() const { return shell_; }
 
 	///Registers an event and returns a reference to the registered Event object.
 	///If the serial parameter is set, it sets and updates the current serial. 

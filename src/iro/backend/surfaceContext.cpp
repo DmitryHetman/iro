@@ -2,14 +2,12 @@
 #include <iro/backend/egl.hpp>
 #include <iro/compositor/buffer.hpp>
 
+#include <ny/draw/gl/glad/glad.h>
 #include <nytl/log.hpp>
-#include <ny/draw/include.hpp>
 
 //#ifdef TODO
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
-#include <glpbinding/glp20/glp.h>
-using namespace glp20;
 
 #include <wayland-server-core.h>
 

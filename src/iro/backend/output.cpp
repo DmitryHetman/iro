@@ -117,6 +117,7 @@ SurfaceRes* Output::surfaceAt(const nytl::vec2i& pos) const
 {
     for(auto& res : mappedSurfaces_)
     {
+		if(res->roleType() == surfaceRoleType::cursor) continue;
         if(contains(res->extents(), pos))
             return res;
     }

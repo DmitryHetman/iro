@@ -15,8 +15,6 @@ namespace iro
 class WindowState
 {
 public:
-
-public:
 	void reset(){}; //nothing to do here
 
 public:
@@ -46,7 +44,7 @@ protected:
 	WindowState commited_ {};
 	State states_ = State::normal;
 
-	nytl::vec2i position_;
+	nytl::vec2i position_ {0, 0};
 	nytl::vec2ui normalSize_; //size when in normal state...
 
 	std::string title_;
@@ -100,7 +98,7 @@ public:
 	virtual void setPopup(SurfaceRes& parent, const nytl::vec2i& pos, unsigned int flags, Seat&);
 	virtual void setNormal();
 
-	virtual bool mapped() { return (!parent_ || parent_->mapped()); }
+	virtual bool mapped() const;
 	virtual void commit();
 	virtual void close() = 0;
 

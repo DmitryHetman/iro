@@ -44,13 +44,12 @@ void subcompositorGetSubsurface(wl_client* client, wl_resource* resource,
 	if(surf->role())
 	{
 		nytl::sendWarning("subcompGetSubsurf: surface already has a role");
-		wl_resource_post_error(resource, WL_SUBCOMPOSITOR_ERROR_BAD_SURFACE, "has a role");
+		wl_resource_post_error(resource, WL_SUBCOMPOSITOR_ERROR_BAD_SURFACE, "alrady has a role");
 		return;
 	}
 
 	auto subres = nytl::make_unique<SubsurfaceRes>(*surf, *client, id, *parentSurf);
 	surf->role(nytl::make_unique<SubsurfaceRole>(*subres));
-
 	surf->client().addResource(std::move(subres));
 }
 const struct wl_subcompositor_interface subcompositorImplementation =
@@ -67,8 +66,9 @@ void bindSubcompositor(wl_client* client, void* data, unsigned int version, unsi
 		return;
 	}
 
+	auto& clnt = subcomp->compositor().client(*client);
 	auto scRes = nytl::make_unique<SubcompositorRes>(*client, id, version);
-	subcomp->compositor().client(*client).addResource(std::move(scRes));
+	clnt.addResource(std::move(scRes));
 }
 
 }

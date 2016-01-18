@@ -158,6 +158,12 @@ void Window::showWindowMenu(Seat& seat, unsigned int triggerSerial, const nytl::
 	showWindowMenu(seat, *ev, position);
 }
 
+bool Window::mapped() const
+{
+	return ((!parent_ || parent_->mapped()) && 
+			!static_cast<bool>(states_ & State::minimized)); 
+}
+
 void Window::commit()
 {
 	commited_ = pending_;
@@ -179,6 +185,7 @@ void Window::setMaximized(Output& outp)
 	normalState();
 	states_ |= State::maximized;
 
+	position_ = {0, 0};
 	sendConfigure(outp.size());
 }
 void Window::setFullscreen(Output& outp, unsigned int method)
@@ -186,12 +193,15 @@ void Window::setFullscreen(Output& outp, unsigned int method)
 	normalState();
 	states_ |= State::fullscreen;
 
+	position_ = {0, 0};
 	sendConfigure(outp.size());
 }
 void Window::setMinimized()
 {
 	normalState();
 	states_ |= State::minimized;
+
+
 }
 void Window::setTransient(SurfaceRes& parent, const nytl::vec2i& position, unsigned int flags)
 {
