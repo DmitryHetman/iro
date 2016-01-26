@@ -10,7 +10,7 @@
 #include <iro/backend/backend.hpp>
 #include <iro/backend/output.hpp>
 
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 #include <nytl/make_unique.hpp>
 
 #include <wayland-server-protocol.h>
@@ -29,7 +29,7 @@ void pointerSetCursor(wl_client*, wl_resource* resource, unsigned int serial,
 	if(!ptr->pointer().activeResource() || 
 			&ptr->client() != &ptr->pointer().activeResource()->client())
 	{
-		nytl::sendWarning("pointerSetCursor: requesting client does not have pointer focus");
+		ny::sendWarning("pointerSetCursor: requesting client does not have pointer focus");
 		return;
 	}
 
@@ -44,7 +44,7 @@ void pointerSetCursor(wl_client*, wl_resource* resource, unsigned int serial,
 
 	if(surf->roleType() != surfaceRoleType::none && surf->roleType() != surfaceRoleType::cursor)
 	{
-		nytl::sendWarning("pointerSetCursor: invalid surface role");
+		ny::sendWarning("pointerSetCursor: invalid surface role");
 		wl_resource_post_error(resource, WL_POINTER_ERROR_ROLE, "invalid role");
 		return;
 	}
@@ -89,7 +89,7 @@ void Pointer::setOver(SurfaceRes* newOne)
 
         if(!ptrRes)
 		{
-			nytl::sendWarning("pointer::sendActive: left surface without pointerRes");
+			ny::sendWarning("pointer::sendActive: left surface without pointerRes");
 		}
         else
         {
@@ -108,7 +108,7 @@ void Pointer::setOver(SurfaceRes* newOne)
 
         if(!ptrRes)
 		{
-			nytl::sendWarning("pointer::sendActive: Entered surface without pointerRes");
+			ny::sendWarning("pointer::sendActive: Entered surface without pointerRes");
 		}
         else
         {
@@ -134,7 +134,7 @@ void Pointer::sendMove(const nytl::vec2i& pos)
 
 	if(!compositor().backend())
 	{
-		nytl::sendWarning("pointer::sendMove: invalid backend, cant get output");
+		ny::sendWarning("pointer::sendMove: invalid backend, cant get output");
 		return;
 	}
 
@@ -227,7 +227,7 @@ void Pointer::cursor(SurfaceRes& surf, const nytl::vec2i& hotspot)
 		}
 		else
 		{
-			nytl::sendWarning("pointer::setCursor: cursor has different role");
+			ny::sendWarning("pointer::setCursor: cursor has different role");
 			return;
 		}
     }

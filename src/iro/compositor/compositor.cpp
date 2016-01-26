@@ -8,7 +8,7 @@
 #include <iro/seat/event.hpp>
 
 #include <nytl/make_unique.hpp>
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 
 #include <wayland-server-protocol.h>
 
@@ -63,7 +63,7 @@ void bindCompositor(wl_client* client, void* data, unsigned int version, unsigne
 
 int signalIntHandler(int, void* data)
 {
-	nytl::sendLog("Received signal SIGINT. Exiting the compositor");
+	ny::sendLog("Received signal SIGINT. Exiting the compositor");
 
 	if(!data) return 1;
 	static_cast<Compositor*>(data)->exit();
@@ -73,7 +73,7 @@ int signalIntHandler(int, void* data)
 
 int compExit(void* data)
 {
-	nytl::sendLog("terminating compositor, 5 seconds passed");
+	ny::sendLog("terminating compositor, 5 seconds passed");
 	static_cast<Compositor*>(data)->exit();
 	return 1;
 }

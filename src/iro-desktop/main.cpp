@@ -14,7 +14,7 @@
 #include <iro/util/fork.hpp>
 #include <iro/xwayland/xwm.hpp>
 
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 #include <nytl/make_unique.hpp>
 #include <nytl/misc.hpp>
 #include <nytl/enumOps.hpp>
@@ -38,7 +38,7 @@ iro::ShellModule* loadShell(const std::string& name)
 	void* handle = dlopen(name.c_str(), RTLD_LAZY);
 	if(!handle)
 	{
-		nytl::sendWarning("dlopen cant find ", name);
+		ny::sendWarning("dlopen cant find ", name);
 		return nullptr;
 	}
 
@@ -46,7 +46,7 @@ iro::ShellModule* loadShell(const std::string& name)
 	loadFunc loader = (loadFunc) dlsym(handle, "iro_shell_module");
 	if(!loader)
 	{
-		nytl::sendWarning("cant find iro_shell_module function in shell module");
+		ny::sendWarning("cant find iro_shell_module function in shell module");
 		return nullptr;
 	}
 
@@ -55,7 +55,7 @@ iro::ShellModule* loadShell(const std::string& name)
 
 void intHandler(int)
 {
-	nytl::sendLog("received signal interrupt. exiting");
+	ny::sendLog("received signal interrupt. exiting");
 	exit(5);
 }
 
@@ -71,22 +71,23 @@ void idleSwitch(void* data)
 	idleSwitchSource = 0;
 }
 
+std::ofstream logStream;
+
 int main()
 {
 	char buffer[64];
 
-	std::ofstream logStream;
 	//logStream.rdbuf()->pubsetbuf(buffer, sizeof(buffer));
 	logStream.rdbuf()->pubsetbuf(nullptr, 0);
 	logStream.open("log.txt");
 	try
 	{
 
-	nytl::sendLog.stream = &logStream;
-	nytl::sendWarning.stream = &logStream;
-	nytl::sendError.stream = &logStream;
+	ny::logLogger().stream = &logStream;
+	ny::warningLogger().stream = &logStream;
+	ny::errorLogger().stream = &logStream;
 
-	nytl::sendLog("Started Iro Desktop");
+	ny::sendLog("Started Iro Desktop");
 
 	iro::Compositor myCompositor;
 	iro::Seat mySeat(myCompositor);
@@ -120,7 +121,7 @@ int main()
 		static_cast<iro::KmsBackend*>(myBackend.get())->setCallbacks(*myTerminalHandler);
 		myLogindHandler->onActive([&](bool b)
 				{
-					nytl::sendLog("active: ", b);
+					ny::sendLog("active: ", b);
 					if(b)
 					{
 						myInputHandler->resume(); 
@@ -170,20 +171,20 @@ int main()
 				if(mySeat.keyboard()->modifiers() != iro::Keyboard::Modifier::ctrl) return;
 				if(pressed && key == KEY_T)
 				{
-					nytl::sendLog("starting weston terminal");
+					ny::sendLog("starting weston terminal");
 					myForkHandler.exec("weston-terminal", {"--shell=/bin/bash"});
 				}
 			});
 	}
 
-	nytl::sendLog("finished backend setup");
+	ny::sendLog("finished backend setup");
 
 
-	nytl::sendLog("set up x window manager");
+	ny::sendLog("set up x window manager");
 
 	if(!myBackend)
 	{
-		nytl::sendError("no valid backend found");
+		ny::sendError("no valid backend found");
 		return 0;
 	}
 
@@ -192,7 +193,7 @@ int main()
 	auto* myShell = loadShell("libiro-shell.so");
 	if(!myShell)
 	{
-		nytl::sendError("failed to load shell module");
+		ny::sendError("failed to load shell module");
 		return 0;
 	}
 	myShell->init(myCompositor, mySeat);
@@ -204,18 +205,18 @@ int main()
 	
 	auto xwm = nytl::make_unique<iro::XWindowManager>(myCompositor, mySeat);
 
-	nytl::sendLog("starting main loop");
+	ny::sendLog("starting main loop");
 	//myCompositor.run(nytl::seconds(30));
 	myCompositor.run();
-	nytl::sendLog("Finished Iro Desktop");
-	*nytl::sendLog.stream << std::flush;
+	ny::sendLog("Finished Iro Desktop");
+	*ny::logLogger().stream << std::flush;
 
 	}
 	catch(const std::exception& err)
 	{
-		nytl::sendLog("Caught Exception: ", err.what());
+		ny::sendLog("Caught Exception: ", err.what());
 	}
 
-	*nytl::sendLog.stream << "iro main extited normally. " << std::flush;
+	*ny::logLogger().stream << "iro main extited normally. " << std::flush;
 	return 1;	
 }

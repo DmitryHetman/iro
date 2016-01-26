@@ -3,7 +3,7 @@
 #include <iro/compositor/compositor.hpp>
 
 #include <nytl/misc.hpp>
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 
 #include <dbus/dbus.h>
 #include <systemd/sd-login.h>
@@ -29,7 +29,7 @@ LogindHandler::LogindHandler(DBusHandler& dbus) : dbus_(&dbus)
     free(session);
     sessionPath_ = "/org/freedesktop/login1/session/" + session_;
 
-	nytl::sendLog("logind session: ", session_, " path: ", sessionPath_);
+	ny::sendLog("logind session: ", session_, " path: ", sessionPath_);
 
 	//todo: use them in some way. They are guessed elsewhere -> connect
     char* seat = nullptr;
@@ -38,7 +38,7 @@ LogindHandler::LogindHandler(DBusHandler& dbus) : dbus_(&dbus)
         throw std::runtime_error("cant get seat from systemd");
         return;
     }
-	nytl::sendLog("logind seat: ", seat);
+	ny::sendLog("logind seat: ", seat);
     free(seat);
 
 	unsigned int vt;
@@ -47,7 +47,7 @@ LogindHandler::LogindHandler(DBusHandler& dbus) : dbus_(&dbus)
         throw std::runtime_error("cant get vt number from systemd");
         return;
     };
-	nytl::sendLog("logind vt: ", vt);
+	ny::sendLog("logind vt: ", vt);
 
 	//
 	const std::string path("org.freedesktop.login1");
@@ -97,7 +97,7 @@ LogindHandler::LogindHandler(DBusHandler& dbus) : dbus_(&dbus)
     dbus_message_unref(reply);
     dbus_message_unref(msg);
 
-	nytl::sendLog("Took Session Control, finished Logind setup");
+	ny::sendLog("Took Session Control, finished Logind setup");
 }
 
 LogindHandler::~LogindHandler()
@@ -106,13 +106,13 @@ LogindHandler::~LogindHandler()
     if (!(m = dbus_message_new_method_call("org.freedesktop.login1", sessionPath().c_str(), 
 			"org.freedesktop.login1.Session", "ReleaseControl")))
     {
-		nytl::sendWarning("~LogindHandler: dbus new method call ReleaseControl failed.");
+		ny::sendWarning("~LogindHandler: dbus new method call ReleaseControl failed.");
     }
 	else
 	{
 		dbus_connection_send(&dbusHandler().dbusConnection(), m, nullptr);
 		dbus_message_unref(m);
-		nytl::sendLog("~LogindHandler: succesfully released control of session");
+		ny::sendLog("~LogindHandler: succesfully released control of session");
 	}
 }
 
@@ -123,11 +123,11 @@ void LogindHandler::dbusSessionRemoved(DBusMessage* msg)
     if(!dbus_message_get_args(msg, nullptr, DBUS_TYPE_STRING, &name, DBUS_TYPE_OBJECT_PATH, 
 			&obj, DBUS_TYPE_INVALID) || name != sessionPath())
 	{
-		nytl::sendLog("dbus session was removed but invalid session path -> ignoring it");
+		ny::sendLog("dbus session was removed but invalid session path -> ignoring it");
 		return;
 	}
 
-	nytl::sendWarning("dbus session was removed. exiting");
+	ny::sendWarning("dbus session was removed. exiting");
     compositor().exit();
 }
 
@@ -138,7 +138,7 @@ Compositor& LogindHandler::compositor() const
 
 void LogindHandler::dbusPropertiesChanged(DBusMessage* m)
 {
-	nytl::sendLog("props changes");
+	ny::sendLog("props changes");
 
     DBusMessageIter iter;
     if (!dbus_message_iter_init(m, &iter) || dbus_message_iter_get_arg_type(&iter) != 
@@ -200,14 +200,14 @@ void LogindHandler::dbusPropertiesChanged(DBusMessage* m)
     return;
 
 error0:
-	nytl::sendWarning("LoigndHandler: cannot parse PropertiesChanged dbus signal");
+	ny::sendWarning("LoigndHandler: cannot parse PropertiesChanged dbus signal");
 }
 
 void LogindHandler::dbusGetActiveCallback(DBusPendingCall* pending, void* data)
 {
 	if(!data)
 	{
-		nytl::sendWarning("nytl error dummy");
+		ny::sendWarning("nytl error dummy");
 		return;
 	}
 	LogindHandler* dh = static_cast<LogindHandler*>(data);
@@ -218,7 +218,7 @@ void LogindHandler::dbusGetActiveCallback(DBusPendingCall* pending, void* data)
 	DBusMessage *m;
 	if (!(m = dbus_pending_call_steal_reply(pending)))
 	{
-		nytl::sendWarning("nytl error dummy");
+		ny::sendWarning("nytl error dummy");
 		return;
 	}
 
@@ -236,7 +236,7 @@ void LogindHandler::dbusGetActive()
    	if(!(m = dbus_message_new_method_call("org.freedesktop.login1", sessionPath().c_str(), 
 			"org.freedesktop.DBus.Properties", "Get")))
 	{
-		nytl::sendWarning("nytl error dummy");
+		ny::sendWarning("nytl error dummy");
 		return;
 	}
 
@@ -245,7 +245,7 @@ void LogindHandler::dbusGetActive()
    	if (!dbus_message_append_args(m, DBUS_TYPE_STRING, &iface, DBUS_TYPE_STRING, 
 		&name, DBUS_TYPE_INVALID))
 	{
-		nytl::sendWarning("nytl error dummy");
+		ny::sendWarning("nytl error dummy");
 		dbus_message_unref(m);
 		return;
 	}
@@ -253,7 +253,7 @@ void LogindHandler::dbusGetActive()
 	DBusPendingCall *pending;
 	if (!dbus_connection_send_with_reply(&dbusHandler().dbusConnection(), m, &pending, -1))
 	{
-		nytl::sendWarning("nytl error dummy");
+		ny::sendWarning("nytl error dummy");
 		dbus_message_unref(m);
 		return;
 	}
@@ -261,7 +261,7 @@ void LogindHandler::dbusGetActive()
 	if (!dbus_pending_call_set_notify(pending, &LogindHandler::dbusGetActiveCallback, 
 				this, nullptr))
 	{
-		nytl::sendWarning("nytl error dummy");
+		ny::sendWarning("nytl error dummy");
 		dbus_pending_call_cancel(pending);
 		dbus_pending_call_unref(pending);
 		dbus_message_unref(m);
@@ -281,7 +281,7 @@ void LogindHandler::dbusParseActive(DBusMessage* msg, DBusMessageIter* it)
 {
 	if(dbus_message_iter_get_arg_type(it) != DBUS_TYPE_VARIANT)
 	{
-		nytl::sendWarning("nytl error dummy");
+		ny::sendWarning("nytl error dummy");
 		return;
 	}
 
@@ -290,7 +290,7 @@ void LogindHandler::dbusParseActive(DBusMessage* msg, DBusMessageIter* it)
 
    if(dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_BOOLEAN)
    {
-		nytl::sendWarning("nytl error dummy");
+		ny::sendWarning("nytl error dummy");
 		return;
    }
 

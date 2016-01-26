@@ -2,7 +2,7 @@
 
 #include <nytl/make_unique.hpp>
 #include <nytl/misc.hpp>
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
@@ -121,7 +121,7 @@ bool WaylandEglContext::bindWlDisplay(wl_display& disp)
 {
 	if(!impl_->eglBindWaylandDisplayWL)
 	{
-		nytl::sendWarning("WaylandEglContext::bindWlDisplay: function not loaded");
+		ny::sendWarning("WaylandEglContext::bindWlDisplay: function not loaded");
 		return 0;
 	}
 
@@ -132,7 +132,7 @@ bool WaylandEglContext::unbindWlDisplay(wl_display& disp)
 {
 	if(!impl_->eglUnbindWaylandDisplayWL)
 	{
-		nytl::sendWarning("WaylandEglContext::unbindWlDisplay: function not loaded");
+		ny::sendWarning("WaylandEglContext::unbindWlDisplay: function not loaded");
 		return 0;
 	}
 
@@ -143,7 +143,7 @@ int WaylandEglContext::queryWlBuffer(wl_resource& buf, int attribute)
 {
 	if(!impl_->eglQueryWaylandBufferWL)
 	{
-		nytl::sendWarning("WaylandEglContext::queryWlBuffer: function not loaded");
+		ny::sendWarning("WaylandEglContext::queryWlBuffer: function not loaded");
 		return 0;
 	}
 
@@ -157,7 +157,7 @@ void* WaylandEglContext::createImageKHR(wl_resource& res, const int* attrib, uns
 {
 	if(!impl_->eglCreateImageKHR)
 	{
-		nytl::sendWarning("WaylandEglContext::eglCreateImageKHR: function not loaded");
+		ny::sendWarning("WaylandEglContext::eglCreateImageKHR: function not loaded");
 		return nullptr;
 	}
 
@@ -168,7 +168,7 @@ bool WaylandEglContext::destroyImageKHR(void* image)
 {
 	if(!impl_->eglDestroyImageKHR)
 	{
-		nytl::sendWarning("WaylandEglContext::eglDestroyImageKHR: function not loaded");
+		ny::sendWarning("WaylandEglContext::eglDestroyImageKHR: function not loaded");
 		return 0;
 	}
 
@@ -179,7 +179,7 @@ void WaylandEglContext::imageTargetTexture(void* image, unsigned int target)
 {
 	if(!impl_->eglImageTargetTexture)
 	{
-		nytl::sendWarning("WaylandEglContext::eglImageTargetTexture: function not loaded");
+		ny::sendWarning("WaylandEglContext::eglImageTargetTexture: function not loaded");
 		return;
 	}
 

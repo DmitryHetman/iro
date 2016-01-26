@@ -11,7 +11,7 @@
 #include <ny/draw/gl/glad/glad.h>
 using namespace iro;
 
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 
 //myModule
 class MyShellModule : public ShellModule
@@ -68,7 +68,7 @@ void MyShellModule::render(Output& outp, ny::DrawContext& dc)
 	if(!myTexture.glTexture())
 	{
 		ny::Image myImage;
-		nytl::sendLog("loading wallpaper... ", myImage.load("wallpaper.png"));
+		ny::sendLog("loading wallpaper... ", myImage.load("wallpaper.png"));
 
 		myTexture.create(myImage);
 	}
@@ -92,7 +92,7 @@ void MyShellModule::render(Output& outp, ny::DrawContext& dc)
 		dc.fill(ny::Color(200, 150, 230));
 	}
 
-	nytl::sendLog("Shell: Drawing ", outp.mappedSurfaces().size(), " mapped surfaces");
+	ny::sendLog("Shell: Drawing ", outp.mappedSurfaces().size(), " mapped surfaces");
 	SurfaceRes* cursorSurface = nullptr;
 	for(auto& surf : outp.mappedSurfaces())
 	{
@@ -130,7 +130,7 @@ void MyShellModule::render(Output& outp, ny::DrawContext& dc)
 		if(!cursorTexture.glTexture())
 		{
 			ny::Image cursorImage;
-			nytl::sendLog("loading cursor image: ", cursorImage.load("cursor.png"));
+			ny::sendLog("loading cursor image: ", cursorImage.load("cursor.png"));
 			cursorTexture.create(cursorImage);
 		}
 

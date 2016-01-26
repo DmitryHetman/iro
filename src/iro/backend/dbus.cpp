@@ -1,7 +1,7 @@
 #include <iro/backend/dbus.hpp>
 #include <iro/compositor/compositor.hpp>
 
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 #include <nytl/misc.hpp>
 
 #include <wayland-server-core.h>
@@ -105,7 +105,7 @@ DBusHandler::DBusHandler(Compositor& comp)
 	signalCallbacks_.emplace_back(MsgCallback{DBUS_INTERFACE_LOCAL, "Diconnected", 
 		nytl::memberCallback(&DBusHandler::disconnected, this)});
 
-	nytl::sendLog("dbus handler succesfully set up");
+	ny::sendLog("dbus handler succesfully set up");
 }
 
 DBusHandler::~DBusHandler()
@@ -133,7 +133,7 @@ unsigned int DBusHandler::filterMessage(DBusMessage* msg)
 
 void DBusHandler::disconnected(DBusMessage* msg)
 {
-	nytl::sendLog("DBusHandler: received disconnected signal");
+	ny::sendLog("DBusHandler: received disconnected signal");
 	//exit?
 	//compositor().exit();
 }
@@ -200,7 +200,7 @@ bool DBusHandler::checkErrorWarn(DBusError& err)
     std::string ret;
     if(checkError(err, ret))
     {
-		nytl::sendWarning("dbus error: ", ret);
+		ny::sendWarning("dbus error: ", ret);
         return 1;
     }
 
@@ -227,7 +227,7 @@ unsigned int DBusHandler::Callbacks::addWatch(DBusWatch* watch, void* data)
 
     if (!source)
 	{
-		nytl::sendWarning("failed to add dbus watch wl_event_loop_fd");
+		ny::sendWarning("failed to add dbus watch wl_event_loop_fd");
 		return 0;
 	}
 
@@ -239,7 +239,7 @@ void DBusHandler::Callbacks::removeWatch(DBusWatch* watch, void* data)
    wl_event_source* s = nullptr;
    if (!(s = (wl_event_source*) dbus_watch_get_data(watch)))
    {
-		nytl::sendWarning("dbusRemoveWatch: dbus watch has no data");
+		ny::sendWarning("dbusRemoveWatch: dbus watch has no data");
         return;
    }
 
@@ -250,7 +250,7 @@ void DBusHandler::Callbacks::toggleWatch(DBusWatch* watch, void* data)
     struct wl_event_source *s;
     if(!(s = (wl_event_source*) dbus_watch_get_data(watch)))
     {
-		nytl::sendWarning("dbusToggleWatch: dbus watch has no data");
+		ny::sendWarning("dbusToggleWatch: dbus watch has no data");
         return;
     }
 
@@ -274,13 +274,13 @@ unsigned int DBusHandler::Callbacks::addTimeout(DBusTimeout* timeout, void* data
     wl_event_source* source;
     if(!(source = wl_event_loop_add_timer(&loop, dispatchTimeout, timeout)))
     {
-		nytl::sendWarning("dbusAddTimeout: failed to add wl_event_loop_timer");
+		ny::sendWarning("dbusAddTimeout: failed to add wl_event_loop_timer");
         return 0;
     }
 
     if(adjustTimeout(timeout, source) < 0)
     {
-		nytl::sendWarning("dbusAddTimeout: failed to adjust timeout");
+		ny::sendWarning("dbusAddTimeout: failed to adjust timeout");
         wl_event_source_remove(source);
         return 0;
     }
@@ -293,7 +293,7 @@ void DBusHandler::Callbacks::removeTimeout(DBusTimeout* timeout, void* data)
 	wl_event_source* s = (wl_event_source*) dbus_timeout_get_data(timeout);
     if(!s)
     {
-		nytl::sendWarning("dbusRemoveTimeout: dbus timeout has no data");
+		ny::sendWarning("dbusRemoveTimeout: dbus timeout has no data");
         return;
     }
 
@@ -304,7 +304,7 @@ void DBusHandler::Callbacks::toggleTimeout(DBusTimeout* timeout, void* data)
     wl_event_source* s = (wl_event_source*) dbus_timeout_get_data(timeout);
     if(!s)
     {
-		nytl::sendWarning("dbusToggleTimeout: dbus timeout has no data");
+		ny::sendWarning("dbusToggleTimeout: dbus timeout has no data");
         return;
     }
 
@@ -321,9 +321,9 @@ int DBusHandler::Callbacks::dispatchDBus(int, unsigned int, void* data)
         {
             case DBUS_DISPATCH_DATA_REMAINS: break;
             case DBUS_DISPATCH_COMPLETE: return 0;
-			case DBUS_DISPATCH_NEED_MEMORY: nytl::sendWarning("DBUS_DISPATCH_NEED_MEMORY"); 
+			case DBUS_DISPATCH_NEED_MEMORY: ny::sendWarning("DBUS_DISPATCH_NEED_MEMORY"); 
 											return 0;
-			default: nytl::sendWarning("DBUS_DISPATCH_ERROR"); return 0;
+			default: ny::sendWarning("DBUS_DISPATCH_ERROR"); return 0;
         }
    }
 

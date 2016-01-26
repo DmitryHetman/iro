@@ -7,7 +7,7 @@
 #include <ny/draw/drawContext.hpp>
 
 #include <nytl/make_unique.hpp>
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 
 #include <wayland-server-protocol.h>
 
@@ -23,7 +23,7 @@ void bindOutput(wl_client* client, void* data, unsigned int version, unsigned in
     Output* out = static_cast<Output*>(data);
 	if(!out)
 	{
-		nytl::sendWarning("bindOutput: invalid data");
+		ny::sendWarning("bindOutput: invalid data");
 		return;
 	}
 
@@ -39,7 +39,7 @@ int outputRedraw(void* data)
     Output* o = static_cast<Output*>(data);
 	if(!o)
 	{
-		nytl::sendWarning("outputRedraw: invalid data");
+		ny::sendWarning("outputRedraw: invalid data");
 		return 1;
 	}
 

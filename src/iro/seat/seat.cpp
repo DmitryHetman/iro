@@ -7,7 +7,7 @@
 #include <iro/compositor/compositor.hpp>
 #include <iro/compositor/client.hpp>
 
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 #include <nytl/make_unique.hpp>
 
 #include <wayland-server-protocol.h>
@@ -51,7 +51,7 @@ void bindSeat(wl_client* client, void* data, unsigned int version, unsigned int 
 	Seat* seat = static_cast<Seat*>(data);
 	if(!seat)
 	{
-		nytl::sendWarning("bindSeat: invalid data");
+		ny::sendWarning("bindSeat: invalid data");
 		return;
 	}
 
@@ -102,20 +102,20 @@ bool SeatRes::createPointer(unsigned int id)
 {
 	if(pointer_)
 	{
-		nytl::sendWarning("seatRes::createPointer: tried to create second pointerRes");
+		ny::sendWarning("seatRes::createPointer: tried to create second pointerRes");
 		return 0;
 	}
 
 	if(!seat_->pointer())
 	{
-		nytl::sendWarning("seatRes::createPointer: seat has no capability for pointer");
+		ny::sendWarning("seatRes::createPointer: seat has no capability for pointer");
 		return 0;
 	}
 
 	auto res = nytl::make_unique<PointerRes>(*this, id);
 	if(!res)
 	{
-		nytl::sendWarning("seatRes::createPointer: failed to create pointerRes");
+		ny::sendWarning("seatRes::createPointer: failed to create pointerRes");
 		return 0;
 	}
 
@@ -130,20 +130,20 @@ bool SeatRes::createKeyboard(unsigned int id)
 {
 	if(keyboard_)
 	{
-		nytl::sendWarning("seatRes::createKeyboard: already exists");
+		ny::sendWarning("seatRes::createKeyboard: already exists");
 		return 0;
 	}
 
 	if(!seat_->keyboard())
 	{
-		nytl::sendWarning("seatRes::createKeyboard: seat has no capability for keyboard");
+		ny::sendWarning("seatRes::createKeyboard: seat has no capability for keyboard");
 		return 0;
 	}
 
 	auto res = nytl::make_unique<KeyboardRes>(*this, id);
 	if(!res)
 	{
-		nytl::sendWarning("seatRes::createKeyboard: failed to create keyboardRes");
+		ny::sendWarning("seatRes::createKeyboard: failed to create keyboardRes");
 		return 0;
 	}
 
@@ -159,20 +159,20 @@ bool SeatRes::createTouch(unsigned int id)
 	/*
 	if(touch_)
 	{
-		nytl::sendWarning("seatRes::createTouch: already exists");
+		ny::sendWarning("seatRes::createTouch: already exists");
 		return 0;
 	}
 
 	if(!seat_->touch())
 	{
-		nytl::sendWarning("seatRes::createTouch: seat has no capability for touch");
+		ny::sendWarning("seatRes::createTouch: seat has no capability for touch");
 		return 0;
 	}
 
 	auto res = nytl::make_unique<TouchRes>(*this, id);
 	if(!res)
 	{
-		nytl::sendWarning("seatRes::createTouch: failed to create touchRes");
+		ny::sendWarning("seatRes::createTouch: failed to create touchRes");
 		return 0;
 	}
 

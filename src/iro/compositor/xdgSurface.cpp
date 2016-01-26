@@ -15,7 +15,7 @@ using namespace nytl::enumOps;
 
 #include <wayland-server-protocol.h>
 
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 #include <nytl/make_unique.hpp>
 
 namespace iro

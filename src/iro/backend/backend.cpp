@@ -1,6 +1,6 @@
 #include <iro/backend/backend.hpp>
 #include <iro/backend/output.hpp>
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 
 namespace iro
 {

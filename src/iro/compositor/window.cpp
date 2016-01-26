@@ -6,6 +6,8 @@
 #include <iro/seat/event.hpp>
 #include <iro/backend/output.hpp>
 
+#include <ny/base/log.hpp>
+
 #include <nytl/enumOps.hpp>
 using namespace nytl::enumOps;
 
@@ -21,7 +23,7 @@ void Window::startMove(Seat& seat, const Event& trigger)
 {
 	if(!seat.pointer())
 	{
-		nytl::sendWarning("Window::Move: given seat has no pointer");
+		ny::sendWarning("Window::Move: given seat has no pointer");
 		return;
 	}
 
@@ -45,7 +47,7 @@ void Window::startMove(Seat& seat, const Event& trigger)
 	}
 	else
 	{
-		nytl::sendWarning("Window::Move: invalid event type");
+		ny::sendWarning("Window::Move: invalid event type");
 		return;
 	}
 
@@ -57,7 +59,7 @@ void Window::startResize(Seat& seat, const Event& trigger, unsigned int edges)
 {
 	if(!seat.pointer())
 	{
-		nytl::sendWarning("Window::Resize: given seat has no pointer");
+		ny::sendWarning("Window::Resize: given seat has no pointer");
 		return;
 	}
 
@@ -81,7 +83,7 @@ void Window::startResize(Seat& seat, const Event& trigger, unsigned int edges)
 	}
 	else
 	{
-		nytl::sendWarning("Window::Resize: invalid event type");
+		ny::sendWarning("Window::Resize: invalid event type");
 		return;
 	}
 
@@ -94,7 +96,7 @@ void Window::startMove(Seat& seat, unsigned int triggerSerial)
 	auto* ev = seat.compositor().event(triggerSerial);
 	if(!ev)
 	{
-		nytl::sendWarning("Window::Move: invalid serial");
+		ny::sendWarning("Window::Move: invalid serial");
 		return;
 	}
 
@@ -106,7 +108,7 @@ void Window::startResize(Seat& seat, unsigned int triggerSerial, unsigned int ed
 	auto* ev = seat.compositor().event(triggerSerial);
 	if(!ev)
 	{
-		nytl::sendWarning("Window::Resize: invalid serial");
+		ny::sendWarning("Window::Resize: invalid serial");
 		return;
 	}
 
@@ -151,7 +153,7 @@ void Window::showWindowMenu(Seat& seat, unsigned int triggerSerial, const nytl::
 	auto* ev = seat.compositor().event(triggerSerial);
 	if(!ev)
 	{
-		nytl::sendWarning("Window::showMenu: invalid serial");
+		ny::sendWarning("Window::showMenu: invalid serial");
 		return;
 	}
 

@@ -10,7 +10,7 @@
 
 #include <ny/draw/gl/drawContext.hpp>
 
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 #include <nytl/make_unique.hpp>
 
 #include <wayland-server-core.h>
@@ -56,7 +56,7 @@ int X11Backend::eventCallback(int, unsigned int, void* data)
 	X11Backend* b = static_cast<X11Backend*>(data);
 	if(!b)
 	{
-		nytl::sendWarning("X11Backend::EventCallback: invalid data");
+		ny::sendWarning("X11Backend::EventCallback: invalid data");
 		return 0;
 	}
 
@@ -160,7 +160,7 @@ void X11Backend::xkbSetup()
 	const xcb_query_extension_reply_t *ext;
 	if(!(ext = xcb_get_extension_data(xConnection_, &xcb_xkb_id)))
 	{
-		nytl::sendWarning("xkb setup fail");
+		ny::sendWarning("xkb setup fail");
 		return;
 	}
 
@@ -172,7 +172,7 @@ void X11Backend::xkbSetup()
 	xcb_generic_error_t *error;
 	if((error = xcb_request_check(xConnection_, select))) 
 	{
-		nytl::sendWarning("xkb setup fail");
+		ny::sendWarning("xkb setup fail");
 		free(error);
 		return;
 	}
@@ -183,7 +183,7 @@ void X11Backend::xkbSetup()
 
 	if(!(use_ext_reply = xcb_xkb_use_extension_reply(xConnection_, use_ext, nullptr)))
    	{
-   	 	nytl::sendWarning("xkb setup fail");
+   	 	ny::sendWarning("xkb setup fail");
    	 	free(error);
    	}
 
@@ -192,7 +192,7 @@ void X11Backend::xkbSetup()
 
    	if(!supported)
    	{
-   	 	nytl::sendWarning("xkb setup fail");
+   	 	ny::sendWarning("xkb setup fail");
    	 	free(error);
    	}
 
@@ -203,7 +203,7 @@ void X11Backend::xkbSetup()
    	xcb_xkb_per_client_flags_reply_t *pcf_reply;
    	if(!(pcf_reply = xcb_xkb_per_client_flags_reply(xConnection_, pcf, NULL)))
    	{
-   	 	nytl::sendWarning("xkb setup fail");
+   	 	ny::sendWarning("xkb setup fail");
    	 	free(error);
    	}
 
@@ -212,7 +212,7 @@ void X11Backend::xkbSetup()
 
    	if(!hasRepeat)
    	{
-   	 	nytl::sendWarning("xkb setup fail");
+   	 	ny::sendWarning("xkb setup fail");
    	 	free(error);
    	}
 }
@@ -248,7 +248,7 @@ int X11Backend::eventLoop()
                 auto* outp = outputForWindow(ev->window);
                 if(!outp)
                 {
-					nytl::sendWarning("xcb_expose: invalid xcb window");
+					ny::sendWarning("xcb_expose: invalid xcb window");
                     break;
                 }
 
@@ -263,7 +263,7 @@ int X11Backend::eventLoop()
                     auto* outp = outputForWindow(ev->window);
                     if(!outp)
                     {
-						nytl::sendWarning("xcb_client_message: invalid xcb window");
+						ny::sendWarning("xcb_client_message: invalid xcb window");
                         break;
                     }
 					
@@ -466,10 +466,10 @@ void X11Output::sendInformation(const OutputRes& res) const
 
 void X11Output::redraw()
 {
-	nytl::sendLog("X11Output:redraw: id ", id());
+	ny::sendLog("X11Output:redraw: id ", id());
 	if(!backend().eglContext()->makeCurrentForSurface(eglSurface_))
 	{
-		nytl::sendWarning("X11Output::redraw: failed to make eglContext current");
+		ny::sendWarning("X11Output::redraw: failed to make eglContext current");
 		return;
 	}
 
@@ -477,7 +477,7 @@ void X11Output::redraw()
 
 	if(!backend().eglContext()->apply())
 	{
-		nytl::sendWarning("X11Output::redraw: failed to swap egl buffers");
+		ny::sendWarning("X11Output::redraw: failed to swap egl buffers");
 	}
 	
 	backend().eglContext()->makeNotCurrent();

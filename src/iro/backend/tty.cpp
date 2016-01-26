@@ -1,7 +1,7 @@
 #include <iro/backend/tty.hpp>
 #include <iro/backend/devices.hpp>
 #include <iro/compositor/compositor.hpp>
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 
 #include <wayland-server-core.h>
 
@@ -29,7 +29,7 @@ namespace iro
 //util
 int TerminalHandler::ttySignalhandler(int signal, void* data)
 {
-	nytl::sendLog("SIGUSR ", signal);
+	ny::sendLog("SIGUSR ", signal);
 	if(!data) return 1;
 
 	TerminalHandler* handler = static_cast<TerminalHandler*>(data);
@@ -109,7 +109,7 @@ TerminalHandler::TerminalHandler(Compositor& comp)
 
 TerminalHandler::~TerminalHandler()
 {
-	nytl::sendLog("resetting terminal ", number_);
+	ny::sendLog("resetting terminal ", number_);
 
 	if(!tty_) return;
 
@@ -129,7 +129,7 @@ bool TerminalHandler::activate(unsigned int vtNumber)
 
 void TerminalHandler::enteredTTY()
 {
-	nytl::sendLog("entered tty ", number_);
+	ny::sendLog("entered tty ", number_);
     beforeEnter_();
 
     ioctl(tty_, VT_RELDISP, VT_ACKACQ);
@@ -140,14 +140,14 @@ void TerminalHandler::enteredTTY()
 
 void TerminalHandler::leftTTY()
 {
-	nytl::sendLog("left tty ", number_);
+	ny::sendLog("left tty ", number_);
     beforeLeave_();
 
     ioctl(tty_, VT_RELDISP, 1); //allowed
     focus_ = 0;
 
     afterLeave_();
-	nytl::sendLog("left tty completed ", number_);
+	ny::sendLog("left tty completed ", number_);
 }
 
 }

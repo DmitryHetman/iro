@@ -2,7 +2,7 @@
 #include <iro/compositor/compositor.hpp>
 #include <iro/seat/seat.hpp>
 
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 #include <nytl/make_unique.hpp>
 
 #include <wayland-server-core.h>
@@ -29,7 +29,7 @@ void clientDestroyListener(struct wl_listener* listener, void*)
 
 	if(!pod || !pod->client)
 	{
-		nytl::sendWarning("Received a clientDestroy notify for unknown wl_client");
+		ny::sendWarning("Received a clientDestroy notify for unknown wl_client");
 		return;	
 	}	
 
@@ -57,7 +57,7 @@ Client* Client::find(wl_client& client)
 Client* Client::findWarn(wl_client& client)
 {
 	auto c = find(client);
-	if(!c) nytl::sendWarning("cant find client object for wl_client ", &client);
+	if(!c) ny::sendWarning("cant find client object for wl_client ", &client);
 
 	return c;
 }
@@ -65,7 +65,7 @@ Client* Client::findWarn(wl_client& client)
 //client implementation
 Client::Client(Compositor& comp, wl_client& wlc) : wlClient_(&wlc), compositor_(&comp)
 {
-	nytl::sendLog("creating client ", this, " for wl_client ", &wlc);
+	ny::sendLog("creating client ", this, " for wl_client ", &wlc);
 
 	listener_ = nytl::make_unique<listenerPOD>();
 	listener_->listener.notify = clientDestroyListener; 
@@ -76,7 +76,7 @@ Client::Client(Compositor& comp, wl_client& wlc) : wlClient_(&wlc), compositor_(
 
 Client::~Client()
 {
-	nytl::sendLog("destructing client ", this, " with wl_client ", &wlClient(), ", there are ", 
+	ny::sendLog("destructing client ", this, " with wl_client ", &wlClient(), ", there are ", 
 			resources_.size(), " resources left");
 
 	resources_.clear();
@@ -87,7 +87,7 @@ Client::~Client()
 
 void Client::destroy()
 {
-	nytl::sendLog("client::destroy: client ", this, " with wl_client ", &wlClient());
+	ny::sendLog("client::destroy: client ", this, " with wl_client ", &wlClient());
 	wl_client_destroy(&wlClient());
 }
 
@@ -107,7 +107,7 @@ bool Client::removeResource(const Resource& res)
 		}
     }
 
-	nytl::sendWarning("client::removeResource: resource ", &res, " was not found");
+	ny::sendWarning("client::removeResource: resource ", &res, " was not found");
     return 0;
 }
 

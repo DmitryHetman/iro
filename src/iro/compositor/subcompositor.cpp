@@ -6,7 +6,7 @@
 #include <iro/compositor/subsurface.hpp>
 
 #include <nytl/make_unique.hpp>
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 
 #include <wayland-server-protocol.h>
 
@@ -43,7 +43,7 @@ void subcompositorGetSubsurface(wl_client* client, wl_resource* resource,
 
 	if(surf->role())
 	{
-		nytl::sendWarning("subcompGetSubsurf: surface already has a role");
+		ny::sendWarning("subcompGetSubsurf: surface already has a role");
 		wl_resource_post_error(resource, WL_SUBCOMPOSITOR_ERROR_BAD_SURFACE, "alrady has a role");
 		return;
 	}
@@ -62,7 +62,7 @@ void bindSubcompositor(wl_client* client, void* data, unsigned int version, unsi
 	Subcompositor* subcomp = static_cast<Subcompositor*>(data);
 	if(!subcomp)
 	{
-		nytl::sendWarning("bindSubcompositor: invalid data");
+		ny::sendWarning("bindSubcompositor: invalid data");
 		return;
 	}
 

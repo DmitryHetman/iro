@@ -6,7 +6,7 @@
 #include <iro/seat/pointer.hpp>
 #include <iro/seat/keyboard.hpp>
 
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 #include <nytl/vec.hpp>
 
 #include <wayland-server-core.h>
@@ -40,7 +40,7 @@ void closeRestricted(int fd, void* data)
 
 	if(!device)
 	{
-		nytl::sendWarning("InputHandler::closeRestricted: could not find device for fd");
+		ny::sendWarning("InputHandler::closeRestricted: could not find device for fd");
 		return;
 	}
 
@@ -50,7 +50,7 @@ void closeRestricted(int fd, void* data)
 void libinputLogHandler(struct libinput *input, enum libinput_log_priority priority, 
 		const char *format, va_list args)
 {
-	nytl::sendLog("libinput error: "); //todo man
+	ny::sendLog("libinput error: "); //todo man
 }
 
 const libinput_interface libinputImpl =
@@ -74,7 +74,7 @@ InputHandler::InputHandler(Compositor& comp, Seat& seat, UDevHandler& udev, Devi
     inputEventSource_ = wl_event_loop_add_fd(&comp.wlEventLoop(), libinput_get_fd(libinput_), 
 			WL_EVENT_READABLE, inputEventCallback, this);
 
-	nytl::sendLog("inputHandler set up");
+	ny::sendLog("inputHandler set up");
 }
 
 InputHandler::~InputHandler()
@@ -104,7 +104,7 @@ int InputHandler::inputEvent()
 	Pointer* pointer = seat().pointer();
 	Keyboard* keyboard = seat().keyboard();
 
-	nytl::sendLog("InputHandler event");
+	ny::sendLog("InputHandler event");
     libinput_dispatch(libinput_);
 
     struct libinput_event* event;
@@ -153,7 +153,7 @@ int InputHandler::inputEvent()
                 break;
             }
             default:
-				nytl::sendLog("InputHandler: unhandeled event");
+				ny::sendLog("InputHandler: unhandeled event");
                 break;
         }
 

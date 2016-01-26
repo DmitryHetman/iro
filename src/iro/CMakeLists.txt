@@ -93,5 +93,6 @@ target_link_libraries(iro
 	${XKBCOMMON_LIBRARIES}
 	${CMAKE_DL_LIBS}
 	ny-draw
+	ny-base
 	iro-protos
 )

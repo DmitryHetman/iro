@@ -1,6 +1,6 @@
 #include <iro/util/fork.hpp>
 #include <iro/compositor/compositor.hpp>
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 
 #include <wayland-server-core.h>
 
@@ -77,7 +77,7 @@ int ForkHandler::outputHandler(int fd, unsigned int, void*)
 	if((readBytes = read(fd, buffer, 512)) > 0)
 	{
 		buffer[readBytes] = '\0'; //needed?
-		*nytl::sendLog.stream << "Fork output: " << buffer;
+		*ny::logLogger().stream << "Fork output: " << buffer;
 	}
 
 	return 1;	
@@ -94,7 +94,7 @@ void ForkHandler::throwErrorMessage(const std::string& err) const
 	}
 	catch(const std::invalid_argument&)
 	{
-		nytl::sendWarning("ForkHandler::exec: could not convert buffer into int");
+		ny::sendWarning("ForkHandler::exec: could not convert buffer into int");
 		throw std::runtime_error(errorMsg + "unknown error");
 	}
 

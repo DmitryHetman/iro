@@ -6,7 +6,7 @@
 #include <iro/compositor/compositor.hpp>
 
 #include <nytl/make_unique.hpp>
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 #include <nytl/misc.hpp>
 
 #include <ny/draw/gl/drawContext.hpp>
@@ -56,8 +56,8 @@ KmsBackend::KmsBackend(Compositor& comp, DeviceHandler& dev)
     }
 
 	drmSetMaster(drm_->fd());
-	drm_->onPause([=]{ nytl::sendLog("drm pause"); drmDropMaster(drm_->fd()); });
-	drm_->onResume([=]{ nytl::sendLog("drm resume"); drmSetMaster(drm_->fd()); });
+	drm_->onPause([=]{ ny::sendLog("drm pause"); drmDropMaster(drm_->fd()); });
+	drm_->onResume([=]{ ny::sendLog("drm resume"); drmSetMaster(drm_->fd()); });
 
     gbmDevice_ = gbm_create_device(drm_->fd());
     if(!gbmDevice_)
@@ -88,16 +88,16 @@ KmsBackend::KmsBackend(Compositor& comp, DeviceHandler& dev)
     drmModeConnector* connector = nullptr;
     drmModeEncoder* encoder = nullptr;
 
-	nytl::sendLog(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-	nytl::sendLog("KmsBackend::KmsBackend: Begininning to query outputs");
-	nytl::sendLog("drmResources contain ", resources->count_connectors, " connectors");
-	nytl::sendLog("drmResources contain ", resources->count_encoders, " encoders");
+	ny::sendLog(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+	ny::sendLog("KmsBackend::KmsBackend: Begininning to query outputs");
+	ny::sendLog("drmResources contain ", resources->count_connectors, " connectors");
+	ny::sendLog("drmResources contain ", resources->count_encoders, " encoders");
 
     for (c = 0; c < static_cast<unsigned int>(resources->count_connectors); c++)
     {
         if(!(connector = drmModeGetConnector(drm_->fd(), resources->connectors[c])))
 		{
-			nytl::sendLog("failed to get connector ", resources->connectors[c]);
+			ny::sendLog("failed to get connector ", resources->connectors[c]);
 			continue;
 		}
 
@@ -107,33 +107,33 @@ KmsBackend::KmsBackend(Compositor& comp, DeviceHandler& dev)
             {
                 if(!(encoder = drmModeGetEncoder(drm_->fd(), resources->encoders[e])))
 				{
-					nytl::sendLog("failed to get encoder ", resources->encoders[e]);
+					ny::sendLog("failed to get encoder ", resources->encoders[e]);
 					continue;
 				}
 
                 if (encoder->encoder_id == connector->encoder_id)
                 {
 					//create output
-					nytl::sendLog(">>matching connector/encoder pair ", outputs_.size());
+					ny::sendLog(">>matching connector/encoder pair ", outputs_.size());
                     addOutput(nytl::make_unique<KmsOutput>(*this, connector, encoder, 
 								outputs_.size()));
                 }
 				else
 				{
-					nytl::sendLog(encoder, "and ", connector ,": different encoders");
+					ny::sendLog(encoder, "and ", connector ,": different encoders");
 					drmModeFreeEncoder(encoder);
 				}
             }
         }
 		else
 		{
-			nytl::sendLog("connector ", connector, " invalid");
+			ny::sendLog("connector ", connector, " invalid");
 			drmModeFreeConnector(connector);
 		}
     }
 
-	nytl::sendLog("End of querying kms outputs: created ", outputs_.size());
-	nytl::sendLog(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+	ny::sendLog("End of querying kms outputs: created ", outputs_.size());
+	ny::sendLog(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
 
     if (outputs_.size() == 0)
     {
@@ -258,7 +258,7 @@ void KmsOutput::resetCrtc()
 {
     if(!drmSavedCrtc_ || !drmConnector_)
 	{
-		nytl::sendWarning("KmsOutput::resetCrtc: invalid crtc or connector");
+		ny::sendWarning("KmsOutput::resetCrtc: invalid crtc or connector");
 		return;
 	}
 
@@ -268,23 +268,23 @@ void KmsOutput::resetCrtc()
 
 void KmsOutput::redraw()
 {
-	nytl::sendLog("KmsOutput:redraw: id ", id());
+	ny::sendLog("KmsOutput:redraw: id ", id());
     if(flipping_)
 	{
-		nytl::sendWarning("KmsOutput::redraw: buffers are flipping.");
+		ny::sendWarning("KmsOutput::redraw: buffers are flipping.");
 		return;
 	}
 
 	if(!backend().eglContext()->makeCurrentForSurface(eglSurface_))
 	{
-		nytl::sendWarning("KmsOutput::redraw: failed to make eglContext current");
+		ny::sendWarning("KmsOutput::redraw: failed to make eglContext current");
 		return;
 	}
 
 	Output::redraw();
 	if(!backend().eglContext()->apply())
 	{
-		nytl::sendWarning("KmsOutput::redraw: failed to swap egl buffers");
+		ny::sendWarning("KmsOutput::redraw: failed to swap egl buffers");
 	}
 
 	swapBuffers();
@@ -336,7 +336,7 @@ void KmsOutput::swapBuffers()
 
 void KmsOutput::flipped()
 {
-	nytl::sendLog("KmsOutput::flipped");
+	ny::sendLog("KmsOutput::flipped");
     frontBuffer_ ^= 1;
     flipping_ = 0;
 

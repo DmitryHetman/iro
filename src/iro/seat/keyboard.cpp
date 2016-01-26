@@ -7,7 +7,7 @@
 #include <iro/compositor/compositor.hpp>
 #include <iro/util/os.hpp>
 
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 #include <nytl/make_unique.hpp>
 
 #include <wayland-server-protocol.h>
@@ -67,14 +67,14 @@ Keyboard::Keyboard(Seat& seat) : seat_(&seat)
 	struct xkb_context* context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 	if(!context)
 	{
-		nytl::sendWarning("Keyboard: failed to create xcb_context");
+		ny::sendWarning("Keyboard: failed to create xcb_context");
 		return;
 	}
 
 	keymap_.xkb = xkb_map_new_from_names(context, &rules, XKB_KEYMAP_COMPILE_NO_FLAGS);
 	if(!keymap_.xkb)
 	{
-		nytl::sendWarning("Keyboard: failed to create xkb keymap");
+		ny::sendWarning("Keyboard: failed to create xkb keymap");
 		return;
 	}
 
@@ -84,7 +84,7 @@ Keyboard::Keyboard(Seat& seat) : seat_(&seat)
 	char* keymapStrC = xkb_map_get_as_string(keymap_.xkb);
 	if(!keymapStrC)
 	{
-		nytl::sendWarning("Keyboard: failed to get xkb keymap string");
+		ny::sendWarning("Keyboard: failed to get xkb keymap string");
 		return;
 	}
 
@@ -94,14 +94,14 @@ Keyboard::Keyboard(Seat& seat) : seat_(&seat)
 	keymap_.fd = os_create_anonymous_file(keymapStr.size());
 	if(keymap_.fd < 0)
 	{
-		nytl::sendWarning("Keyboard: failed to open anonymous file for keymap mmap");
+		ny::sendWarning("Keyboard: failed to open anonymous file for keymap mmap");
 		return;
 	}
 
 	void* map = mmap(nullptr, mSize, PROT_READ | PROT_WRITE, MAP_SHARED, keymap_.fd, 0);	
 	if(!map)
 	{
-		nytl::sendWarning("Keyboard: faield to mmap memory for keymap");
+		ny::sendWarning("Keyboard: faield to mmap memory for keymap");
 		return;
 	}
 
@@ -206,7 +206,7 @@ void Keyboard::updateModifiers()
 
 void Keyboard::sendKey(unsigned int key, bool press)
 {
-	nytl::sendLog("Key ", key, " ", press, " -- ", focus_, " -- ", activeResource());
+	ny::sendLog("Key ", key, " ", press, " -- ", focus_, " -- ", activeResource());
 
 	xkb_state_update_key(keymap_.state, key + 8, press ? XKB_KEY_DOWN : XKB_KEY_UP);
 	bool previous = keys_[key];
@@ -240,7 +240,7 @@ void Keyboard::sendKey(unsigned int key, bool press)
 	//only for debug - should NOT be in releases.
     if(key == KEY_ESC && press)
     {
-		nytl::sendLog("ESC key - exiting compositor");
+		ny::sendLog("ESC key - exiting compositor");
         compositor().exit();
         return;
     }
@@ -255,7 +255,7 @@ void Keyboard::sendKey(unsigned int key, bool press)
 	}
 	else
 	{
-		nytl::sendLog("key with no active resource...");
+		ny::sendLog("key with no active resource...");
 	}
      
 	//callback	

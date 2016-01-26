@@ -3,7 +3,7 @@
 #include <iro/backend/logind.hpp>
 #include <iro/compositor/compositor.hpp>
 
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 #include <nytl/make_unique.hpp>
 
 #include <dbus/dbus.h>
@@ -31,21 +31,21 @@ DeviceHandler::DeviceHandler(bool useRoot)
 	{
 		if(geteuid() != 0)
 		{
-			nytl::sendWarning("DeviceHandler::DeviceHandler: geteuid != 0");
+			ny::sendWarning("DeviceHandler::DeviceHandler: geteuid != 0");
 			return;
 		}
 	
 		int sockpair[2];
 		if (socketpair(AF_LOCAL, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, sockpair) != 0)
 		{
-			nytl::sendWarning("DeviceHandler::DeviceHandler: socketpair failed");
+			ny::sendWarning("DeviceHandler::DeviceHandler: socketpair failed");
 			return;
 		}
 
 		pid_t child = fork();
 		if(child < 0)
 		{
-			nytl::sendWarning("DeviceHandler::DeviceHandler: fork failed");
+			ny::sendWarning("DeviceHandler::DeviceHandler: fork failed");
 			return;
 		}
 		else if(child == 0)
@@ -53,7 +53,7 @@ DeviceHandler::DeviceHandler(bool useRoot)
 			close(sockpair[0]);
 			forkSocket_ = sockpair[1];
 
-			//nytl::sendLog("DeviceHandler: fork exiting");
+			//ny::sendLog("DeviceHandler: fork exiting");
 			_exit(EXIT_SUCCESS);
 		}
 		else
@@ -109,7 +109,7 @@ bool DeviceHandler::releaseDevice(const Device& dev)
 
 	if(!fd)
 	{
-		nytl::sendWarning("DeviceHandler::releaseDevice: device not found.");
+		ny::sendWarning("DeviceHandler::releaseDevice: device not found.");
 		return 0;
 	}
 
@@ -131,7 +131,7 @@ Device* DeviceHandler::takeDeviceDBus(const std::string& path, int flags)
 	struct stat st;
     if(stat(path.c_str(), &st) < 0 || !S_ISCHR(st.st_mode))
     {
-		nytl::sendWarning("DeviceHandler::takeDeviceDBus: failed to get stat struct for path");
+		ny::sendWarning("DeviceHandler::takeDeviceDBus: failed to get stat struct for path");
         return nullptr;
     }
 
@@ -146,7 +146,7 @@ Device* DeviceHandler::takeDeviceDBus(const std::string& path, int flags)
     if(!(msg = dbus_message_new_method_call("org.freedesktop.login1", sessionPath().c_str(), 
 		"org.freedesktop.login1.Session", "TakeDevice")))
     {
-		nytl::sendWarning("DeviceHandler::takeDeviceDBus: dbus_message_new_method_call failed");
+		ny::sendWarning("DeviceHandler::takeDeviceDBus: dbus_message_new_method_call failed");
         dbus_message_unref(msg);
         return nullptr;
     }
@@ -154,7 +154,7 @@ Device* DeviceHandler::takeDeviceDBus(const std::string& path, int flags)
     if(!dbus_message_append_args(msg, DBUS_TYPE_UINT32, &majr, DBUS_TYPE_UINT32, &minr, 
 		DBUS_TYPE_INVALID))
     {
-		nytl::sendWarning("DH::takeDeviceDBus: dbus_message_append_args failed");
+		ny::sendWarning("DH::takeDeviceDBus: dbus_message_append_args failed");
         dbus_message_unref(msg);
         return nullptr;
     }
@@ -164,7 +164,7 @@ Device* DeviceHandler::takeDeviceDBus(const std::string& path, int flags)
 		-1, &error)))
     {
 		DBusHandler::checkError(error, errStr);
-		nytl::sendWarning("DH::takeDevDBus: dbus_connection_send_with_reply_and_block: ", errStr);
+		ny::sendWarning("DH::takeDevDBus: dbus_connection_send_with_reply_and_block: ", errStr);
         dbus_message_unref(msg);
         return nullptr;
     }
@@ -173,7 +173,7 @@ Device* DeviceHandler::takeDeviceDBus(const std::string& path, int flags)
     if(!dbus_message_get_args(reply, nullptr, DBUS_TYPE_UNIX_FD, &fd, DBUS_TYPE_BOOLEAN, 
 		&paused, DBUS_TYPE_INVALID))
     {
-		nytl::sendWarning("DH::takeDeviceDBus: dbus_message_get_args failed");
+		ny::sendWarning("DH::takeDeviceDBus: dbus_message_get_args failed");
         dbus_message_unref(reply);
         dbus_message_unref(msg);
         return nullptr;
@@ -182,7 +182,7 @@ Device* DeviceHandler::takeDeviceDBus(const std::string& path, int flags)
     int fl;
     if((fl = fcntl(fd, F_GETFL)) < 0 || fcntl(fd, F_SETFD, fl | FD_CLOEXEC) < 0)
     {
-		nytl::sendWarning("DH::takeDeviceDBus: invalid fd");
+		ny::sendWarning("DH::takeDeviceDBus: invalid fd");
         close(fd);
         dbus_message_unref(reply);
         dbus_message_unref(msg);
@@ -209,7 +209,7 @@ Device* DeviceHandler::takeDeviceNormal(const std::string& path, int flags)
 	int fd = open(path.c_str(), flags | O_CLOEXEC);
 	if(fd < 0)
 	{
-		nytl::sendWarning("DeviceHandler::takeDeviceNormal: open failed with code ", fd);
+		ny::sendWarning("DeviceHandler::takeDeviceNormal: open failed with code ", fd);
 		return nullptr;
 	}
 
@@ -230,7 +230,7 @@ bool DeviceHandler::releaseDeviceDBus(int devFD)
 	struct stat st;
 	if(fstat(devFD, &st) < 0 || !S_ISCHR(st.st_mode))
 	{
-		nytl::sendWarning("DH::releaseDeviceDbus: failed to get stat struct for devFD");
+		ny::sendWarning("DH::releaseDeviceDbus: failed to get stat struct for devFD");
 	    return 0;
 	}
 
@@ -242,7 +242,7 @@ bool DeviceHandler::releaseDeviceDBus(int devFD)
     if (!(msg = dbus_message_new_method_call("org.freedesktop.login1", sessionPath().c_str(), 
 		"org.freedesktop.login1.Session", "ReleaseDevice")))
     {
-		nytl::sendWarning("DH::releaseDeviceDBus: dbus_message_new_method_call failed");
+		ny::sendWarning("DH::releaseDeviceDBus: dbus_message_new_method_call failed");
         dbus_message_unref(msg);
         return 0;
     }
@@ -250,7 +250,7 @@ bool DeviceHandler::releaseDeviceDBus(int devFD)
     if(!dbus_message_append_args(msg, DBUS_TYPE_UINT32, &majr, DBUS_TYPE_UINT32, &minr, 
 		DBUS_TYPE_INVALID))
     {
-		nytl::sendWarning("DH::releaseDeviceDBus: dbus_message_append_args failed");
+		ny::sendWarning("DH::releaseDeviceDBus: dbus_message_append_args failed");
         dbus_message_unref(msg);
         return 0;
     }
@@ -290,7 +290,7 @@ void DeviceHandler::dbusPauseDevice(DBusMessage* msg)
     if(!dbus_message_get_args(msg, nullptr, DBUS_TYPE_UINT32, &majr, DBUS_TYPE_UINT32, 
 		&minr, DBUS_TYPE_STRING, &type, DBUS_TYPE_INVALID))
     {
-		nytl::sendWarning("DH::dbusPauseDevice: dbus_message_get_args failed");
+		ny::sendWarning("DH::dbusPauseDevice: dbus_message_get_args failed");
         return;
     }
 
@@ -301,7 +301,7 @@ void DeviceHandler::dbusPauseDevice(DBusMessage* msg)
         if (!(m = dbus_message_new_method_call("org.freedesktop.login1", sessionPath().c_str(), 
 			"org.freedesktop.login1.Session", "PauseDeviceComplete")))
         {
-			nytl::sendWarning("DH::dbusPauseDevice: dbus_message_new_method_call failed");
+			ny::sendWarning("DH::dbusPauseDevice: dbus_message_new_method_call failed");
             return;
         }
 
@@ -309,7 +309,7 @@ void DeviceHandler::dbusPauseDevice(DBusMessage* msg)
         if (!dbus_message_append_args(m, DBUS_TYPE_UINT32, &majr, DBUS_TYPE_UINT32, &minr, 
 			DBUS_TYPE_INVALID))
         {
-			nytl::sendWarning("DH::dbusPauseDevice: dbus_message_append_args failed");
+			ny::sendWarning("DH::dbusPauseDevice: dbus_message_append_args failed");
             return;
         }
 
@@ -323,7 +323,7 @@ void DeviceHandler::dbusPauseDevice(DBusMessage* msg)
     {
         if(fstat(dev->fd_, &st) < 0 || !S_ISCHR(st.st_mode))
         {
-			nytl::sendWarning("DH::debusPauseDevice: failed to get stat struct for device fd");
+			ny::sendWarning("DH::debusPauseDevice: failed to get stat struct for device fd");
             continue;
         }
 
@@ -338,7 +338,7 @@ void DeviceHandler::dbusPauseDevice(DBusMessage* msg)
         }
     }
 
-    if(!found) nytl::sendWarning("DH::dbusPauseDevice: device not found: ", majr, ".", minr);
+    if(!found) ny::sendWarning("DH::dbusPauseDevice: device not found: ", majr, ".", minr);
 }
 
 void DeviceHandler::dbusResumeDevice(DBusMessage* msg)
@@ -347,7 +347,7 @@ void DeviceHandler::dbusResumeDevice(DBusMessage* msg)
     if(!dbus_message_get_args(msg, nullptr, DBUS_TYPE_UINT32, &majr, DBUS_TYPE_UINT32, &minr, 
 		DBUS_TYPE_INVALID))
     {
-		nytl::sendWarning("DH::dbusResumeDevice: dbus_message_get_args failed");
+		ny::sendWarning("DH::dbusResumeDevice: dbus_message_get_args failed");
         return;
     }
 
@@ -357,7 +357,7 @@ void DeviceHandler::dbusResumeDevice(DBusMessage* msg)
     {
         if(fstat(dev->fd_, &st) < 0 || !S_ISCHR(st.st_mode))
         {
-			nytl::sendWarning("DH::dbusResumeDevice: failed to get stat struct for device fd");
+			ny::sendWarning("DH::dbusResumeDevice: failed to get stat struct for device fd");
             continue;
         }
 
@@ -372,7 +372,7 @@ void DeviceHandler::dbusResumeDevice(DBusMessage* msg)
         }
     }
 
-    if(!found) nytl::sendWarning("DH::dbusResumeDevice: device not found");
+    if(!found) ny::sendWarning("DH::dbusResumeDevice: device not found");
 }
 
 

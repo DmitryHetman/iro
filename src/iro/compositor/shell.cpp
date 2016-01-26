@@ -5,7 +5,7 @@
 #include <iro/compositor/shellSurface.hpp>
 
 #include <nytl/make_unique.hpp>
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 
 #include <wayland-server-core.h>
 #include <wayland-server-protocol.h>

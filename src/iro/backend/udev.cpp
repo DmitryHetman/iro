@@ -1,7 +1,7 @@
 #include <iro/backend/udev.hpp>
 #include <iro/compositor/compositor.hpp>
 
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 
 #include <wayland-server-core.h>
 #include <libudev.h>
@@ -34,7 +34,7 @@ int UDevHandler::eventCallback(int, unsigned int, void* data)
 
 int UDevHandler::udevEvent()
 {
-	nytl::sendLog("received udev event");
+	ny::sendLog("received udev event");
 	return 1;
 }
 

@@ -6,7 +6,7 @@
 #include <iro/seat/keyboard.hpp>
 #include <iro/seat/event.hpp>
 
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 #include <nytl/make_unique.hpp>
 
 #include <wayland-server-core.h>
@@ -143,7 +143,7 @@ void ShellSurfaceRes::pong(unsigned int serial)
 {
 	if(serial != pingSerial_)
 	{
-		nytl::sendWarning("ShellSurfaceRes::pong: serials do not match\n\t",
+		ny::sendWarning("ShellSurfaceRes::pong: serials do not match\n\t",
 				"this: ", this, " pingSerial_: ", pingSerial_, " serial: ", serial);
 		return;
 	}

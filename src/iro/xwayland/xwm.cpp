@@ -1,7 +1,7 @@
 #include <iro/xwayland/xwm.hpp>
 #include <iro/compositor/compositor.hpp>
 
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 
 #include <wayland-server-core.h>
 
@@ -78,7 +78,7 @@ int openSocket(const sockaddr_un& addr, size_t path_size)
 
 	if((fd = socket(PF_LOCAL, SOCK_STREAM | SOCK_CLOEXEC, 0)) < 0)
 	{
-		nytl::sendWarning("XWM: failed to create socket ", path, "; errno: ", errno);
+		ny::sendWarning("XWM: failed to create socket ", path, "; errno: ", errno);
 		return -1;
 	}
 
@@ -87,14 +87,14 @@ int openSocket(const sockaddr_un& addr, size_t path_size)
 
 	if(bind(fd, reinterpret_cast<const sockaddr*>(&addr), size) < 0)
 	{
-		nytl::sendWarning("XWM: failed to bind socket to ", path, "; errno: ", errno);
+		ny::sendWarning("XWM: failed to bind socket to ", path, "; errno: ", errno);
 		close(fd);
 		return -1;
 	}
 
    if(listen(fd, 1) < 0)
    {
-	   nytl::sendWarning("XWM: failed to listen to socket at ", path, "; errno: ", errno);
+	   ny::sendWarning("XWM: failed to listen to socket at ", path, "; errno: ", errno);
 	   unlink(addr.sun_path);
 	   close(fd);
 	   return -1;
@@ -115,7 +115,7 @@ struct XWindowManager::ListenerPOD
 
 int XWindowManager::sigusrHandler(int, void* data)
 {
-	nytl::sendLog("XWM: sigusr1 - XWayland init has finished");
+	ny::sendLog("XWM: sigusr1 - XWayland init has finished");
 
 	if(data) static_cast<XWindowManager*>(data)->initWM();
 	return 1;
@@ -123,14 +123,14 @@ int XWindowManager::sigusrHandler(int, void* data)
 
 void XWindowManager::clientDestroyedHandler(struct wl_listener* listener, void*)
 {
-	nytl::sendLog("client destroyed...");
+	ny::sendLog("client destroyed...");
 
 	XWindowManager::ListenerPOD* pod;
 	pod = wl_container_of(listener, pod, listener);	
 
 	if(!pod || !pod->xwm)
 	{
-		nytl::sendWarning("XWM: clientDestroy notify with invalid listener data");
+		ny::sendWarning("XWM: clientDestroy notify with invalid listener data");
 		return;	
 	}	
 
@@ -168,7 +168,7 @@ XWindowManager::XWindowManager(Compositor& comp, Seat& seat) : compositor_(&comp
 		_exit(EXIT_FAILURE);
 	}
 
-	nytl::sendLog("XWM: fork succesful");
+	ny::sendLog("XWM: fork succesful");
 
 	//close child fds
 	close(wlSocks[1]);
@@ -235,14 +235,14 @@ retry:
 		//create new file
 		if((lockFd = open(lockFile.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0444)) >= 0)
 		{
-			nytl::sendLog("XWM: succesfully created ", lockFile);
+			ny::sendLog("XWM: succesfully created ", lockFile);
 			break;
 		}
 
 		//open existing file
 		if((lockFd = open(lockFile.c_str(),  O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC)) < 0)
 		{
-			nytl::sendLog("XWM: failed to open ", lockFile, " trying next display");
+			ny::sendLog("XWM: failed to open ", lockFile, " trying next display");
 			continue;
 		}
 		
@@ -255,7 +255,7 @@ retry:
 
 		if(bytes != sizeof(pid) - 1)
 		{
-			nytl::sendLog("XWM: failed to read pid from ", lockFile);
+			ny::sendLog("XWM: failed to read pid from ", lockFile);
 			continue;
 		}
 
@@ -266,7 +266,7 @@ retry:
 		}
 		catch(const std::invalid_argument& err)
 		{
-			nytl::sendLog("XWM: failed to convert pid string ", pid, " read from ", lockFile);
+			ny::sendLog("XWM: failed to convert pid string ", pid, " read from ", lockFile);
 			continue;
 		}
 
@@ -355,7 +355,7 @@ void XWindowManager::executeXWayland()
 		fcntl(socks[0], F_SETFD, 0) != 0 ||
 		fcntl(socks[1], F_SETFD, 0) != 0)
 	{
-		nytl::sendWarning("XWM::executeXWayland: fcntl failed");
+		ny::sendWarning("XWM::executeXWayland: fcntl failed");
 		return;
 	}
 	
@@ -371,7 +371,7 @@ void XWindowManager::executeXWayland()
 	action.sa_handler = SIG_IGN;
 	if(sigaction(SIGUSR1, &action, nullptr) != 0) 
 	{
-		nytl::sendWarning("XWM:executeXWayland: failed to set ignore handler for sigusr1");
+		ny::sendWarning("XWM:executeXWayland: failed to set ignore handler for sigusr1");
 		return;
 	}
 
@@ -379,13 +379,13 @@ void XWindowManager::executeXWayland()
 	const char *xdg_runtime = getenv("XDG_RUNTIME_DIR");
 	if(!xdg_runtime) 
 	{
-		nytl::sendWarning("XWM::executeXWayland: failed to get XDG_RUNTIME_DIR env");
+		ny::sendWarning("XWM::executeXWayland: failed to get XDG_RUNTIME_DIR env");
 		return;
 	}
 
 	if(clearenv() != 0)
 	{
-		nytl::sendWarning("XWM::executeXWayland: failed to clear environment");
+		ny::sendWarning("XWM::executeXWayland: failed to clear environment");
 		return;
 	}
 
@@ -393,12 +393,12 @@ void XWindowManager::executeXWayland()
 	setenv("WAYLAND_SOCKET", std::to_string(wlSocks[1]).c_str(), 1);
 
 	//redirect stdour/stderr
-	//how about nytl::sendLog?
+	//how about ny::sendLog?
 	//freopen("/dev/null", "w", stdout);
 	//freopen("/dev/null", "w", stderr);
 
 	//execute the xwayland server process     
-	nytl::sendLog("XWM XWayland fork: starting XWayland on ", displayName_);
+	ny::sendLog("XWM XWayland fork: starting XWayland on ", displayName_);
 	execlp("Xwayland", "Xwayland",
 			displayName_.c_str(),
             "-rootless",
@@ -408,7 +408,7 @@ void XWindowManager::executeXWayland()
             "-wm", std::to_string(xSocks[1]).c_str(),
             nullptr);
 
-	nytl::sendLog("XWM XWayland fork: XWayland returned");
+	ny::sendLog("XWM XWayland fork: XWayland returned");
 }
 
 void XWindowManager::clientDestroyed()

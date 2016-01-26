@@ -9,7 +9,7 @@
 #include <iro/backend/backend.hpp>
 #include <iro/backend/surfaceContext.hpp>
 
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 #include <nytl/make_unique.hpp>
 
 #include <wayland-server-protocol.h>
@@ -138,14 +138,14 @@ SurfaceRes::SurfaceRes(wl_client& client, unsigned int id)
 {
 	if(!compositor().backend())
 	{
-		nytl::sendWarning("SurfaceRes::SurfaceRes: no valid backend, cant create context.");
+		ny::sendWarning("SurfaceRes::SurfaceRes: no valid backend, cant create context.");
 		return;
 	}
 
 	surfaceContext_ = compositor().backend()->createSurfaceContext();
 	if(!surfaceContext_)
 	{
-		nytl::sendWarning("SurfaceRes::SurfaceRes: failed to create context.");
+		ny::sendWarning("SurfaceRes::SurfaceRes: failed to create context.");
 	}
 }
 
@@ -228,7 +228,7 @@ void SurfaceRes::attach(BufferRes& buff, const nytl::vec2i& pos)
 
 void SurfaceRes::commit()
 {
-	nytl::sendLog("commiting surfaceRes ", this, " with buffer ", pending_.buffer.get());
+	ny::sendLog("commiting surfaceRes ", this, " with buffer ", pending_.buffer.get());
 
     commited_ = pending_;
     pending_.reset();
@@ -250,7 +250,7 @@ void SurfaceRes::commit()
 		{
 			if(!surfaceContext_->attachBuffer(*commited_.buffer.get(), bufferSize_))
 			{
-				nytl::sendWarning("SurfaceRes::commit: attaching the buffer failed");
+				ny::sendWarning("SurfaceRes::commit: attaching the buffer failed");
 				return;
 			}
 
@@ -258,7 +258,7 @@ void SurfaceRes::commit()
 		}
 		else
 		{
-			nytl::sendWarning("SurfaceRes::commit: no valiud surfaceContext_");
+			ny::sendWarning("SurfaceRes::commit: no valiud surfaceContext_");
 			return;
 		}
 
@@ -270,12 +270,12 @@ void SurfaceRes::commit()
 		auto* bckn = compositor().backend();
 		if(!bckn)
 		{
-			nytl::sendWarning("SurfaceRes::commit: compositor has no valid backend");
+			ny::sendWarning("SurfaceRes::commit: compositor has no valid backend");
 			return;
 		}
 
         mappedOutputs_ = bckn->outputsAt(extents());
-		nytl::sendLog("found mapOutputs: ", mappedOutputs_.size());
+		ny::sendLog("found mapOutputs: ", mappedOutputs_.size());
         for(auto* o : mappedOutputs_)
         {
             o->mapSurface(*this);
@@ -291,7 +291,7 @@ SurfaceRole& SurfaceRes::role(std::unique_ptr<SurfaceRole>&& role)
 {
 	if(!role)
 	{
-		nytl::sendWarning("SurfaceRes::role: nullptr as parameter not allowed");
+		ny::sendWarning("SurfaceRes::role: nullptr as parameter not allowed");
 		return *role; //aargh
 	}
 
@@ -301,7 +301,7 @@ SurfaceRole& SurfaceRes::role(std::unique_ptr<SurfaceRole>&& role)
 	}
 	else if(roleType() != role->roleType())
 	{
-		nytl::sendWarning("SurfaceRes::role: surface already has a different role");
+		ny::sendWarning("SurfaceRes::role: surface already has a different role");
 		return *role; //aargh
 	}
 
@@ -313,7 +313,7 @@ void SurfaceRes::clearRole()
 {
 	if(!role_)
 	{
-		nytl::sendWarning("SurfacEres::clearRole: surface has no role");
+		ny::sendWarning("SurfacEres::clearRole: surface has no role");
 		return;
 	}
 

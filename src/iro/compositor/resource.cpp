@@ -2,7 +2,7 @@
 #include <iro/compositor/client.hpp>
 #include <iro/compositor/compositor.hpp>
 
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 #include <nytl/make_unique.hpp>
 
 #include <wayland-server-core.h>
@@ -28,7 +28,7 @@ void resourceDestroyListener(wl_listener* listener, void*)
 
 	if(!pod || !pod->resource)
 	{
-		nytl::sendWarning("resourceDestroyListener with invalid data paremeter");
+		ny::sendWarning("resourceDestroyListener with invalid data paremeter");
 		return;
 	}
 
@@ -61,7 +61,7 @@ void Resource::invalidObjectDisconnect(wl_resource& res, const std::string& info
 	wl_resource_post_error(&res, WL_DISPLAY_ERROR_INVALID_OBJECT, "object %p is invalid or was"
 		   " used in an invalid context. Client will be disconnected.%s", &res, inf.c_str());
 
-	nytl::sendWarning("Resource::invalidObjectDisconnect: wl_client ", clnt, 
+	ny::sendWarning("Resource::invalidObjectDisconnect: wl_client ", clnt, 
 			" used invalid object ", &res, " and will be disconnected.", inf);
 
 	//store event that client will be destroyed after event loop is fully dispatched - problems
@@ -88,7 +88,7 @@ Resource::Resource(wl_client& client, unsigned int id, const struct wl_interface
 
 Resource::~Resource()
 {
-	nytl::sendLog("destructing resource ",this, " with id ", id()," of wl_client ", &wlClient());
+	ny::sendLog("destructing resource ",this, " with id ", id()," of wl_client ", &wlClient());
 
     if(wl_resource_get_user_data(wlResource_) == this)
 		wl_resource_set_user_data(wlResource_, nullptr);
@@ -104,7 +104,7 @@ void Resource::destroy()
 void Resource::create(wl_client& client, unsigned int id, const wl_interface* interface, 
 		const void* implementation, unsigned int version)
 {
-	nytl::sendLog("new resource ",this, " with id ", id, " and type ", (interface) ? 
+	ny::sendLog("new resource ",this, " with id ", id, " and type ", (interface) ? 
 			interface->name : "<unknown>", ", version ", version, " for wl_client ", &client);
 
     wlResource_ = wl_resource_create(&client, interface, version, id);

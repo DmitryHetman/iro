@@ -10,7 +10,7 @@
 #include <protos/wayland-xdg-shell-server-protocol.h>
 
 #include <nytl/make_unique.hpp>
-#include <nytl/log.hpp>
+#include <ny/base/log.hpp>
 
 namespace iro
 {
@@ -100,7 +100,7 @@ void XdgShell::getXdgSurface(SurfaceRes& surf, unsigned int id, unsigned int ver
 void XdgShell::getXdgPopup(SurfaceRes& surface, unsigned int id, SurfaceRes& parent, SeatRes& seat,
 		unsigned int serial, const nytl::vec2i& position, unsigned int version)
 {
-	nytl::sendLog("xdgpopup");
+	ny::sendLog("xdgpopup");
 	auto xdgPopupRes = nytl::make_unique<XdgPopupRes>(surface, parent, id);
 	auto xdgPopupRole = nytl::make_unique<XdgPopupRole>(*xdgPopupRes);
 
@@ -129,7 +129,7 @@ void XdgShellRes::pong(unsigned int serial)
 {
 	if(serial != pingSerial_)
 	{
-		nytl::sendWarning("XdgShellRes::pong: serials do not match\n\t",
+		ny::sendWarning("XdgShellRes::pong: serials do not match\n\t",
 				"this: ", this, " pingSerial_: ", pingSerial_, " serial: ", serial);
 		return;
 	}
