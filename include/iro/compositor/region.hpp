@@ -2,7 +2,7 @@
 
 #include <iro/include.hpp>
 #include <iro/compositor/resource.hpp>
-#include <nytl/region.hpp>
+#include <nytl/rectRegion.hpp>
 
 namespace iro
 {
@@ -12,13 +12,13 @@ namespace iro
 class RegionRes : public Resource
 {
 protected:
-	nytl::region2i region_;
+	nytl::RectRegion2i region_;
 
 public:
     RegionRes(wl_client& client, unsigned int id);
 
-	nytl::region2i& region(){ return region_; }
-    const nytl::region2i& region() const { return region_; }
+	nytl::RectRegion2i& region(){ return region_; }
+    const nytl::RectRegion2i& region() const { return region_; }
 };
 
 }

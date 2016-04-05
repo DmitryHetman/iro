@@ -11,7 +11,7 @@ namespace iro
 
 ///Responsible for managing setup and switching of the virtual terminal. Therefore only needed
 ///if iro is started outside an existent window manager (drm/kms backend).
-class TerminalHandler : public nytl::nonCopyable
+class TerminalHandler : public nytl::NonCopyable
 {
 protected:
     static int ttySignalhandler(int, void*);
@@ -21,11 +21,11 @@ protected:
     unsigned int number_;
     int tty_ = 0;
 
-	nytl::callback<void()> beforeEnter_;
-	nytl::callback<void()> beforeLeave_;
+	nytl::Callback<void()> beforeEnter_;
+	nytl::Callback<void()> beforeLeave_;
 
-	nytl::callback<void()> afterEnter_;
-	nytl::callback<void()> afterLeave_;
+	nytl::Callback<void()> afterEnter_;
+	nytl::Callback<void()> afterLeave_;
 
 protected:
     void enteredTTY();
@@ -48,11 +48,11 @@ public:
 	///Returns 0 on failure.
     bool activate(unsigned int vtNumber);
 
-    template<typename F> nytl::connection beforeEnter(F&& f){ return beforeEnter_.add(f); }
-    template<typename F> nytl::connection beforeLeave(F&& f){ return beforeLeave_.add(f); }
+    template<typename F> nytl::Connection beforeEnter(F&& f){ return beforeEnter_.add(f); }
+    template<typename F> nytl::Connection beforeLeave(F&& f){ return beforeLeave_.add(f); }
 
-    template<typename F> nytl::connection afterEnter(F&& f){ return afterEnter_.add(f); }
-    template<typename F> nytl::connection afterLeave(F&& f){ return afterLeave_.add(f); }
+    template<typename F> nytl::Connection afterEnter(F&& f){ return afterEnter_.add(f); }
+    template<typename F> nytl::Connection afterLeave(F&& f){ return afterLeave_.add(f); }
 };
 
 }

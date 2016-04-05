@@ -23,7 +23,7 @@ namespace nytl
 {
 
 template <typename T>
-class watchableRef;
+class ObservingPtr;
 
 }
 
@@ -78,13 +78,13 @@ class OutputRes;
 class WaylandEglContext;
 
 template<typename R>
-using ResourceRef = nytl::watchableRef<R>;
+using ResourcePtr = nytl::ObservingPtr<R>;
 
-using SurfaceRef = ResourceRef<SurfaceRes>;
-using BufferRef = ResourceRef<BufferRes>;
-using CallbackRef = ResourceRef<CallbackRes>;
-using PointerRef = ResourceRef<PointerRes>;
-using KeyboardRef = ResourceRef<KeyboardRes>;
+using SurfacePtr = ResourcePtr<SurfaceRes>;
+using BufferPtr = ResourcePtr<BufferRes>;
+using CallbackPtr = ResourcePtr<CallbackRes>;
+using PointerPtr = ResourcePtr<PointerRes>;
+using KeyboardPtr = ResourcePtr<KeyboardRes>;
 
 }
 

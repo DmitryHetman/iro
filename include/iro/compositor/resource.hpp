@@ -3,7 +3,7 @@
 #include <iro/include.hpp>
 #include <nytl/nonCopyable.hpp>
 #include <nytl/callback.hpp>
-#include <nytl/watchable.hpp>
+#include <nytl/observe.hpp>
 
 namespace iro
 {
@@ -13,6 +13,7 @@ namespace resourceType
 {
     constexpr unsigned int unknown = 0;
 
+	//objects created by clients
     constexpr unsigned int surface = 1;
     constexpr unsigned int shellSurface = 2;
     constexpr unsigned int subsurface = 3;
@@ -52,7 +53,7 @@ namespace resourceType
  * (after creation, creating them without a valid wl_resource will trigger many problems), since 
  * they will be automatically destroyed if their corresponding wl_resource is destructed.
 **/
-class Resource : public nytl::nonCopyable, public nytl::watchable
+class Resource : public nytl::NonCopyable, public nytl::Observable
 {
 public:
 	///POD structure used to get the associated resource object from a wl_resource pointer
@@ -102,7 +103,7 @@ public:
 
 protected:
     wl_resource* wlResource_ = nullptr;
-	nytl::callback<void(Resource&)> destructionCallback_;
+	nytl::Callback<void(Resource&)> destructionCallback_;
 	std::unique_ptr<listenerPOD> listener_;
 
     Resource() = default;
@@ -142,7 +143,7 @@ public:
 };
 
 ///\related resource
-///checks two resources for equality (if both of them point to the same wl_resource object)
+///Checks two resources for equality (if both of them point to the same wl_resource object)
 bool operator==(const Resource& r1, const Resource& r2);
 
 }

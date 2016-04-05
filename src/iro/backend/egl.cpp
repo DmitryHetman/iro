@@ -1,6 +1,5 @@
 #include <iro/backend/egl.hpp>
 
-#include <nytl/make_unique.hpp>
 #include <nytl/misc.hpp>
 #include <ny/base/log.hpp>
 
@@ -29,7 +28,7 @@ public:
 WaylandEglContext::WaylandEglContext(void* display) 
 	: ny::EglContext(), impl_(nullptr)
 {
-	impl_ = nytl::make_unique<WaylandEglContext::Impl>();
+	impl_ = std::make_unique<WaylandEglContext::Impl>();
 
 	ny::EglContext::eglDisplay_ = eglGetDisplay((EGLNativeDisplayType)display);
     if(!eglDisplay())

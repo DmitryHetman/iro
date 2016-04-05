@@ -10,7 +10,6 @@
 #include <iro/backend/surfaceContext.hpp>
 
 #include <ny/base/log.hpp>
-#include <nytl/make_unique.hpp>
 
 #include <wayland-server-protocol.h>
 
@@ -26,7 +25,7 @@ SurfaceState& SurfaceState::operator=(const SurfaceState& other)
     input = other.input;
     damage = other.damage;
     offset = other.offset;
-    buffer.set(other.buffer.get());
+    buffer.reset(other.buffer.get());
 
     frameCallbacks.clear();
     for(auto& ref : other.frameCallbacks)
@@ -57,24 +56,24 @@ void surfaceAttach(wl_client*, wl_resource* resource, wl_resource* wlbuffer, int
 	BufferRes* buff = Resource::validate<BufferRes>(*wlbuffer);
 	if(!buff)
 	{
-		buff = &surf->client().addResource(nytl::make_unique<BufferRes>(*wlbuffer));
+		buff = &surf->client().addResource(std::make_unique<BufferRes>(*wlbuffer));
 	}
 
-    surf->attach(*buff, nytl::vec2i(x,y));
+    surf->attach(*buff, {x,y});
 }
 void surfaceDamage(wl_client*, wl_resource* resource, int x, int y, int width, int height)
 {
 	SurfaceRes* surf = Resource::validateDisconnect<SurfaceRes>(resource, "surfaceDamage");
 	if(!surf) return;
 
-    surf->damage(nytl::rect2i(x, y, width, height));
+    surf->damage({x, y, width, height});
 }
 void surfaceFrame(wl_client* client, wl_resource* resource, unsigned int id)
 {
 	SurfaceRes* surf = Resource::validateDisconnect<SurfaceRes>(resource, "surfaceFrame");
 	if(!surf) return;
 
-	auto cb = nytl::make_unique<CallbackRes>(*client, id);
+	auto cb = std::make_unique<CallbackRes>(*client, id);
     surf->addFrameCallback(*cb);
 
 	surf->client().addResource(std::move(cb));
@@ -155,7 +154,7 @@ SurfaceRes::~SurfaceRes()
 		outp->unmapSurface(*this);
 }
 
-nytl::vec2i SurfaceRes::position() const
+nytl::Vec2i SurfaceRes::position() const
 {
     if(role_)
         return role_->position() + commited_.offset;
@@ -163,7 +162,7 @@ nytl::vec2i SurfaceRes::position() const
     return commited_.offset;
 }
 
-nytl::vec2ui SurfaceRes::size() const
+nytl::Vec2ui SurfaceRes::size() const
 {
     if(commited_.buffer)
         return bufferSize_ * commited_.scale;
@@ -171,9 +170,9 @@ nytl::vec2ui SurfaceRes::size() const
     return {0, 0};
 }
 
-nytl::rect2i SurfaceRes::extents() const
+nytl::Rect2i SurfaceRes::extents() const
 {
-    return nytl::rect2i(position(), size());
+    return {position(), size()};
 }
 
 void SurfaceRes::sendFrameDone()
@@ -205,25 +204,25 @@ void SurfaceRes::bufferTransform(unsigned int transform)
     pending_.transform = transform;
 }
 
-void SurfaceRes::inputRegion(const nytl::region2i& input)
+void SurfaceRes::inputRegion(const nytl::RectRegion2i& input)
 {
     pending_.input = input;
 }
 
-void SurfaceRes::opaqueRegion(const nytl::region2i& opaque)
+void SurfaceRes::opaqueRegion(const nytl::RectRegion2i& opaque)
 {
     pending_.opaque = opaque;
 }
 
-void SurfaceRes::damage(const nytl::rect2i& dmg)
+void SurfaceRes::damage(const nytl::Rect2i& dmg)
 {
     pending_.damage.add(dmg);
 }
 
-void SurfaceRes::attach(BufferRes& buff, const nytl::vec2i& pos)
+void SurfaceRes::attach(BufferRes& buff, const nytl::Vec2i& pos)
 {
     pending_.offset = pos;
-    pending_.buffer.set(buff);
+    pending_.buffer.reset(buff);
 }
 
 void SurfaceRes::commit()
@@ -287,7 +286,7 @@ void SurfaceRes::remap()
 {
 }
 
-SurfaceRole& SurfaceRes::role(std::unique_ptr<SurfaceRole>&& role)
+SurfaceRole& SurfaceRes::role(std::unique_ptr<SurfaceRole> role)
 {
 	if(!role)
 	{

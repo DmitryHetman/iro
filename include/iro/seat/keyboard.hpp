@@ -5,7 +5,8 @@
 
 #include <nytl/nonCopyable.hpp>
 #include <nytl/callback.hpp>
-#include <nytl/watchable.hpp>
+#include <nytl/observe.hpp>
+#include <nytl/enumOps.hpp>
 
 #include <functional>
 #include <map>
@@ -19,7 +20,7 @@ namespace iro
 {
 
 ///Represents a physical keyboard. Does automatically initialize a xbk keymap.
-class Keyboard : public nytl::nonCopyable
+class Keyboard : public nytl::NonCopyable
 {
 public:
 	struct Grab
@@ -55,7 +56,7 @@ public:
 
 protected:
     Seat* seat_;
-    SurfaceRef focus_;
+    SurfacePtr focus_;
 
 	bool grabbed_ = 0;
 	Grab grab_;
@@ -94,8 +95,8 @@ protected:
 	} keymap_;
 
     //callbacks
-	nytl::callback<void(unsigned int, bool)> keyCallback_;
-	nytl::callback<void(SurfaceRes*, SurfaceRes*)> focusCallback_;
+	nytl::Callback<void(unsigned int, bool)> keyCallback_;
+	nytl::Callback<void(SurfaceRes*, SurfaceRes*)> focusCallback_;
 
 protected:
 	void beginRepeat();
@@ -137,9 +138,9 @@ public:
 	unsigned int ledMask() const;
 
     //callbacks
-    template<typename F> nytl::connection onKey(F&& f)
+    template<typename F> nytl::Connection onKey(F&& f)
 		{ return keyCallback_.add(f); }
-    template<typename F> nytl::connection onFocus(F&& f)
+    template<typename F> nytl::Connection onFocus(F&& f)
 		{ return focusCallback_.add(f); }
 };
 
@@ -161,3 +162,5 @@ public:
 };
 
 }
+
+NYTL_ENABLE_ENUM_OPS(iro::Keyboard::Modifier)

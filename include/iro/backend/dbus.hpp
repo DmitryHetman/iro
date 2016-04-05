@@ -18,7 +18,7 @@ namespace iro
 
 ///Responsible for setting up and managing the dbus communication.
 ///Needed for taking session and then creating/releasing devices.
-class DBusHandler : public nytl::nonCopyable
+class DBusHandler : public nytl::NonCopyable
 {
 protected:
 	struct Callbacks;

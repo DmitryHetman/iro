@@ -119,7 +119,7 @@ int InputHandler::inputEvent()
 
                 double x = libinput_event_pointer_get_dx(ev);
                 double y = libinput_event_pointer_get_dy(ev);
-				nytl::vec2f pos = pointer->position() + nytl::vec2f(x,y);
+				nytl::Vec2f pos = pointer->position() + nytl::Vec2f(x,y);
                 pointer->sendMove(pos);
                 break;
             }
@@ -128,7 +128,7 @@ int InputHandler::inputEvent()
 				if(!pointer) break;
                 struct libinput_event_pointer* ev = libinput_event_get_pointer_event(event);
 
-				nytl::vec2f position;
+				nytl::Vec2f position;
 				position.x = libinput_event_pointer_get_absolute_x(ev);
 				position.y = libinput_event_pointer_get_absolute_y(ev);
                 pointer->sendMove(position);

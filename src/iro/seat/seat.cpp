@@ -8,7 +8,6 @@
 #include <iro/compositor/client.hpp>
 
 #include <ny/base/log.hpp>
-#include <nytl/make_unique.hpp>
 
 #include <wayland-server-protocol.h>
 #include <stdexcept>
@@ -56,12 +55,12 @@ void bindSeat(wl_client* client, void* data, unsigned int version, unsigned int 
 	}
 
     auto& clnt = seat->compositor().client(*client);
-	clnt.addResource(nytl::make_unique<SeatRes>(*seat, *client, id, version));
+	clnt.addResource(std::make_unique<SeatRes>(*seat, *client, id, version));
 }
 
 
 //Seat implementation
-Seat::Seat(Compositor& comp, const nytl::vec3b& caps) 
+Seat::Seat(Compositor& comp, const nytl::Vec3b& caps) 
 	: compositor_(&comp), name_("seat0"), pointer_(nullptr), keyboard_(nullptr), touch_(nullptr)
 {
     wlGlobal_ = wl_global_create(&comp.wlDisplay(), &wl_seat_interface, wl_seat_interface.version, 
@@ -72,9 +71,9 @@ Seat::Seat(Compositor& comp, const nytl::vec3b& caps)
 		return;
 	}
 
-	if(caps[0]) pointer_ = nytl::make_unique<Pointer>(*this);
-	if(caps[1]) keyboard_ = nytl::make_unique<Keyboard>(*this);
-	//if(caps[2]) touch_ = nytl::make_unique<Touch>(*this);
+	if(caps[0]) pointer_ = std::make_unique<Pointer>(*this);
+	if(caps[1]) keyboard_ = std::make_unique<Keyboard>(*this);
+	//if(caps[2]) touch_ = std::make_unique<Touch>(*this);
 }
 
 Seat::~Seat()
@@ -112,14 +111,15 @@ bool SeatRes::createPointer(unsigned int id)
 		return 0;
 	}
 
-	auto res = nytl::make_unique<PointerRes>(*this, id);
+	auto res = std::make_unique<PointerRes>(*this, id);
 	if(!res)
 	{
 		ny::sendWarning("seatRes::createPointer: failed to create pointerRes");
 		return 0;
 	}
 
-	res->onDestruction([=]{ this->pointer_ = nullptr; });
+	//XXX
+	//res->onDestruction([=]{ this->pointer_ = nullptr; });
 	pointer_ = res.get();
 
 	client().addResource(std::move(res));
@@ -140,14 +140,15 @@ bool SeatRes::createKeyboard(unsigned int id)
 		return 0;
 	}
 
-	auto res = nytl::make_unique<KeyboardRes>(*this, id);
+	auto res = std::make_unique<KeyboardRes>(*this, id);
 	if(!res)
 	{
 		ny::sendWarning("seatRes::createKeyboard: failed to create keyboardRes");
 		return 0;
 	}
 
-	res->onDestruction([=]{ this->keyboard_ = nullptr; });
+	//XXX
+	//res->onDestruction([=]{ this->keyboard_ = nullptr; });
 	keyboard_ = res.get();
 
 	client().addResource(std::move(res));
@@ -169,7 +170,7 @@ bool SeatRes::createTouch(unsigned int id)
 		return 0;
 	}
 
-	auto res = nytl::make_unique<TouchRes>(*this, id);
+	auto res = std::make_unique<TouchRes>(*this, id);
 	if(!res)
 	{
 		ny::sendWarning("seatRes::createTouch: failed to create touchRes");

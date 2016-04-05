@@ -5,7 +5,6 @@
 #include <iro/backend/tty.hpp>
 #include <iro/compositor/compositor.hpp>
 
-#include <nytl/make_unique.hpp>
 #include <ny/base/log.hpp>
 #include <nytl/misc.hpp>
 
@@ -67,7 +66,7 @@ KmsBackend::KmsBackend(Compositor& comp, DeviceHandler& dev)
     }
 
 	//egl
-	eglContext_ = nytl::make_unique<WaylandEglContext>(gbmDevice_);
+	eglContext_ = std::make_unique<WaylandEglContext>(gbmDevice_);
 	if(!eglContext_)
 	{
         throw std::runtime_error("KmsBackend::KmsBackend: failed to create EglContext");
@@ -115,7 +114,7 @@ KmsBackend::KmsBackend(Compositor& comp, DeviceHandler& dev)
                 {
 					//create output
 					ny::sendLog(">>matching connector/encoder pair ", outputs_.size());
-                    addOutput(nytl::make_unique<KmsOutput>(*this, connector, encoder, 
+                    addOutput(std::make_unique<KmsOutput>(*this, connector, encoder, 
 								outputs_.size()));
                 }
 				else
@@ -169,7 +168,7 @@ KmsBackend::~KmsBackend()
 
 std::unique_ptr<SurfaceContext> KmsBackend::createSurfaceContext() const
 {
-	return nytl::make_unique<DefaultSurfaceContext>(*eglContext_);
+	return std::make_unique<DefaultSurfaceContext>(*eglContext_);
 }
 
 void KmsBackend::setCallbacks(TerminalHandler& handler)
@@ -231,7 +230,7 @@ KmsOutput::KmsOutput(KmsBackend& kms, drmModeConnector* c, drmModeEncoder* e, un
 		return;
 	}
 
-	drawContext_ = nytl::make_unique<ny::GlDrawContext>();
+	drawContext_ = std::make_unique<ny::GlDrawContext>();
 	if(!drawContext_)
 	{
 		throw std::runtime_error("KmsOutput::KmsOutput: failed to create ny::GlDC");

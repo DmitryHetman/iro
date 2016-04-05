@@ -18,14 +18,14 @@ void regionAdd(wl_client*, wl_resource* resource, int x, int y, int width, int h
 	RegionRes* rs = Resource::validateDisconnect<RegionRes>(resource, "regionAdd");
 	if(!rs) return;
 
-    rs->region().add(nytl::rect2i(x, y, width, height));
+    rs->region().add(nytl::Rect2i(x, y, width, height));
 }
 void regionSubtract(wl_client*, wl_resource* resource, int x, int y, int width, int height)
 {
 	RegionRes* rs = Resource::validateDisconnect<RegionRes>(resource, "regionSubtract");
 	if(!rs) return;
 
-    rs->region().subtract(nytl::rect2i(x, y, width, height));
+    rs->region().subtract(nytl::Rect2i(x, y, width, height));
 }
 
 const struct wl_region_interface regionImplementation

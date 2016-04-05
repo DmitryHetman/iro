@@ -15,10 +15,8 @@
 #include <iro/xwayland/xwm.hpp>
 
 #include <ny/base/log.hpp>
-#include <nytl/make_unique.hpp>
 #include <nytl/misc.hpp>
 #include <nytl/enumOps.hpp>
-using namespace nytl::enumOps;
 
 #include <wayland-server-core.h>
 
@@ -203,7 +201,7 @@ int main()
 	for(auto* outp : myBackend->outputs())
 		outp->onDraw(nytl::memberCallback(&iro::ShellModule::render, myShell));
 	
-	auto xwm = nytl::make_unique<iro::XWindowManager>(myCompositor, mySeat);
+	auto xwm = std::make_unique<iro::XWindowManager>(myCompositor, mySeat);
 
 	ny::sendLog("starting main loop");
 	//myCompositor.run(nytl::seconds(30));

@@ -9,7 +9,6 @@
 
 #include <protos/wayland-xdg-shell-server-protocol.h>
 
-#include <nytl/make_unique.hpp>
 #include <ny/base/log.hpp>
 
 namespace iro
@@ -75,7 +74,7 @@ void bindXdgShell(wl_client* client, void* data, unsigned int version, unsigned 
 	if(!xdgShell) return;
 
     auto& clnt = xdgShell->compositor().client(*client);
-	clnt.addResource(nytl::make_unique<XdgShellRes>(*xdgShell, *client, id, version));
+	clnt.addResource(std::make_unique<XdgShellRes>(*xdgShell, *client, id, version));
 }
 
 //XdgShell
@@ -90,19 +89,19 @@ XdgShell::XdgShell(Compositor& comp) : compositor_(&comp)
 
 void XdgShell::getXdgSurface(SurfaceRes& surf, unsigned int id, unsigned int version)
 {
-	auto xdgSurfaceRes = nytl::make_unique<XdgSurfaceRes>(surf, surf.wlClient(), id, version);
-	auto xdgSurfaceRole = nytl::make_unique<XdgSurfaceRole>(*xdgSurfaceRes);
+	auto xdgSurfaceRes = std::make_unique<XdgSurfaceRes>(surf, surf.wlClient(), id, version);
+	auto xdgSurfaceRole = std::make_unique<XdgSurfaceRole>(*xdgSurfaceRes);
 
 	surf.client().addResource(std::move(xdgSurfaceRes));
 	surf.role(std::move(xdgSurfaceRole));
 }
 
 void XdgShell::getXdgPopup(SurfaceRes& surface, unsigned int id, SurfaceRes& parent, SeatRes& seat,
-		unsigned int serial, const nytl::vec2i& position, unsigned int version)
+		unsigned int serial, const nytl::Vec2i& position, unsigned int version)
 {
 	ny::sendLog("xdgpopup");
-	auto xdgPopupRes = nytl::make_unique<XdgPopupRes>(surface, parent, id);
-	auto xdgPopupRole = nytl::make_unique<XdgPopupRole>(*xdgPopupRes);
+	auto xdgPopupRes = std::make_unique<XdgPopupRes>(surface, parent, id);
+	auto xdgPopupRole = std::make_unique<XdgPopupRole>(*xdgPopupRes);
 
 	surface.client().addResource(std::move(xdgPopupRes));
 	surface.role(std::move(xdgPopupRole));
@@ -116,7 +115,7 @@ XdgShellRes::XdgShellRes(XdgShell& shell, wl_client& client, unsigned int id, un
 
 unsigned int XdgShellRes::ping()
 {
-	auto& ev = compositor().event(nytl::make_unique<PingEvent>(), 1);
+	auto& ev = compositor().event(std::make_unique<PingEvent>(), 1);
 
     pingSerial_ = ev.serial;
 	pingTime_ = nytl::now();

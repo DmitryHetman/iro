@@ -10,13 +10,10 @@
 
 #include <protos/wayland-xdg-shell-server-protocol.h>
 
-#include <nytl/enumOps.hpp>
-using namespace nytl::enumOps;
 
 #include <wayland-server-protocol.h>
 
 #include <ny/base/log.hpp>
-#include <nytl/make_unique.hpp>
 
 namespace iro
 {
@@ -93,7 +90,7 @@ void xdgSurfaceSetWindowGeometry(wl_client*, wl_resource* resource, int32_t x, i
 	auto* xsurfRes = Resource::validateDisconnect<XdgSurfaceRes>(resource, "xdgSurfaceGeometry");
 	if(!xsurfRes) return;
 
-	xsurfRes->geometry(nytl::rect2i({x,y}, {width, height}));
+	xsurfRes->geometry({{x,y}, {width, height}});
 }
 void xdgSurfaceSetMaximized(wl_client* client, wl_resource* resource)
 {
@@ -181,13 +178,13 @@ void XdgSurfaceRes::xdgStates(wl_array& arr) const
 		wlArrayPush<uint32_t>(arr, XDG_SURFACE_STATE_RESIZING);
 }
 
-void XdgSurfaceRes::sendConfigure(const nytl::vec2ui& size) const
+void XdgSurfaceRes::sendConfigure(const nytl::Vec2ui& size) const
 {
 	wl_array states;
 	wl_array_init(&states);
 	xdgStates(states);
 
-	auto& ev = compositor().event(nytl::make_unique<XdgConfigureEvent>(), 1);
+	auto& ev = compositor().event(std::make_unique<XdgConfigureEvent>(), 1);
 	xdg_surface_send_configure(&wlResource(), size.x, size.y, &states, ev.serial);
 }
 

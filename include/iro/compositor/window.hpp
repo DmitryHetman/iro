@@ -5,6 +5,7 @@
 
 #include <nytl/vec.hpp>
 #include <nytl/rect.hpp>
+#include <nytl/enumOps.hpp>
 
 #include <string>
 
@@ -18,7 +19,7 @@ public:
 	void reset(){}; //nothing to do here
 
 public:
-	nytl::rect2i geometry_ = {0, 0, 0, 0};
+	nytl::Rect2i geometry_ = {0, 0, 0, 0};
 };
 
 ///Base class for all shell surface classes.
@@ -44,8 +45,8 @@ protected:
 	WindowState commited_ {};
 	State states_ = State::normal;
 
-	nytl::vec2i position_ {0, 0};
-	nytl::vec2ui normalSize_; //size when in normal state...
+	nytl::Vec2i position_ {0, 0};
+	nytl::Vec2ui normalSize_; //size when in normal state...
 
 	std::string title_;
 	std::string appID_;
@@ -57,22 +58,23 @@ protected:
 	{
 		struct { Output* output; } maximized_;
 		struct { Output* output; unsigned int method; } fullscreen_;
-		struct { SurfaceRes* parent_; nytl::vec2i position; unsigned int flags; } transient_;
-		struct { SurfaceRes* parent; nytl::vec2i position; unsigned int flags; Seat* seat; } popup_;
+		struct { SurfaceRes* parent_; nytl::Vec2i position; unsigned int flags; } transient_;
+		struct { SurfaceRes* parent; nytl::Vec2i position; unsigned int flags; Seat* seat; } popup_;
 	};
 
 protected:
-	virtual void move(const nytl::vec2i& delta);
-	virtual void resize(const nytl::vec2i& delta, unsigned int edges);
-	virtual void sendConfigure(const nytl::vec2ui& size) const;
+	virtual void move(const nytl::Vec2i& delta);
+	virtual void resize(const nytl::Vec2i& delta, unsigned int edges);
+	virtual void sendConfigure(const nytl::Vec2ui& size) const;
 	void normalState();
 
 public:
+	Window() {};
 	State states() const { return states_; }
 
-	nytl::rect2i geometry() const { return commited_.geometry_; }
-	nytl::vec2i position() const { return position_; }
-	nytl::vec2ui size() const { return geometry().size; }
+	nytl::Rect2i geometry() const { return commited_.geometry_; }
+	nytl::Vec2i position() const { return position_; }
+	nytl::Vec2ui size() const { return geometry().size; }
 
 	const std::string& title() const { return title_; }
 	const std::string& appID() const { return appID_; }
@@ -83,10 +85,10 @@ public:
 	void startMove(Seat& seat, unsigned int triggerSerial);
 	void startResize(Seat& seat, unsigned int triggerSerial, unsigned int edges);
 
-	void showWindowMenu(Seat& seat, const Event& trigger, const nytl::vec2i& position);
-	void showWindowMenu(Seat& seat, unsigned int triggerSerial, const nytl::vec2i& position);
+	void showWindowMenu(Seat& seat, const Event& trigger, const nytl::Vec2i& position);
+	void showWindowMenu(Seat& seat, unsigned int triggerSerial, const nytl::Vec2i& position);
 
-	void geometry(const nytl::rect2i& geo);
+	void geometry(const nytl::Rect2i& geo);
 
 	void title(const std::string& title){ title_ = title; }
 	void appID(const std::string& id){ appID_ = id; }
@@ -94,8 +96,8 @@ public:
 	virtual void setMaximized(Output& outp);
 	virtual void setFullscreen(Output& outp, unsigned int method);
 	virtual void setMinimized();
-	virtual void setTransient(SurfaceRes& parent, const nytl::vec2i& position, unsigned int flags);
-	virtual void setPopup(SurfaceRes& parent, const nytl::vec2i& pos, unsigned int flags, Seat&);
+	virtual void setTransient(SurfaceRes& parent, const nytl::Vec2i& position, unsigned int flags);
+	virtual void setPopup(SurfaceRes& parent, const nytl::Vec2i& pos, unsigned int flags, Seat&);
 	virtual void setNormal();
 
 	virtual bool mapped() const;
@@ -114,7 +116,7 @@ protected:
 public:
 	WindowSurfaceRole(Window& w) : window_(&w) {}
 
-    virtual nytl::vec2i position() const override { return window_->position(); }
+    virtual nytl::Vec2i position() const override { return window_->position(); }
     virtual bool mapped() const override { return window_->mapped(); }
     virtual void commit() override { window_->commit(); }
 
@@ -122,3 +124,5 @@ public:
 };
 
 }
+
+NYTL_ENABLE_ENUM_OPS(iro::Window::State)

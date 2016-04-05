@@ -50,8 +50,8 @@ public:
 	Compositor& compositor() const { return *compositor_; }
 	Seat& seat() const { return *seat_; }
 
-	X11Output& createOutput(const nytl::vec2i& position = {0, 0}, 
-			const nytl::vec2ui& size = {1400, 700});
+	X11Output& createOutput(const nytl::Vec2i& position = {0, 0}, 
+			const nytl::Vec2ui& size = {1400, 700});
 
 	virtual std::unique_ptr<SurfaceContext> createSurfaceContext() const override;
 	virtual WaylandEglContext* eglContext() const override { return eglContext_.get(); }
@@ -67,8 +67,8 @@ protected:
 	void* eglSurface_;
 
 public:
-    X11Output(X11Backend& backend, unsigned int id, const nytl::vec2i& pos, 
-			const nytl::vec2ui& size);
+    X11Output(X11Backend& backend, unsigned int id, const nytl::Vec2i& pos, 
+			const nytl::Vec2ui& size);
     virtual ~X11Output();
 
     xcb_window_t xWindow() const { return xWindow_; }

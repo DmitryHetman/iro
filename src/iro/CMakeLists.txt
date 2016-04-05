@@ -58,7 +58,6 @@ set(iro-src
 
 #iro
 add_library(iro SHARED ${iro-src})
-target_compile_features(iro PRIVATE cxx_range_for)
 
 target_include_directories(iro PUBLIC
 	${NYTL_INCLUDE_DIRS}

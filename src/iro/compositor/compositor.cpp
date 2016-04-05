@@ -7,7 +7,6 @@
 #include <iro/backend/backend.hpp>
 #include <iro/seat/event.hpp>
 
-#include <nytl/make_unique.hpp>
 #include <ny/base/log.hpp>
 
 #include <wayland-server-protocol.h>
@@ -38,12 +37,12 @@ namespace
 void compositorCreateSurface(wl_client* client, wl_resource*, unsigned int id)
 {
 	auto clnt = Client::findWarn(*client);
-	if(clnt) clnt->addResource(nytl::make_unique<SurfaceRes>(*client, id));
+	if(clnt) clnt->addResource(std::make_unique<SurfaceRes>(*client, id));
 }
 void compositorCreateRegion(wl_client* client, wl_resource*, unsigned int id)
 {
 	auto clnt = Client::findWarn(*client);
-    if(clnt) clnt->addResource(nytl::make_unique<RegionRes>(*client, id));
+    if(clnt) clnt->addResource(std::make_unique<RegionRes>(*client, id));
 }
 
 const struct wl_compositor_interface compositorImplementation =
@@ -58,7 +57,7 @@ void bindCompositor(wl_client* client, void* data, unsigned int version, unsigne
 	if(!comp) return;
 
     auto& clnt = comp->client(*client);
-	clnt.addResource(nytl::make_unique<CompositorRes>(*comp, *client, id, version));
+	clnt.addResource(std::make_unique<CompositorRes>(*comp, *client, id, version));
 }
 
 int signalIntHandler(int, void* data)
@@ -134,10 +133,10 @@ void Compositor::run()
 	wl_display_run(wlDisplay_);
 }
 
-void Compositor::run(const nytl::timeDuration& dur)
+void Compositor::run(const nytl::TimeDuration& dur)
 {
 	auto* exitSrc = wl_event_loop_add_timer(&wlEventLoop(), compExit, this);
-	wl_event_source_timer_update(exitSrc, dur.asMilliseconds());
+	wl_event_source_timer_update(exitSrc, dur.milliseconds());
 
 	run();
 }
@@ -157,7 +156,7 @@ Client& Compositor::client(wl_client& wlc)
 	auto cr = clientRegistered(wlc);
 	if(cr) return *cr;
 
-	auto c = nytl::make_unique<Client>(*this, wlc);
+	auto c = std::make_unique<Client>(*this, wlc);
 	auto& ret = *c;
 
 	clients_.push_back(std::move(c));
@@ -205,7 +204,7 @@ Event* Compositor::event(unsigned int serial) const
 
 unsigned int Compositor::time() const
 {
-	return timer_.getElapsedTime().asMilliseconds();
+	return timer_.elapsedTime().milliseconds();
 }
 
 }

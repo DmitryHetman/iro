@@ -4,7 +4,6 @@
 #include <iro/compositor/client.hpp>
 #include <iro/compositor/shellSurface.hpp>
 
-#include <nytl/make_unique.hpp>
 #include <ny/base/log.hpp>
 
 #include <wayland-server-core.h>
@@ -50,7 +49,7 @@ void bindShell(wl_client* client, void* data, unsigned int version, unsigned int
 	if(!shell) return;
 
     auto& clnt = shell->compositor().client(*client);
-	clnt.addResource(nytl::make_unique<ShellRes>(*shell, *client, id, version));
+	clnt.addResource(std::make_unique<ShellRes>(*shell, *client, id, version));
 }
 
 }
@@ -71,8 +70,8 @@ Shell::Shell(Compositor& comp) : compositor_(&comp)
 
 void Shell::getShellSurface(SurfaceRes& surface, unsigned int id)
 {
-	auto shellSurfaceRes = nytl::make_unique<ShellSurfaceRes>(surface, surface.wlClient(), id);
-	auto shellSurfaceRole = nytl::make_unique<ShellSurfaceRole>(*shellSurfaceRes);
+	auto shellSurfaceRes = std::make_unique<ShellSurfaceRes>(surface, surface.wlClient(), id);
+	auto shellSurfaceRole = std::make_unique<ShellSurfaceRole>(*shellSurfaceRes);
 
 	surface.client().addResource(std::move(shellSurfaceRes));
 	surface.role(std::move(shellSurfaceRole));

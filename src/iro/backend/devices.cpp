@@ -4,7 +4,6 @@
 #include <iro/compositor/compositor.hpp>
 
 #include <ny/base/log.hpp>
-#include <nytl/make_unique.hpp>
 
 #include <dbus/dbus.h>
 #include <sys/socket.h>
@@ -192,7 +191,7 @@ Device* DeviceHandler::takeDeviceDBus(const std::string& path, int flags)
     dbus_message_unref(reply);
     dbus_message_unref(msg);
 
-	auto dev = nytl::make_unique<Device>();
+	auto dev = std::make_unique<Device>();
 	dev->fd_ = fd;
 	dev->active_ = !paused;
 	dev->handler_ = this;
@@ -213,7 +212,7 @@ Device* DeviceHandler::takeDeviceNormal(const std::string& path, int flags)
 		return nullptr;
 	}
 
-	auto dev = nytl::make_unique<Device>();
+	auto dev = std::make_unique<Device>();
 	dev->path_ = path;
 	dev->handler_ = this;
 	dev->active_ = 1;

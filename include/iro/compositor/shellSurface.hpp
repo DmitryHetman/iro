@@ -20,7 +20,7 @@ protected:
 	SurfaceRes* surface_;
 
 	unsigned int pingSerial_ = 0;
-	nytl::timePoint pingTime_;
+	nytl::TimePoint pingTime_;
 
 	/*
 	union
@@ -60,7 +60,7 @@ public:
 	ShellSurfaceRes(SurfaceRes& surf, wl_client& client, unsigned int id);
 
 	bool activePing() const { return (pingSerial_ != 0); }
-	nytl::timeDuration pingTime() const { return nytl::now() - pingTime_; }
+	nytl::TimeDuration pingTime() const { return nytl::now() - pingTime_; }
 	unsigned int ping();
 	void pong(unsigned int);
 

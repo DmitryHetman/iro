@@ -28,7 +28,7 @@ public:
 };
 
 ///Responsible for creating and managing forks/exec child processes.
-class ForkHandler : public nytl::nonCopyable
+class ForkHandler : public nytl::NonCopyable
 {
 protected:
 	static int outputHandler(int, unsigned int, void*);

@@ -6,9 +6,9 @@
 #include <iro/compositor/callback.hpp>
 
 #include <nytl/vec.hpp>
-#include <nytl/region.hpp>
+#include <nytl/rectRegion.hpp>
 #include <nytl/rect.hpp>
-#include <nytl/watchable.hpp>
+#include <nytl/observe.hpp>
 
 #include <vector>
 #include <memory>
@@ -23,11 +23,11 @@ class SurfaceState
 public:
     void reset()
     {
-        opaque = nytl::region2i();
-        input = nytl::region2i();
-        damage = nytl::region2i();
-        offset = nytl::vec2i();
-        buffer.set(nullptr);
+        opaque = {}; 
+        input = {};
+        damage = {};
+        offset = {};
+        buffer.reset(nullptr);
         frameCallbacks.clear(); //todo ?
         scale = 1;
         transform = 0;
@@ -37,12 +37,12 @@ public:
     SurfaceState& operator=(const SurfaceState& other);
 
 public:
-	nytl::region2i opaque = nytl::region2i();
-	nytl::region2i input = nytl::region2i();
-	nytl::region2i damage = nytl::region2i();
-	nytl::vec2i offset = nytl::vec2i();
+	nytl::RectRegion2i opaque = {};
+	nytl::RectRegion2i input = {};
+	nytl::RectRegion2i damage = {};
+	nytl::Vec2i offset = {};
 
-    BufferRef buffer;
+    BufferPtr buffer;
     std::vector<CallbackRes*> frameCallbacks;
 
     int scale = 1;
@@ -71,7 +71,7 @@ class SurfaceRole
 {
 public:
     virtual unsigned roleType() const = 0;
-    virtual nytl::vec2i position() const = 0;
+    virtual nytl::Vec2i position() const = 0;
     virtual bool mapped() const = 0;
     virtual void commit() = 0;
 };
@@ -89,7 +89,7 @@ protected:
 
 	///All outputs this surface is currently mapped on.
     std::vector<Output*> mappedOutputs_; 
-	nytl::vec2ui bufferSize_;
+	nytl::Vec2ui bufferSize_;
 
     ///Backend and renderer specific context.
 	std::unique_ptr<SurfaceContext> surfaceContext_;
@@ -104,12 +104,12 @@ public:
 
 	//those funtions affect pending state
     void addFrameCallback(CallbackRes& cb);
-    void inputRegion(const nytl::region2i& input);
-	void opaqueRegion(const nytl::region2i& output);
+    void inputRegion(const nytl::RectRegion2i& input);
+	void opaqueRegion(const nytl::RectRegion2i& output);
  	void bufferScale(int scale);
 	void bufferTransform(unsigned int transform);
-    void attach(BufferRes& buff, const nytl::vec2i& pos);
-	void damage(const nytl::rect2i& dmg);
+    void attach(BufferRes& buff, const nytl::Vec2i& pos);
+	void damage(const nytl::Rect2i& dmg);
 
 	///Commits the pending surface state and makes it the current one.
     void commit();
@@ -118,9 +118,9 @@ public:
 	void remap();
 
 	//those functions inform about the current surface state
-    const nytl::region2i& inputRegion() const { return commited_.input; }
-    const nytl::region2i& opaqueRegion() const { return commited_.opaque; }
-    const nytl::region2i& damageRegion() const { return commited_.damage; }
+    const nytl::RectRegion2i& inputRegion() const { return commited_.input; }
+    const nytl::RectRegion2i& opaqueRegion() const { return commited_.opaque; }
+    const nytl::RectRegion2i& damageRegion() const { return commited_.damage; }
     int bufferScale() const { return commited_.scale; }
     unsigned int bufferTransform() const { return commited_.transform; }
     BufferRes* attachedBuffer() const { return commited_.buffer.get(); }
@@ -129,15 +129,15 @@ public:
     void sendFrameDone();
 
     SurfaceRole* role() const { return role_.get(); }
-	SurfaceRole& role(std::unique_ptr<SurfaceRole>&& role);
+	SurfaceRole& role(std::unique_ptr<SurfaceRole> role);
 	void clearRole();
     unsigned int roleType() const;
 
-	nytl::vec2i position() const;
-	nytl::vec2ui size() const;
-	nytl::rect2i extents() const;
+	nytl::Vec2i position() const;
+	nytl::Vec2ui size() const;
+	nytl::Rect2i extents() const;
 
-	SurfaceContext* surfaceContext() const { return surfaceContext_.get(); }
+	SurfaceContext& surfaceContext() const { return *surfaceContext_; }
 
     //resource
     virtual unsigned int type() const override { return resourceType::surface; }

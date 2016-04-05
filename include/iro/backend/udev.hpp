@@ -12,7 +12,7 @@ namespace iro
 
 ///Wrapper around udev. Responsible for detecting new hotplugged devices and needed for creating
 ///an inputHandler (libinput).
-class UDevHandler : public nytl::nonCopyable
+class UDevHandler : public nytl::NonCopyable
 {
 protected:
 	udev* udev_ = nullptr;

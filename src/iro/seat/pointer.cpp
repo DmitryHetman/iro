@@ -11,7 +11,6 @@
 #include <iro/backend/output.hpp>
 
 #include <ny/base/log.hpp>
-#include <nytl/make_unique.hpp>
 
 #include <wayland-server-protocol.h>
 
@@ -49,7 +48,7 @@ void pointerSetCursor(wl_client*, wl_resource* resource, unsigned int serial,
 		return;
 	}
 
-	ptr->pointer().cursor(*surf, nytl::vec2i(hx, hy));
+	ptr->pointer().cursor(*surf, {hx, hy});
 }
 
 void pointerRelease(wl_client*, wl_resource* resource)
@@ -93,13 +92,13 @@ void Pointer::setOver(SurfaceRes* newOne)
 		}
         else
         {
-            auto& ev = compositor().event(nytl::make_unique<PointerFocusEvent>(0, over_.get()), 1);
+            auto& ev = compositor().event(std::make_unique<PointerFocusEvent>(0, over_.get()), 1);
             wl_pointer_send_leave(&ptrRes->wlResource(), ev.serial, &over_->wlResource());
         }
     }
 
     SurfaceRes* old = over_.get();
-    over_.set(newOne);
+    over_.reset(newOne);
 
     //send enter
     if(newOne)
@@ -112,9 +111,9 @@ void Pointer::setOver(SurfaceRes* newOne)
 		}
         else
         {
-			nytl::vec2i pos = wlFixedPositionRelative(); 
+			nytl::Vec2i pos = wlFixedPositionRelative(); 
 
-			auto& ev = compositor().event(nytl::make_unique<PointerFocusEvent>(1, newOne), 1);
+			auto& ev = compositor().event(std::make_unique<PointerFocusEvent>(1, newOne), 1);
             wl_pointer_send_enter(&ptrRes->wlResource(), ev.serial, &newOne->wlResource(), 
 					pos.x, pos.y);
         }
@@ -124,12 +123,12 @@ void Pointer::setOver(SurfaceRes* newOne)
     focusCallback_(old, newOne);
 }
 
-void Pointer::sendMove(const nytl::vec2i& pos)
+void Pointer::sendMove(const nytl::Vec2i& pos)
 {
 	//todo
 	//redraw, position and stuff
-	auto cpos = nytl::clamp(pos, nytl::vec2i{0, 0}, nytl::vec2i{1920, 1080});
-	nytl::vec2i delta = cpos - position_;
+	auto cpos = nytl::clamp(pos, nytl::Vec2i{0, 0}, nytl::Vec2i{1920, 1080});
+	nytl::Vec2i delta = cpos - position_;
 	position_ = cpos;
 
 	if(!compositor().backend())
@@ -181,7 +180,7 @@ void Pointer::sendButton(unsigned int button, bool press)
 	//send button to client
 	if(activeResource())
 	{
-		auto& ev = compositor().event(nytl::make_unique<PointerButtonEvent>(press,
+		auto& ev = compositor().event(std::make_unique<PointerButtonEvent>(press,
 				button, &activeResource()->client()), 1);
 
 		wl_pointer_send_button(&activeResource()->wlResource(), ev.serial, compositor().time(), 
@@ -217,13 +216,13 @@ void Pointer::sendAxis(unsigned int axis, double value)
     axisCallback_(axis, value);
 }
 
-void Pointer::cursor(SurfaceRes& surf, const nytl::vec2i& hotspot)
+void Pointer::cursor(SurfaceRes& surf, const nytl::Vec2i& hotspot)
 {
     if(surf.roleType() != surfaceRoleType::cursor)
     {
 		if(surf.roleType() == surfaceRoleType::none)
 		{
-			surf.role(nytl::make_unique<CursorSurfaceRole>(*this, surf));
+			surf.role(std::make_unique<CursorSurfaceRole>(*this, surf));
 		}
 		else
 		{
@@ -235,25 +234,25 @@ void Pointer::cursor(SurfaceRes& surf, const nytl::vec2i& hotspot)
 	auto* crole = static_cast<CursorSurfaceRole*>(surf.role());
 	crole->hotspot(hotspot);
 
-    cursor_.set(&surf);
+    cursor_.reset(&surf);
 }
 
 void Pointer::resetCursor()
 {
-	cursor_.set(nullptr);
+	cursor_.reset(nullptr);
 }
 
-nytl::vec2i Pointer::wlFixedPosition() const
+nytl::Vec2i Pointer::wlFixedPosition() const
 {
-    return nytl::vec2i(wl_fixed_from_int(position_.x), wl_fixed_from_int(position_.y));
+    return nytl::Vec2i(wl_fixed_from_int(position_.x), wl_fixed_from_int(position_.y));
 }
 
-nytl::vec2i Pointer::wlFixedPositionRelative() const
+nytl::Vec2i Pointer::wlFixedPositionRelative() const
 {
-	if(!over_) return nytl::vec2i{};
+	if(!over_) return {};
 
 	auto pos = over_->position();
-	return wlFixedPosition() - nytl::vec2i(wl_fixed_from_int(pos.x), wl_fixed_from_int(pos.y));
+	return wlFixedPosition() - nytl::Vec2i(wl_fixed_from_int(pos.x), wl_fixed_from_int(pos.y));
 }
 
 PointerRes* Pointer::activeResource() const

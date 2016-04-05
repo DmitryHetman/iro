@@ -14,7 +14,7 @@ namespace iro
 {
 
 ///Responsible for setting up a x11 window manager and dealing with x11 clients.
-class XWindowManager : public nytl::nonCopyable
+class XWindowManager : public nytl::NonCopyable
 {
 protected:
 	Compositor* compositor_ = nullptr;
@@ -33,7 +33,7 @@ protected:
 	int wlSocks[2] = {-1, -1};
 	int xSocks[2] = {-1, -1};
 
-	nytl::timePoint xwaylandStarted_;
+	nytl::TimePoint xwaylandStarted_;
 
 	xcb_connection_t* xConnection_ = nullptr;
 	xcb_screen_t* xScreen_ = nullptr;

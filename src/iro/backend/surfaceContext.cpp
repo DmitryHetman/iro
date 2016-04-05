@@ -22,7 +22,7 @@ DefaultSurfaceContext::~DefaultSurfaceContext()
 {
 }
 
-bool DefaultSurfaceContext::attachShmBuffer(wl_shm_buffer& shmBuffer, nytl::vec2ui& size)
+bool DefaultSurfaceContext::attachShmBuffer(wl_shm_buffer& shmBuffer, nytl::Vec2ui& size)
 {
 	//todo: correct format and stuff...
     //unsigned int format = wl_shm_buffer_get_format(&shmBuffer);
@@ -55,7 +55,7 @@ bool DefaultSurfaceContext::attachShmBuffer(wl_shm_buffer& shmBuffer, nytl::vec2
 	return 1;
 }
 
-bool DefaultSurfaceContext::attachEglBuffer(wl_resource& eglBuffer, nytl::vec2ui& size)
+bool DefaultSurfaceContext::attachEglBuffer(wl_resource& eglBuffer, nytl::Vec2ui& size)
 {
 	eglContext_->makeCurrent();
     size.x = eglContext_->queryWlBuffer(eglBuffer, EGL_WIDTH);
@@ -103,7 +103,7 @@ bool DefaultSurfaceContext::attachEglBuffer(wl_resource& eglBuffer, nytl::vec2ui
 	return 1;
 }
 
-bool DefaultSurfaceContext::attachBuffer(BufferRes& buf, nytl::vec2ui& size)
+bool DefaultSurfaceContext::attachBuffer(BufferRes& buf, nytl::Vec2ui& size)
 {
     wl_resource& res = buf.wlResource();
 

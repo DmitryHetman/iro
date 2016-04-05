@@ -7,7 +7,7 @@ namespace iro
 {
 
 ///The Global class represents a wl_global. 
-class Global : public nytl::nonCopyable
+class Global : public nytl::NonCopyable
 {
 protected:
     wl_global* wlGlobal_;

@@ -14,13 +14,13 @@ namespace iro
 
 ///The Device class represents a socket to a phyical or virtual device.
 ///It is created an managed by a DeviceManager object.
-class Device : public nytl::nonCopyable
+class Device : public nytl::NonCopyable
 {
 protected:
 	friend class DeviceHandler;
 
-	nytl::callback<void(const Device&)> pauseCallback_;
-	nytl::callback<void(const Device&)> resumeCallback_;
+	nytl::Callback<void(const Device&)> pauseCallback_;
+	nytl::Callback<void(const Device&)> resumeCallback_;
 
     std::string path_;
     int fd_;
@@ -46,11 +46,11 @@ public:
 
 	///Registers a callback for a function that should be called when the device gets paused.
 	///The signature of the given function must be compatible to void(const Device&)
-    template<typename F> nytl::connection onPause(F&& fnc){ return pauseCallback_.add(fnc); }
+    template<typename F> nytl::Connection onPause(F&& fnc){ return pauseCallback_.add(fnc); }
 
 	///Registers a callback for a function that should be called when the device gets resumed.
 	///The signature of the given function must be compatible to void(const Device&)
-    template<typename F> nytl::connection onResume(F&& fnc){ return resumeCallback_.add(fnc); }
+    template<typename F> nytl::Connection onResume(F&& fnc){ return resumeCallback_.add(fnc); }
 };
 
 //TODO: it does make more sense to write devicehandler as an interface and provide implementations
@@ -59,7 +59,7 @@ public:
 ///The DeviceHandler class manages devices. It can either make use of the root rights of the
 ///application by creating a fork and then using it for device creation/destruction or
 ///it can open/close devices over the logind/dbus interface.
-class DeviceHandler : public nytl::nonCopyable
+class DeviceHandler : public nytl::NonCopyable
 {
 protected:
 	std::vector<std::unique_ptr<Device>> devices_;

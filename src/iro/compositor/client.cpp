@@ -3,7 +3,6 @@
 #include <iro/seat/seat.hpp>
 
 #include <ny/base/log.hpp>
-#include <nytl/make_unique.hpp>
 
 #include <wayland-server-core.h>
 
@@ -67,7 +66,7 @@ Client::Client(Compositor& comp, wl_client& wlc) : wlClient_(&wlc), compositor_(
 {
 	ny::sendLog("creating client ", this, " for wl_client ", &wlc);
 
-	listener_ = nytl::make_unique<listenerPOD>();
+	listener_ = std::make_unique<listenerPOD>();
 	listener_->listener.notify = clientDestroyListener; 
 	listener_->client = this;
 

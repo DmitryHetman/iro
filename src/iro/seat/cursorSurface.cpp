@@ -4,7 +4,7 @@
 namespace iro
 {
 
-nytl::vec2i CursorSurfaceRole::position() const
+nytl::Vec2i CursorSurfaceRole::position() const
 {
 	return pointer_->position() - hotspot_;
 }

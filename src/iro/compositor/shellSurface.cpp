@@ -7,7 +7,6 @@
 #include <iro/seat/event.hpp>
 
 #include <ny/base/log.hpp>
-#include <nytl/make_unique.hpp>
 
 #include <wayland-server-core.h>
 #include <wayland-server-protocol.h>
@@ -130,7 +129,7 @@ ShellSurfaceRes::ShellSurfaceRes(SurfaceRes& surf, wl_client& client, unsigned i
 
 unsigned int ShellSurfaceRes::ping()
 {
-	auto& ev = compositor().event(nytl::make_unique<PingEvent>(), 1);
+	auto& ev = compositor().event(std::make_unique<PingEvent>(), 1);
 
     pingSerial_ = ev.serial;
 	pingTime_ = nytl::now();

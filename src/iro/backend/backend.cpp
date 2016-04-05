@@ -12,7 +12,7 @@ Backend::~Backend()
 	outputs_.clear(); 
 }
 
-Output* Backend::outputAt(const nytl::vec2i& pos) const
+Output* Backend::outputAt(const nytl::Vec2i& pos) const
 {
 	for(auto& o : outputs_)
 	{
@@ -23,7 +23,7 @@ Output* Backend::outputAt(const nytl::vec2i& pos) const
 	return nullptr;
 }
 
-std::vector<Output*> Backend::outputsAt(const nytl::rect2i& area) const
+std::vector<Output*> Backend::outputsAt(const nytl::Rect2i& area) const
 {
 	std::vector<Output*> ret;
 	for(auto& o : outputs_)
@@ -44,7 +44,7 @@ std::vector<Output*> Backend::outputs() const
 	return ret;
 }
 
-std::vector<Output*> Backend::outputsAt(const nytl::region2i& area) const
+std::vector<Output*> Backend::outputsAt(const nytl::RectRegion2i& area) const
 {
 	std::vector<Output*> ret;
 	for(auto& o : outputs_)

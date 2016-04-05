@@ -8,7 +8,6 @@
 #include <iro/util/os.hpp>
 
 #include <ny/base/log.hpp>
-#include <nytl/make_unique.hpp>
 
 #include <wayland-server-protocol.h>
 
@@ -195,7 +194,7 @@ void Keyboard::updateModifiers()
 
 	if(activeResource())
 	{
-		auto& ev = compositor().event(nytl::make_unique<KeyboardModsEvent>(), 1);
+		auto& ev = compositor().event(std::make_unique<KeyboardModsEvent>(), 1);
 		wl_keyboard_send_modifiers(&activeResource()->wlResource(), ev.serial, 
 			depressed, latched, locked, group);
 	}
@@ -248,7 +247,7 @@ void Keyboard::sendKey(unsigned int key, bool press)
 	//send key to client
     if(activeResource())
 	{
-		auto& ev = compositor().event(nytl::make_unique<KeyboardKeyEvent>(press, 
+		auto& ev = compositor().event(std::make_unique<KeyboardKeyEvent>(press, 
 					key, &activeResource()->client()), 1);
 		wl_keyboard_send_key(&activeResource()->wlResource(), ev.serial, 
 			compositor().time(), key, press);
@@ -278,17 +277,17 @@ void Keyboard::sendFocus(SurfaceRes* newFocus)
 {
     if(activeResource())
     {
-        auto& ev = compositor().event(nytl::make_unique<KeyboardFocusEvent>(0, focus_.get(), 
+        auto& ev = compositor().event(std::make_unique<KeyboardFocusEvent>(0, focus_.get(), 
 				&focus_->client()), 1);
         wl_keyboard_send_leave(&activeResource()->wlResource(), ev.serial, &focus_->wlResource());
     }
 
 	SurfaceRes* old = focus_.get();
-    focus_.set(newFocus);
+    focus_.reset(newFocus);
 
     if(activeResource())
     {
-        auto& ev = compositor().event(nytl::make_unique<KeyboardFocusEvent>(1, focus_.get(), 
+        auto& ev = compositor().event(std::make_unique<KeyboardFocusEvent>(1, focus_.get(), 
 				&focus_->client()), 1);
 
 		wl_array keys;

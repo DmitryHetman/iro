@@ -5,8 +5,6 @@
 #include <iro/compositor/surface.hpp>
 
 #include <ny/draw/drawContext.hpp>
-
-#include <nytl/make_unique.hpp>
 #include <ny/base/log.hpp>
 
 #include <wayland-server-protocol.h>
@@ -28,7 +26,7 @@ void bindOutput(wl_client* client, void* data, unsigned int version, unsigned in
 	}
 
 	auto& c = out->compositor().client(*client);
-	auto outres = nytl::make_unique<OutputRes>(*out, *client, id, version);
+	auto outres = std::make_unique<OutputRes>(*out, *client, id, version);
 	out->sendInformation(*outres);
 
 	c.addResource(std::move(outres));
@@ -48,9 +46,8 @@ int outputRedraw(void* data)
 }
 
 //output implementation
-Output::Output(Compositor& comp, unsigned int id, const nytl::vec2i& position, 
-		const nytl::vec2ui& size) 
-	: id_(id), position_(position), size_(size), compositor_(&comp)
+Output::Output(Compositor& comp, unsigned int id, const nytl::Vec2i& position, 
+		const nytl::Vec2ui& size) : id_(id), position_(position), size_(size), compositor_(&comp)
 {
     wlGlobal_ = wl_global_create(&comp.wlDisplay(), &wl_output_interface, 2, this, bindOutput);
     redrawEventSource_ = wl_event_loop_add_timer(&comp.wlEventLoop(), outputRedraw, this);
@@ -71,7 +68,7 @@ void Output::redraw()
 
 void Output::scheduleRepaint()
 {
-	static const unsigned int maxFPS = 60; //todo: general?
+	//static const unsigned int maxFPS = 60; //todo: general?
 	if(!repaintScheduled_)
 	{
 		//int time = (1000 / maxFPS) - lastRedraw_.getElapsedTime().asMilliseconds();
@@ -113,7 +110,7 @@ bool Output::unmapSurface(SurfaceRes& surf)
 	return 0;
 }
 
-SurfaceRes* Output::surfaceAt(const nytl::vec2i& pos) const
+SurfaceRes* Output::surfaceAt(const nytl::Vec2i& pos) const
 {
     for(auto& res : mappedSurfaces_)
     {
@@ -125,19 +122,19 @@ SurfaceRes* Output::surfaceAt(const nytl::vec2i& pos) const
     return nullptr;
 }
 
-const nytl::vec2i& Output::position() const
+const nytl::Vec2i& Output::position() const
 {
     return position_;
 }
 
-const nytl::vec2ui& Output::size() const
+const nytl::Vec2ui& Output::size() const
 {
     return size_;
 }
 
-nytl::rect2i Output::extents() const
+nytl::Rect2i Output::extents() const
 {
-    return nytl::rect2i(position(), size());
+    return {position(), size()};
 }
 
 }

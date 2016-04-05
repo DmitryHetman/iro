@@ -14,7 +14,7 @@ namespace iro
 ///The Client class basically just holds a list of owned resources and the corresponding 
 ///wl_client pointer. When the client is disconnected, all resources are automatically 
 ///deleted (and destroyed by the wayland side).
-class Client : public nytl::nonCopyable
+class Client : public nytl::NonCopyable
 {
 public:
 	struct listenerPOD;
@@ -32,7 +32,7 @@ protected:
     wl_client* wlClient_;
 	Compositor* compositor_;
 	std::unique_ptr<listenerPOD> listener_;
-	nytl::callback<void(Client&)> destructionCallback_;
+	nytl::Callback<void(Client&)> destructionCallback_;
 
     std::vector<std::unique_ptr<Resource>> resources_;
 
@@ -80,7 +80,7 @@ public:
 	///Notice that the destruction of this client object does not autmatically mean
 	///a destructino of the wl_client object. The callback function must have a signature
 	///compatible to void(client&)
-	template<typename F> nytl::connection onDestruction(F&& f)
+	template<typename F> nytl::Connection onDestruction(F&& f)
 		{ return destructionCallback_.add(f); }
 
     ///Returns the number of resources this client holds.

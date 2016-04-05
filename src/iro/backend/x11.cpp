@@ -11,7 +11,6 @@
 #include <ny/draw/gl/drawContext.hpp>
 
 #include <ny/base/log.hpp>
-#include <nytl/make_unique.hpp>
 
 #include <wayland-server-core.h>
 #include <wayland-server-protocol.h>
@@ -127,7 +126,7 @@ X11Backend::X11Backend(Compositor& comp, Seat& seat)
     wl_event_source_check(inputEventSource_);
 
 	//eglContext
-	eglContext_ = nytl::make_unique<WaylandEglContext>(xDisplay_);
+	eglContext_ = std::make_unique<WaylandEglContext>(xDisplay_);
 	if(!eglContext_)
 	{
         throw std::runtime_error("x11Backend::x11Backend: failed to create EglContext");
@@ -219,12 +218,12 @@ void X11Backend::xkbSetup()
 
 std::unique_ptr<SurfaceContext> X11Backend::createSurfaceContext() const
 {
-	return nytl::make_unique<DefaultSurfaceContext>(*eglContext());
+	return std::make_unique<DefaultSurfaceContext>(*eglContext());
 }
 
-X11Output& X11Backend::createOutput(const nytl::vec2i& position, const nytl::vec2ui& size)
+X11Output& X11Backend::createOutput(const nytl::Vec2i& position, const nytl::Vec2ui& size)
 {
-	auto outp = nytl::make_unique<X11Output>(*this, outputs_.size() + 1, position, size);
+	auto outp = std::make_unique<X11Output>(*this, outputs_.size() + 1, position, size);
 	auto& ret = *outp;
 
 	addOutput(std::move(outp));
@@ -302,7 +301,7 @@ int X11Backend::eventLoop()
 				if(!seat().pointer()) break;
 
                 xcb_motion_notify_event_t* ev = (xcb_motion_notify_event_t*) event;
-                seat().pointer()->sendMove(nytl::vec2i(ev->event_x, ev->event_y));
+                seat().pointer()->sendMove({ev->event_x, ev->event_y});
                 break;
             }
             case XCB_KEY_PRESS:
@@ -377,8 +376,8 @@ X11Output* X11Backend::outputForWindow(const xcb_window_t& win)
 
 
 //Output
-X11Output::X11Output(X11Backend& backend, unsigned int id, const nytl::vec2i& pos, 
-		const nytl::vec2ui& size) : Output(backend.compositor(), id, pos, size), backend_(&backend)
+X11Output::X11Output(X11Backend& backend, unsigned int id, const nytl::Vec2i& pos, 
+		const nytl::Vec2ui& size) : Output(backend.compositor(), id, pos, size), backend_(&backend)
 {
     xcb_connection_t* connection = backend.xConnection();
     xcb_screen_t* screen = backend.xScreen();
@@ -442,7 +441,7 @@ X11Output::X11Output(X11Backend& backend, unsigned int id, const nytl::vec2i& po
 		return;
 	}
 
-	drawContext_ = nytl::make_unique<ny::GlDrawContext>();
+	drawContext_ = std::make_unique<ny::GlDrawContext>();
 	if(!drawContext_)
 	{
 		throw std::runtime_error("x11Output::x11Output: failed to create ny::GlesDC");

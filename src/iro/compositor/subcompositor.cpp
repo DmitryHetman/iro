@@ -5,7 +5,6 @@
 #include <iro/compositor/compositor.hpp>
 #include <iro/compositor/subsurface.hpp>
 
-#include <nytl/make_unique.hpp>
 #include <ny/base/log.hpp>
 
 #include <wayland-server-protocol.h>
@@ -48,8 +47,8 @@ void subcompositorGetSubsurface(wl_client* client, wl_resource* resource,
 		return;
 	}
 
-	auto subres = nytl::make_unique<SubsurfaceRes>(*surf, *client, id, *parentSurf);
-	surf->role(nytl::make_unique<SubsurfaceRole>(*subres));
+	auto subres = std::make_unique<SubsurfaceRes>(*surf, *client, id, *parentSurf);
+	surf->role(std::make_unique<SubsurfaceRole>(*subres));
 	surf->client().addResource(std::move(subres));
 }
 const struct wl_subcompositor_interface subcompositorImplementation =
@@ -67,7 +66,7 @@ void bindSubcompositor(wl_client* client, void* data, unsigned int version, unsi
 	}
 
 	auto& clnt = subcomp->compositor().client(*client);
-	auto scRes = nytl::make_unique<SubcompositorRes>(*client, id, version);
+	auto scRes = std::make_unique<SubcompositorRes>(*client, id, version);
 	clnt.addResource(std::move(scRes));
 }
 

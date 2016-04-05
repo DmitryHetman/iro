@@ -22,7 +22,7 @@ public:
 
 	virtual void getXdgSurface(SurfaceRes& surface, unsigned int id, unsigned int version);
 	virtual void getXdgPopup(SurfaceRes& surface, unsigned int id, SurfaceRes& parent, 
-			SeatRes& seat, unsigned int serial, const nytl::vec2i& position, unsigned int version);
+		SeatRes& seat, unsigned int serial, const nytl::Vec2i& position, unsigned int version);
 
 	Compositor& compositor() const { return *compositor_; }
 };
@@ -34,7 +34,7 @@ protected:
 	XdgShell* xdgShell_;
 
 	unsigned int pingSerial_ = -1;
-	nytl::timePoint pingTime_;
+	nytl::TimePoint pingTime_;
 
 public:
 	XdgShellRes(XdgShell& shell, wl_client& client, unsigned int id, unsigned int v);
@@ -45,7 +45,7 @@ public:
 	void pong(unsigned int serial);
 
 	bool activePing() const { return (pingSerial_ != 0); }
-	nytl::timeDuration pingTime() const { return nytl::now() - pingTime_; }
+	nytl::TimeDuration pingTime() const { return nytl::now() - pingTime_; }
 };
 
 }

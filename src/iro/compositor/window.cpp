@@ -8,9 +8,6 @@
 
 #include <ny/base/log.hpp>
 
-#include <nytl/enumOps.hpp>
-using namespace nytl::enumOps;
-
 #include <wayland-server-protocol.h>
 
 //todo: events move/resize
@@ -29,7 +26,7 @@ void Window::startMove(Seat& seat, const Event& trigger)
 
 	Pointer::Grab grab;
 	grab.exclusive = 1;
-	grab.moveFunction = [=](const nytl::vec2i&, const nytl::vec2i& delta)
+	grab.moveFunction = [=](const nytl::Vec2i&, const nytl::Vec2i& delta)
 			{
 				this->move(delta);	
 			};
@@ -65,7 +62,7 @@ void Window::startResize(Seat& seat, const Event& trigger, unsigned int edges)
 
 	Pointer::Grab grab;
 	grab.exclusive = 1;
-	grab.moveFunction = [=](const nytl::vec2i&, const nytl::vec2i& delta)
+	grab.moveFunction = [=](const nytl::Vec2i&, const nytl::Vec2i& delta)
 			{
 				this->resize(delta, edges);	
 			};
@@ -115,12 +112,12 @@ void Window::startResize(Seat& seat, unsigned int triggerSerial, unsigned int ed
 	startResize(seat, *ev, edges);
 }
 
-void Window::move(const nytl::vec2i& delta)
+void Window::move(const nytl::Vec2i& delta)
 {
 	position_ += delta;
 }
 
-void Window::resize(const nytl::vec2i& delta, unsigned int edges)
+void Window::resize(const nytl::Vec2i& delta, unsigned int edges)
 {
 	if(edges & WL_SHELL_SURFACE_RESIZE_LEFT)
 	{
@@ -144,11 +141,11 @@ void Window::resize(const nytl::vec2i& delta, unsigned int edges)
 	sendConfigure(pending_.geometry_.size);
 }
 
-void Window::showWindowMenu(Seat& seat, const Event& trigger, const nytl::vec2i& position)
+void Window::showWindowMenu(Seat& seat, const Event& trigger, const nytl::Vec2i& position)
 {
 }
 
-void Window::showWindowMenu(Seat& seat, unsigned int triggerSerial, const nytl::vec2i& position)
+void Window::showWindowMenu(Seat& seat, unsigned int triggerSerial, const nytl::Vec2i& position)
 {
 	auto* ev = seat.compositor().event(triggerSerial);
 	if(!ev)
@@ -171,7 +168,7 @@ void Window::commit()
 	commited_ = pending_;
 }
 
-void Window::geometry(const nytl::rect2i& geo)
+void Window::geometry(const nytl::Rect2i& geo)
 {
 	pending_.geometry_ = geo;
 }
@@ -205,12 +202,12 @@ void Window::setMinimized()
 
 
 }
-void Window::setTransient(SurfaceRes& parent, const nytl::vec2i& position, unsigned int flags)
+void Window::setTransient(SurfaceRes& parent, const nytl::Vec2i& position, unsigned int flags)
 {
 	normalState();
 	states_ |= State::transient;
 }
-void Window::setPopup(SurfaceRes& parent, const nytl::vec2i& pos, unsigned int flags, Seat& seat)
+void Window::setPopup(SurfaceRes& parent, const nytl::Vec2i& pos, unsigned int flags, Seat& seat)
 {
 	normalState();
 	states_ |= State::popup;
@@ -223,7 +220,7 @@ void Window::setNormal()
 	sendConfigure(normalSize_);
 }
 
-void Window::sendConfigure(const nytl::vec2ui&) const
+void Window::sendConfigure(const nytl::Vec2ui&) const
 {
 }
 

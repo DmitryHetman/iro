@@ -22,7 +22,7 @@ protected:
     std::unique_ptr<Touch> touch_;
 
 public:
-    Seat(Compositor& comp, const nytl::vec3b& capas = {1, 1, 1});
+    Seat(Compositor& comp, const nytl::Vec3b& capas = {1, 1, 1});
 	~Seat();
 
 	const std::string& name() const { return name_; }

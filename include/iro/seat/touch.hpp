@@ -6,13 +6,13 @@
 #include <nytl/nonCopyable.hpp>
 #include <nytl/vec.hpp>
 #include <nytl/callback.hpp>
-#include <nytl/watchable.hpp>
+#include <nytl/observe.hpp>
 
 namespace iro
 {
 
 ///Represents a physical touch device.
-class Touch : public nytl::nonCopyable
+class Touch : public nytl::NonCopyable
 {
 };
 

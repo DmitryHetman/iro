@@ -25,7 +25,7 @@ protected:
 public:
 	XdgPopupRole(XdgPopupRes& popup) : xdgPopupRes_(&popup) {}
 
-	virtual nytl::vec2i position() const override { return {}; }
+	virtual nytl::Vec2i position() const override { return {}; }
 	virtual void commit() override {}
 	virtual bool mapped() const override { return 1; }
 	virtual unsigned int roleType() const override { return surfaceRoleType::xdgPopup; }

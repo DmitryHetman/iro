@@ -20,7 +20,7 @@ class Compositor : public Global
 protected:
     wl_display* wlDisplay_ = nullptr;
     std::vector<std::unique_ptr<Client>> clients_;
-	nytl::timer timer_;
+	nytl::Timer timer_;
     std::vector<std::unique_ptr<Event>> eventList_; 
 
 	Backend* backend_ {nullptr};
@@ -36,7 +36,7 @@ public:
     void run();
 
     ///Runs the wayland display for the given amount of time.
-    void run(const nytl::timeDuration& time);
+    void run(const nytl::TimeDuration& time);
 
 	///terminates the display event loop
 	void exit();

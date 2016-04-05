@@ -15,7 +15,7 @@ namespace iro
 {
 
 ///Manages the session with logind.
-class LogindHandler : public nytl::nonCopyable
+class LogindHandler : public nytl::NonCopyable
 {
 protected:
 	DBusHandler* dbus_ = nullptr;
@@ -23,7 +23,7 @@ protected:
 	std::string sessionPath_;
 
 	DBusPendingCall* dbusPendingActive_ = nullptr;
-	nytl::callback<void(bool)> activeCallback_;
+	nytl::Callback<void(bool)> activeCallback_;
 
 	void dbusSessionRemoved(DBusMessage* msg);
 
@@ -39,7 +39,7 @@ public:
 	DBusHandler& dbusHandler() const { return *dbus_; };
 	Compositor& compositor() const;
 
-	template<typename F> nytl::connection onActive(F&& f){ return activeCallback_.add(f); }
+	template<typename F> nytl::Connection onActive(F&& f){ return activeCallback_.add(f); }
 
 	const std::string& sessionPath() const { return sessionPath_; }
 	const std::string& session() const { return session_; }

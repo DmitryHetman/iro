@@ -18,7 +18,7 @@ void subsurfaceSetPosition(wl_client*, wl_resource* resource, int x, int y)
 	SubsurfaceRes* ssurf = Resource::validateDisconnect<SubsurfaceRes>(resource, "subsurfpos");
 	if(!ssurf) return;
 
-    ssurf->position(nytl::vec2ui(x,y));
+    ssurf->position({x,y});
 }
 void subsurfacePlaceAbove(wl_client* client, wl_resource* resource, wl_resource* sibling)
 {
@@ -52,35 +52,46 @@ const struct wl_subsurface_interface subsurfaceImplementation =
     &subsurfaceSetDesync
 };
 
-/////////////////////////////7
+//SubsurfaceResObserver
+void SubsurfaceRes::SurfaceObserver::obsDestruction(nytl::Observable& surface)
+{
+	if(static_cast<SurfaceRes*>(&surface) == subsurface_->surface_)
+	{
+		subsurface_->surface_ = nullptr;
+	}
+	else if(static_cast<SurfaceRes*>(&surface) == subsurface_->parent_)
+	{
+		subsurface_->parent_ = nullptr;
+		//need something like this in surface since it gets unmapped without a commit
+		//if(surface_) surface->updateMap();
+	}
+};
+
+//SubsurfaceRes
 SubsurfaceRes::SubsurfaceRes(SurfaceRes& surf, wl_client& client, unsigned int id, 
 	SurfaceRes& parent) : Resource(client, id, &wl_subsurface_interface, &subsurfaceImplementation),
 	surface_(&surf), parent_(&parent)
 {
 	//listen to surface destruction
-	surfaceDestructionConnection_ = surf.onDestruction([=]
-		{
-			surface_ = nullptr;
-			surfaceDestructionConnection_.destroy();		
-		});
+	surfaceObserver_.subsurface_ = this;
+	parentObserver_.subsurface_ = this;
 
-	//listen to parent destruction
-	parentDestructionConnection_ = parent.onDestruction([=]
-		{
-			parent_ = nullptr;
-			parentDestructionConnection_.destroy();		
-
-			//need something like this in surface since it gets unmapped without a commit
-			//if(surface_) surface->updateMap();
-		});
+	surface_->addObserver(surfaceObserver_);
+	parent_->addObserver(parentObserver_);
 }
 
 SubsurfaceRes::~SubsurfaceRes()
 {
-	if(surface()) surface()->clearRole();
+	if(surface())
+	{
+		surface()->clearRole();
+		surface()->removeObserver(surfaceObserver_);
+	}
 
-	surfaceDestructionConnection_.destroy();	
-	parentDestructionConnection_.destroy();	
+	if(parent())
+	{
+		parent()->removeObserver(parentObserver_);
+	}
 }
 
 void SubsurfaceRes::commit()

@@ -18,7 +18,7 @@ protected:
 	SurfaceRes* surface_;
 
 protected:
-	virtual void sendConfigure(const nytl::vec2ui& size) const override;
+	virtual void sendConfigure(const nytl::Vec2ui& size) const override;
 	void xdgStates(wl_array& states) const;
 
 public:

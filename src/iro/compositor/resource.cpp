@@ -3,7 +3,6 @@
 #include <iro/compositor/compositor.hpp>
 
 #include <ny/base/log.hpp>
-#include <nytl/make_unique.hpp>
 
 #include <wayland-server-core.h>
 #include <wayland-server-protocol.h>
@@ -72,7 +71,7 @@ void Resource::invalidObjectDisconnect(wl_resource& res, const std::string& info
 //resource implementation
 Resource::Resource(wl_resource& res) : wlResource_(&res), listener_(nullptr)
 {
-	listener_ = nytl::make_unique<listenerPOD>();
+	listener_ = std::make_unique<listenerPOD>();
 
 	listener_->listener.notify = resourceDestroyListener;
 	listener_->resource = this;
@@ -120,7 +119,7 @@ void Resource::create(wl_client& client, unsigned int id, const wl_interface* in
 
     wl_resource_set_implementation(wlResource_, implementation, this, nullptr);
 
-	listener_ = nytl::make_unique<listenerPOD>();
+	listener_ = std::make_unique<listenerPOD>();
 	listener_->listener.notify = resourceDestroyListener;
 	listener_->resource = this;
 
