@@ -203,7 +203,7 @@ void Keyboard::updateModifiers()
 	leds_ = static_cast<Led>(ledMask());
 }
 
-void Keyboard::sendKey(unsigned int key, bool press)
+void Keyboard::sendKey(unsigned int key, bool press, bool repeat)
 {
 	auto keycode = key + 8;
 	char buffer[6];
@@ -214,16 +214,15 @@ void Keyboard::sendKey(unsigned int key, bool press)
 		" \n\tfocused surface: ", focus_, "\n\tactive keyboard res: ", activeResource());
 	xkb_state_update_key(keymap_.state, keycode, press ? XKB_KEY_DOWN : XKB_KEY_UP);
 
-	bool previous = keys_[key];
-	if(previous == press) return; //repeat event from backend. Not processed further
-		
-	if(!press && key == repeat_.key) resetRepeat();
+	//bool previous = keys_[key];
+	//if(!repeat && previous == press) return; //repeat event from backend. Not processed further
+	//if(!press && key == repeat_.key) resetRepeat();
 
 	keys_[key] = press;
 	updateModifiers();
 
 	//check/init repeat
-	if(press && xkb_keymap_key_repeats(keymap_.xkb, key + 8)) beginRepeat(key);
+	//if(press && xkb_keymap_key_repeats(keymap_.xkb, keycode)) beginRepeat(key);
 
 	//check grab
 	if(grabbed_)
@@ -300,27 +299,26 @@ void Keyboard::sendFocus(SurfaceRes* newFocus)
 
 void Keyboard::beginRepeat(unsigned int key)
 {
-	unsigned int delay = repeat_.repeating ? repeat_.rate : repeat_.delay;
-	wl_event_source_timer_update(repeat_.timer, delay);
+	if(key == repeat_.key) return;
 
-	repeat_.repeat = true;
-	repeat_.focused = false;
+	wl_event_source_timer_update(repeat_.timer, repeat_.delay);
+	repeat_.key = key;
 }
 
 void Keyboard::resetRepeat()
 {
-	if(!repeat_.repeat) return;
+	if(!repeat_.key) return;
 
-	repeat_.repeating = repeat_.focused = repeat_.repeat = false;
+	repeat_.key = 0;
 	wl_event_source_timer_update(repeat_.timer, 0);
 }
 
 void Keyboard::repeatTimerCallback()
 {
-	wl_event_source_timer_update(repeat_.timer, 0);
-	repeat_.repeating = true;
-	repeat_.focused = repeat_.repeat = false;
+	wl_event_source_timer_update(repeat_.timer, repeat_.rate);
+	sendKey(repeat_.key, true, true);
 
+	/*
 	auto keysCopy = keys_;
 	keys_.clear();
 
@@ -342,6 +340,7 @@ void Keyboard::repeatTimerCallback()
 		if(!xkb_keymap_key_repeats(keymap_.xkb, k.first + 8) || !k.second) continue;
 		sendKey(k.first, true);
 	}
+	*/
 }
 
 unsigned int Keyboard::modMask(unsigned int in) const

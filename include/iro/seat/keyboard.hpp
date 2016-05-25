@@ -61,7 +61,7 @@ public:
 	Keyboard(Seat& seat);
 	~Keyboard();
 
-    void sendKey(unsigned int key, bool press);
+    void sendKey(unsigned int key, bool press, bool repeat = false);
     void sendFocus(SurfaceRes* newFocus);
 
     SurfaceRes* focus() const { return focus_.get(); }
@@ -126,13 +126,9 @@ protected:
 	struct
 	{
 		wl_event_source* timer = nullptr;
-		unsigned int delay = 4000; //the delay in ms when the repeat should start
-		unsigned int rate = 2; //the time in ms between key repeats
-
-		bool repeating = false; //whether there is current a key registered for repeating
-		bool repeat = false;
-		bool focused = false;
-		unsigned int key = 0;
+		unsigned int delay = 600; //the delay in ms when the repeat should start
+		unsigned int rate = 25; //the time in ms between key repeats
+		unsigned int key = 0; //the current repeated key (or 0)
 	} repeat_;
 
 	struct
