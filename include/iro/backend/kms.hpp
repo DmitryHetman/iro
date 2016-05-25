@@ -53,8 +53,20 @@ public:
 ///Implements the output interface for the kms backend.
 class KmsOutput : public Output
 {
+public:
+	KmsOutput(KmsBackend& b, drmModeConnector* c, drmModeEncoder* e, unsigned int id);
+	virtual ~KmsOutput();
+
+	KmsBackend& backend() const { return *backend_; }
+
+    void resetCrtc();
+	void setCrtc();
+
+    virtual void sendInformation(const OutputRes& res) const override;
+	virtual void redraw() override;
+
 protected:
-    struct fb
+    struct Framebuffer
     {
         gbm_bo* buffer = nullptr;
         unsigned int fb = 0;
@@ -74,28 +86,17 @@ protected:
 	void* eglSurface_ = nullptr;
 
     bool flipping_ = 0;
-    fb fbs_[2];
-    unsigned int frontBuffer_ = 0;
+    Framebuffer fbs_[2];
+	Framebuffer* current_ = nullptr;
+	Framebuffer* next_ = nullptr;
     bool crtcActive_ = 0;
 
 	//functions
-    void releaseFB(fb& obj);
-    void createFB(fb& obj);
+    void releaseFB(Framebuffer& obj);
+    void createFB(Framebuffer& obj);
 
     void swapBuffers();
 	void flipped();
-
-public:
-	KmsOutput(KmsBackend& b, drmModeConnector* c, drmModeEncoder* e, unsigned int id);
-	virtual ~KmsOutput();
-
-	KmsBackend& backend() const { return *backend_; }
-
-    void resetCrtc();
-	void setCrtc();
-
-    virtual void sendInformation(const OutputRes& res) const override;
-	virtual void redraw() override;
-}; 
+};
 
 }

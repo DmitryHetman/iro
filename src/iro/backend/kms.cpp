@@ -9,6 +9,7 @@
 #include <nytl/misc.hpp>
 
 #include <ny/draw/gl/drawContext.hpp>
+#include <ny/base/log.hpp>
 
 #include <wayland-server-core.h>
 #include <wayland-server-protocol.h>
@@ -291,7 +292,7 @@ void KmsOutput::redraw()
 	backend().eglContext()->makeNotCurrent();
 }
 
-void KmsOutput::createFB(fb& obj)
+void KmsOutput::createFB(Framebuffer& obj)
 {
     obj.buffer = gbm_surface_lock_front_buffer(gbmSurface_);
 
@@ -310,7 +311,7 @@ void KmsOutput::createFB(fb& obj)
 	}
 }
 
-void KmsOutput::releaseFB(fb& obj)
+void KmsOutput::releaseFB(Framebuffer& obj)
 {
     if(obj.buffer) drmModeRmFB(backend().drmDevice().fd(), obj.fb);
     if(obj.fb) gbm_surface_release_buffer(gbmSurface_, obj.buffer);
@@ -324,10 +325,10 @@ void KmsOutput::swapBuffers()
 {
     if(!flipping_)
     {
-        releaseFB(fbs_[frontBuffer_]);
-        createFB(fbs_[frontBuffer_]);
+        releaseFB(*current_);
+        createFB(*current_);
 
-        drmModePageFlip(backend().drmDevice().fd(), drmEncoder_->crtc_id, fbs_[frontBuffer_].fb, 
+        drmModePageFlip(backend().drmDevice().fd(), drmEncoder_->crtc_id, current_->fb, 
 				DRM_MODE_PAGE_FLIP_EVENT, this);
         flipping_ = 1;
     }
@@ -336,10 +337,10 @@ void KmsOutput::swapBuffers()
 void KmsOutput::flipped()
 {
 	ny::sendLog("KmsOutput::flipped");
-    frontBuffer_ ^= 1;
     flipping_ = 0;
+	std::swap(current_, next_);
 
-    releaseFB(fbs_[frontBuffer_]);
+    releaseFB(*current_);
 }
 
 void KmsOutput::sendInformation(const OutputRes& res) const

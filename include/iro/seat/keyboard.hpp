@@ -19,7 +19,10 @@ struct wl_array;
 namespace iro
 {
 
-///Represents a physical keyboard. Does automatically initialize a xbk keymap.
+///Represents a physical keyboard. Does automatically initialize a xkb keymap.
+///The Keyboard can be implicitly grabbed by clients or the shell e.g. when a window is resized
+///or a dnd-action takes place or the shell itself has Keyboard focus.
+///Every extension and shell component can additionally register callbacks for keyboard events.
 class Keyboard : public nytl::NonCopyable
 {
 public:
@@ -54,55 +57,6 @@ public:
 
 	static int repeatTimerHandler(void*);
 
-protected:
-    Seat* seat_;
-    SurfacePtr focus_;
-
-	bool grabbed_ = 0;
-	Grab grab_;
-
-	std::map<unsigned int, bool> keys_; 
-	Modifier modifiers_;
-	Led leds_;
-
-	struct
-	{
-		unsigned int depressed = 0;
-		unsigned int latched = 0;
-		unsigned int locked = 0;
-		unsigned int group = 0;
-	} mods_;
-
-	struct
-	{
-		wl_event_source* timer = nullptr;
-		unsigned int delay = 660;
-		unsigned int rate = 25;
-		bool repeating = 0;
-		bool active = 0;
-	} repeat_;
-
-	struct
-	{
-		xkb_keymap* xkb = nullptr;
-		int fd = -1;
-		std::size_t mappedSize = 0;
-		char* mapped = nullptr;
-		xkb_state* state = nullptr;
-
-		unsigned int mods[modifierCount];
-		unsigned int leds[ledCount];
-	} keymap_;
-
-    //callbacks
-	nytl::Callback<void(unsigned int, bool)> keyCallback_;
-	nytl::Callback<void(SurfaceRes*, SurfaceRes*)> focusCallback_;
-
-protected:
-	void beginRepeat();
-	void resetRepeat();
-	void repeatTimerCallback();
-
 public:
 	Keyboard(Seat& seat);
 	~Keyboard();
@@ -126,22 +80,81 @@ public:
 	Led leds() const { return leds_; }
 
 	//get
-	xkb_keymap* xkbKeymap() const { return keymap_.xkb; }
+	xkb_keymap& xkbKeymap() const { return *keymap_.xkb; }
 	int keymapFd() const { return keymap_.fd; }
 	std::size_t keymapSize() const { return keymap_.mappedSize; }
 
 	unsigned int repeatDelay() const { return repeat_.delay; }
 	unsigned int repeatRate() const { return repeat_.rate; }
-	xkb_state* xkbState() const { return keymap_.state; }
+	xkb_state& xkbState() const { return *keymap_.state; }
 
 	unsigned int modMask(unsigned int in) const;
 	unsigned int ledMask() const;
 
     //callbacks
+	///The given function must have a signature compatible to void(unsigned int, bool, const char*).
+	///The first paramter represents the linux keycode, the second if it was pressed or released
+	///and the third is a null-terminated utf8 string of the given keycode.
     template<typename F> nytl::Connection onKey(F&& f)
 		{ return keyCallback_.add(f); }
+
+	///The given function must have a signature compatible to void(SurfaceRes*, SurfaceRes*).
+	///The first parameter holds the old focused surface (or nullptr) and the second parameter
+	///the new focused surface (or nullptr).
     template<typename F> nytl::Connection onFocus(F&& f)
 		{ return focusCallback_.add(f); }
+
+protected:
+    Seat* seat_;
+    SurfacePtr focus_;
+
+	bool grabbed_ = 0;
+	Grab grab_;
+
+	std::map<unsigned int, bool> keys_; //all key states, first param is the linux key code
+	Modifier modifiers_; //all current modifiers
+	Led leds_; //all current leds
+
+	struct
+	{
+		unsigned int depressed = 0;
+		unsigned int latched = 0;
+		unsigned int locked = 0;
+		unsigned int group = 0;
+	} mods_;
+
+	struct
+	{
+		wl_event_source* timer = nullptr;
+		unsigned int delay = 4000; //the delay in ms when the repeat should start
+		unsigned int rate = 2; //the time in ms between key repeats
+
+		bool repeating = false; //whether there is current a key registered for repeating
+		bool repeat = false;
+		bool focused = false;
+		unsigned int key = 0;
+	} repeat_;
+
+	struct
+	{
+		xkb_keymap* xkb = nullptr;
+		int fd = -1;
+		std::size_t mappedSize = 0;
+		char* mapped = nullptr;
+		xkb_state* state = nullptr;
+
+		unsigned int mods[modifierCount];
+		unsigned int leds[ledCount];
+	} keymap_;
+
+    //callbacks
+	nytl::Callback<void(unsigned int, bool, const char*)> keyCallback_;
+	nytl::Callback<void(SurfaceRes*, SurfaceRes*)> focusCallback_;
+
+protected:
+	void beginRepeat(unsigned int key);
+	void resetRepeat();
+	void repeatTimerCallback();
 };
 
 ///Represents a clients keyboard resource.

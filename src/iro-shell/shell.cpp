@@ -73,8 +73,8 @@ void MyShellModule::render(Output& outp, ny::DrawContext& dc)
 		myTexture.create(myImage);
 	}
 	
-	//glEnable(GL_BLEND);
-	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	ny::TextureBrush texBrush;
 	texBrush.extents.position = {0.f, 0.f};
@@ -111,6 +111,7 @@ void MyShellModule::render(Output& outp, ny::DrawContext& dc)
 		surf->sendFrameDone();
 	}
 
+	/*
 	if(cursorSurface)
 	{
 		SurfaceRes* surf = cursorSurface;
@@ -125,7 +126,8 @@ void MyShellModule::render(Output& outp, ny::DrawContext& dc)
 
 		surf->sendFrameDone();
 	}
-	else
+	*/
+//	else
 	{
 		if(!cursorTexture.glTexture())
 		{

@@ -12,6 +12,8 @@ find_package(Systemd REQUIRED)
 find_package(X11_XCB REQUIRED)
 find_package(XKBCommon REQUIRED)
 
+MESSAGE(STATUS "dir: " ${WAYLAND_SERVER_LIBRARIES})
+
 set(iro-src
 	compositor/compositor.cpp
 	compositor/callback.cpp
@@ -78,6 +80,7 @@ target_include_directories(iro PUBLIC
 
 target_link_libraries(iro
 	${WAYLAND_SERVER_LIBRARIES}
+	#"libwayland-server.so"
   	${LIBINPUT_LIBRARIES}
    	${UDEV_LIBRARIES}
 	${EGL_LIBRARIES}

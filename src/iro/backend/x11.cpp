@@ -62,7 +62,7 @@ int X11Backend::eventCallback(int, unsigned int, void* data)
 	return b->eventLoop();
 }
 
-X11Backend::X11Backend(Compositor& comp, Seat& seat) 
+X11Backend::X11Backend(Compositor& comp, Seat& seat)
 	: Backend(), compositor_(&comp), seat_(&seat)
 {
     //setup x connection
@@ -94,7 +94,7 @@ X11Backend::X11Backend(Compositor& comp, Seat& seat)
     struct atomProp
     {
         xcb_atom_t& ret;
-        std::string str; 
+        std::string str;
     };
 
    	atomProp vec[] = {
@@ -105,8 +105,8 @@ X11Backend::X11Backend(Compositor& comp, Seat& seat)
     xcb_intern_atom_reply_t* reply;
     for(auto& p : vec)
     {
-        reply = xcb_intern_atom_reply(xConnection_, 
-					xcb_intern_atom(xConnection_, 0, p.str.size(), p.str.c_str()), nullptr);
+		auto atom = xcb_intern_atom(xConnection_, 0, p.str.size(), p.str.c_str());
+        reply = xcb_intern_atom_reply(xConnection_, atom, nullptr);
         p.ret = (reply ? reply->atom : 0);
     }
 
@@ -114,27 +114,18 @@ X11Backend::X11Backend(Compositor& comp, Seat& seat)
 	xkbSetup();
 
     //event source
-    inputEventSource_ =  wl_event_loop_add_fd(&comp.wlEventLoop(), 
-			xcb_get_file_descriptor(xConnection_), WL_EVENT_READABLE, eventCallback, this);
-    if(!inputEventSource_)
-    {
-        throw std::runtime_error("could not create wayland event source");
-        return;
-    }
+    inputEventSource_ =  wl_event_loop_add_fd(&comp.wlEventLoop(),
+		xcb_get_file_descriptor(xConnection_), WL_EVENT_READABLE, eventCallback, this);
+    if(!inputEventSource_) throw std::runtime_error("could not create wayland event source");
 
 	//what does this? really needed?
     wl_event_source_check(inputEventSource_);
 
 	//eglContext
 	eglContext_ = std::make_unique<WaylandEglContext>(xDisplay_);
-	if(!eglContext_)
-	{
-        throw std::runtime_error("x11Backend::x11Backend: failed to create EglContext");
-        return;
-	}
+	if(!eglContext_) throw std::runtime_error("x11Backend::x11Backend: failed to create EglContext");
 
 	eglContext_->bindWlDisplay(compositor_->wlDisplay());
-
 
 	xcb_flush(xConnection_);
 }
@@ -165,11 +156,11 @@ void X11Backend::xkbSetup()
 
 	xkbEventBase_ = ext->first_event;
 	xcb_void_cookie_t select = xcb_xkb_select_events_checked(xConnection_,
-		XCB_XKB_ID_USE_CORE_KBD, XCB_XKB_EVENT_TYPE_STATE_NOTIFY, 0, 
+		XCB_XKB_ID_USE_CORE_KBD, XCB_XKB_EVENT_TYPE_STATE_NOTIFY, 0,
 		XCB_XKB_EVENT_TYPE_STATE_NOTIFY, 0, 0, nullptr);
 
 	xcb_generic_error_t *error;
-	if((error = xcb_request_check(xConnection_, select))) 
+	if((error = xcb_request_check(xConnection_, select)))
 	{
 		ny::sendWarning("xkb setup fail");
 		free(error);
@@ -177,43 +168,43 @@ void X11Backend::xkbSetup()
 	}
 
 	xcb_xkb_use_extension_reply_t *use_ext_reply;
-	xcb_xkb_use_extension_cookie_t use_ext = xcb_xkb_use_extension(xConnection_, 
+	xcb_xkb_use_extension_cookie_t use_ext = xcb_xkb_use_extension(xConnection_,
 		XCB_XKB_MAJOR_VERSION, XCB_XKB_MINOR_VERSION);
 
 	if(!(use_ext_reply = xcb_xkb_use_extension_reply(xConnection_, use_ext, nullptr)))
-   	{
-   	 	ny::sendWarning("xkb setup fail");
-   	 	free(error);
-   	}
+	{
+		ny::sendWarning("xkb setup fail");
+		free(error);
+	}
 
-   	const bool supported = use_ext_reply->supported;
-   	free(use_ext_reply);
+	const bool supported = use_ext_reply->supported;
+	free(use_ext_reply);
 
-   	if(!supported)
-   	{
-   	 	ny::sendWarning("xkb setup fail");
-   	 	free(error);
-   	}
+	if(!supported)
+	{
+		ny::sendWarning("xkb setup fail");
+		free(error);
+	}
 
-   	xcb_xkb_per_client_flags_cookie_t pcf = xcb_xkb_per_client_flags(xConnection_, 
-   	 	XCB_XKB_ID_USE_CORE_KBD, XCB_XKB_PER_CLIENT_FLAG_DETECTABLE_AUTO_REPEAT, 
-   	 	XCB_XKB_PER_CLIENT_FLAG_DETECTABLE_AUTO_REPEAT, 0, 0, 0);
+	xcb_xkb_per_client_flags_cookie_t pcf = xcb_xkb_per_client_flags(xConnection_,
+		XCB_XKB_ID_USE_CORE_KBD, XCB_XKB_PER_CLIENT_FLAG_DETECTABLE_AUTO_REPEAT,
+		XCB_XKB_PER_CLIENT_FLAG_DETECTABLE_AUTO_REPEAT, 0, 0, 0);
 
-   	xcb_xkb_per_client_flags_reply_t *pcf_reply;
-   	if(!(pcf_reply = xcb_xkb_per_client_flags_reply(xConnection_, pcf, NULL)))
-   	{
-   	 	ny::sendWarning("xkb setup fail");
-   	 	free(error);
-   	}
+	xcb_xkb_per_client_flags_reply_t *pcf_reply;
+	if(!(pcf_reply = xcb_xkb_per_client_flags_reply(xConnection_, pcf, NULL)))
+	{
+		ny::sendWarning("xkb setup fail");
+		free(error);
+	}
 
-   	const bool hasRepeat = (pcf_reply->value & XCB_XKB_PER_CLIENT_FLAG_DETECTABLE_AUTO_REPEAT);
-   	free(pcf_reply);
+	const bool hasRepeat = (pcf_reply->value & XCB_XKB_PER_CLIENT_FLAG_DETECTABLE_AUTO_REPEAT);
+	free(pcf_reply);
 
-   	if(!hasRepeat)
-   	{
-   	 	ny::sendWarning("xkb setup fail");
-   	 	free(error);
-   	}
+	if(!hasRepeat)
+	{
+		ny::sendWarning("xkb setup fail");
+		free(error);
+	}
 }
 
 std::unique_ptr<SurfaceContext> X11Backend::createSurfaceContext() const
@@ -265,7 +256,7 @@ int X11Backend::eventLoop()
 						ny::sendWarning("xcb_client_message: invalid xcb window");
                         break;
                     }
-					
+
 					destroyOutput(*outp);
 
                     if(outputs_.empty())
@@ -281,7 +272,7 @@ int X11Backend::eventLoop()
 				if(!seat().pointer()) break;
 
                 xcb_button_press_event_t* ev = (xcb_button_press_event_t*) event;
-                unsigned int code = (ev->detail == 2 ? BTN_MIDDLE : 
+                unsigned int code = (ev->detail == 2 ? BTN_MIDDLE :
 						(ev->detail == 3 ? BTN_RIGHT : ev->detail + BTN_LEFT - 1));
                 seat().pointer()->sendButton(code, 1);
                 break;
@@ -291,7 +282,7 @@ int X11Backend::eventLoop()
 				if(!seat().pointer()) break;
 
                 xcb_button_release_event_t* ev = (xcb_button_release_event_t*) event;
-                unsigned int code = (ev->detail == 2 ? BTN_MIDDLE : 
+                unsigned int code = (ev->detail == 2 ? BTN_MIDDLE :
 						(ev->detail == 3 ? BTN_RIGHT : ev->detail + BTN_LEFT - 1));
                 seat().pointer()->sendButton(code, 0);
                 break;
@@ -309,7 +300,7 @@ int X11Backend::eventLoop()
 				if(!seat().keyboard()) break;
 
                 xcb_key_press_event_t* ev = (xcb_key_press_event_t*) event;
-                seat().keyboard()->sendKey(ev->detail - 8, 1);
+                seat().keyboard()->sendKey(ev->detail - 8, true);
                 break;
             }
             case XCB_KEY_RELEASE:
@@ -317,7 +308,7 @@ int X11Backend::eventLoop()
 				if(!seat().keyboard()) break;
 
                 xcb_key_press_event_t* ev = (xcb_key_press_event_t*) event;
-                seat().keyboard()->sendKey(ev->detail - 8, 0);
+                seat().keyboard()->sendKey(ev->detail - 8, false);
                 break;
             }
             case XCB_FOCUS_IN:
@@ -347,11 +338,11 @@ int X11Backend::eventLoop()
 				if(seat().keyboard())
 				{
 					auto& kb = *seat().keyboard();
-					xkb_state_update_mask(kb.xkbState(), kb.modMask(ev->baseMods), 
+					xkb_state_update_mask(&kb.xkbState(), kb.modMask(ev->baseMods),
 						kb.modMask(ev->latchedMods), kb.modMask(ev->lockedMods), 0, 0, ev->group);
-						
+
 					seat().keyboard()->updateModifiers();
-				}	
+				}
 			}
 		}
 
@@ -376,20 +367,20 @@ X11Output* X11Backend::outputForWindow(const xcb_window_t& win)
 
 
 //Output
-X11Output::X11Output(X11Backend& backend, unsigned int id, const nytl::Vec2i& pos, 
+X11Output::X11Output(X11Backend& backend, unsigned int id, const nytl::Vec2i& pos,
 		const nytl::Vec2ui& size) : Output(backend.compositor(), id, pos, size), backend_(&backend)
 {
     xcb_connection_t* connection = backend.xConnection();
     xcb_screen_t* screen = backend.xScreen();
 
     unsigned int mask = XCB_CW_EVENT_MASK;
-    unsigned int values = XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_BUTTON_PRESS | 
+    unsigned int values = XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_BUTTON_PRESS |
 		XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_KEY_PRESS |
-        XCB_EVENT_MASK_KEY_RELEASE | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW | 
+        XCB_EVENT_MASK_KEY_RELEASE | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW |
 		XCB_EVENT_MASK_FOCUS_CHANGE;
 
     xWindow_ = xcb_generate_id(connection);
-    xcb_create_window(connection, XCB_COPY_FROM_PARENT, xWindow_, screen->root, 0, 0, size_.x, 
+    xcb_create_window(connection, XCB_COPY_FROM_PARENT, xWindow_, screen->root, 0, 0, size_.x,
 			size_.y ,10, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, mask, &values);
 
     if(!xWindow_)
@@ -398,7 +389,7 @@ X11Output::X11Output(X11Backend& backend, unsigned int id, const nytl::Vec2i& po
         return;
     }
 
-    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, xWindow_, atoms::protocols, 
+    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, xWindow_, atoms::protocols,
 			XCB_ATOM_ATOM, 32, 1, &atoms::deleteWindow);
 
     //cant be resized
@@ -420,7 +411,7 @@ X11Output::X11Output(X11Backend& backend, unsigned int id, const nytl::Vec2i& po
 
     xcb_cursor_t hiddenCursor = xcb_generate_id(connection);
 
-    xcb_create_cursor(connection, hiddenCursor, cursorPixmap, cursorPixmap, 
+    xcb_create_cursor(connection, hiddenCursor, cursorPixmap, cursorPixmap,
 			0, 0, 0, 0, 0, 0, 0, 0);
     xcb_free_pixmap(connection, cursorPixmap);
 
@@ -457,7 +448,7 @@ X11Output::~X11Output()
 
 void X11Output::sendInformation(const OutputRes& res) const
 {
-	wl_output_send_geometry(&res.wlResource(), position_.x, position_.y, size_.x, size_.y, 
+	wl_output_send_geometry(&res.wlResource(), position_.x, position_.y, size_.x, size_.y,
 			0, "", "", WL_OUTPUT_TRANSFORM_NORMAL);
 	wl_output_send_done(&res.wlResource());
 }
@@ -478,7 +469,7 @@ void X11Output::redraw()
 	{
 		ny::sendWarning("X11Output::redraw: failed to swap egl buffers");
 	}
-	
+
 	backend().eglContext()->makeNotCurrent();
 }
 
