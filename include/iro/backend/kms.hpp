@@ -50,11 +50,13 @@ public:
 	virtual WaylandEglContext* eglContext() const override { return eglContext_.get(); }
 };
 
+struct DrmOutput;
+
 ///Implements the output interface for the kms backend.
 class KmsOutput : public Output
 {
 public:
-	KmsOutput(KmsBackend& b, drmModeConnector* c, drmModeEncoder* e, unsigned int id);
+	KmsOutput(KmsBackend& b, const DrmOutput& info);
 	virtual ~KmsOutput();
 
 	KmsBackend& backend() const { return *backend_; }
@@ -82,6 +84,7 @@ protected:
     drmModeCrtc* drmSavedCrtc_ = nullptr;
     drmModeConnector* drmConnector_ = nullptr;
     drmModeEncoder* drmEncoder_ = nullptr;
+	drmModeCrtc* drmCrtc_ = nullptr;
     gbm_surface* gbmSurface_ = nullptr;
 	void* eglSurface_ = nullptr;
 

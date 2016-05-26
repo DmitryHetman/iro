@@ -70,7 +70,11 @@ WaylandEglContext::WaylandEglContext(void* display)
         return;
     }
 
-	ny::EglContext::initEglContext(Api::openGLES);
+	ny::EglContext::initEglContext(Api::gles);
+	std::cout << "gles version: " << version() << "\n";
+	std::cout << "glsl version: " << preferredGlslVersion().major << "\n";
+	std::cout << "glsl version: " << preferredGlslVersion().minor << "\n";
+	std::cout << "glsl version: " << (preferredGlslVersion().api == ny::GlContext::Api::gl) << "\n";
 
     if(eglExtensionSupported("EGL_WL_bind_wayland_display") 
 			&& eglExtensionSupported("EGL_KHR_image_base"))
@@ -187,6 +191,7 @@ void WaylandEglContext::imageTargetTexture(void* image, unsigned int target)
 
 bool WaylandEglContext::makeCurrentForSurface(void* eglsurf)
 {
+	makeNotCurrent();
 	eglSurface(eglsurf);
 	return makeCurrent();
 }

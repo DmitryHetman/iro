@@ -76,7 +76,7 @@ public:
 	void updateModifiers();
 	void wlPressedKeys(wl_array& arr);
 
-	Modifier modifiers() const { return modifiers_; }
+	nytl::Flags<Modifier> modifiers() const { return modifiers_; }
 	Led leds() const { return leds_; }
 
 	//get
@@ -112,7 +112,7 @@ protected:
 	Grab grab_;
 
 	std::map<unsigned int, bool> keys_; //all key states, first param is the linux key code
-	Modifier modifiers_; //all current modifiers
+	nytl::Flags<Modifier> modifiers_; //all current modifiers
 	Led leds_; //all current leds
 
 	struct

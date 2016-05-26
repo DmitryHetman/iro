@@ -81,10 +81,9 @@ void Output::scheduleRepaint()
 
 void Output::mapSurface(SurfaceRes& surf)
 {
-	if(surfaceMapped(surf)) return;
-
-    mappedSurfaces_.push_back(&surf);
     scheduleRepaint();
+	if(surfaceMapped(surf)) return;
+    mappedSurfaces_.push_back(&surf);
 }
 
 bool Output::surfaceMapped(const SurfaceRes& surf) const

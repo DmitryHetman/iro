@@ -20,6 +20,7 @@
 #include <fcntl.h>
 
 #include <cstring>
+#include <iostream>
 
 
 namespace iro
@@ -214,15 +215,15 @@ void Keyboard::sendKey(unsigned int key, bool press, bool repeat)
 		" \n\tfocused surface: ", focus_, "\n\tactive keyboard res: ", activeResource());
 	xkb_state_update_key(keymap_.state, keycode, press ? XKB_KEY_DOWN : XKB_KEY_UP);
 
-	//bool previous = keys_[key];
-	//if(!repeat && previous == press) return; //repeat event from backend. Not processed further
-	//if(!press && key == repeat_.key) resetRepeat();
+	bool previous = keys_[key];
+	if(!repeat && previous == press) return; //repeat event from backend. Not processed further
+	if(!press && key == repeat_.key) resetRepeat();
 
 	keys_[key] = press;
 	updateModifiers();
 
 	//check/init repeat
-	//if(press && xkb_keymap_key_repeats(keymap_.xkb, keycode)) beginRepeat(key);
+	if(!repeat && press && xkb_keymap_key_repeats(keymap_.xkb, keycode)) beginRepeat(key);
 
 	//check grab
 	if(grabbed_)
@@ -317,30 +318,6 @@ void Keyboard::repeatTimerCallback()
 {
 	wl_event_source_timer_update(repeat_.timer, repeat_.rate);
 	sendKey(repeat_.key, true, true);
-
-	/*
-	auto keysCopy = keys_;
-	keys_.clear();
-
-	for(auto& k : keysCopy)
-	{
-		if(!k.second) continue;
-		if(xkb_keymap_key_repeats(keymap_.xkb, k.first + 8))
-		{
-			xkb_state_update_key(keymap_.state, k.first + 8, XKB_KEY_UP);
-		}
-		else
-		{
-			keys_[k.first] = true;
-		}
-	}
-
-	for(auto& k : keysCopy)
-	{
-		if(!xkb_keymap_key_repeats(keymap_.xkb, k.first + 8) || !k.second) continue;
-		sendKey(k.first, true);
-	}
-	*/
 }
 
 unsigned int Keyboard::modMask(unsigned int in) const

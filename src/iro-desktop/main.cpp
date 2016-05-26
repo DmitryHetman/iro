@@ -78,7 +78,7 @@ int main()
 	//logStream.rdbuf()->pubsetbuf(buffer, sizeof(buffer));
 	logStream.rdbuf()->pubsetbuf(nullptr, 0);
 	logStream.open("log.txt");
-	try
+	//try
 	{
 
 	ny::logLogger().stream = &logStream;
@@ -166,7 +166,7 @@ int main()
 
 		mySeat.keyboard()->onKey([&](unsigned int key, bool pressed)
 			{ 
-				if(mySeat.keyboard()->modifiers() != iro::Keyboard::Modifier::ctrl) return;
+				if(mySeat.keyboard()->modifiers() != iro::Keyboard::Modifier::alt) return;
 				if(pressed && key == KEY_T)
 				{
 					ny::sendLog("starting weston terminal");
@@ -204,16 +204,16 @@ int main()
 	auto xwm = std::make_unique<iro::XWindowManager>(myCompositor, mySeat);
 
 	ny::sendLog("starting main loop");
-	//myCompositor.run(nytl::seconds(30));
-	myCompositor.run();
+	myCompositor.run(nytl::seconds(60));
+	//myCompositor.run();
 	ny::sendLog("Finished Iro Desktop");
 	*ny::logLogger().stream << std::flush;
 
 	}
-	catch(const std::exception& err)
-	{
-		ny::sendLog("Caught Exception: ", err.what());
-	}
+	//catch(const std::exception& err)
+	//{
+	//	ny::sendLog("Caught Exception: ", err.what());
+	//}
 
 	*ny::logLogger().stream << "iro main extited normally. " << std::flush;
 	return 1;	

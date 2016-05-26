@@ -19,7 +19,7 @@ protected:
 	{
 	public:
 		SubsurfaceRes* subsurface_;
-		virtual void obsDestruction(nytl::Observable& surface) override;
+		virtual void destructionCallback(nytl::Observable& surface) override;
 	};
 
 protected:

@@ -115,6 +115,7 @@ void Window::startResize(Seat& seat, unsigned int triggerSerial, unsigned int ed
 void Window::move(const nytl::Vec2i& delta)
 {
 	position_ += delta;
+	if(surfaceRes()) surfaceRes()->remap();
 }
 
 void Window::resize(const nytl::Vec2i& delta, unsigned int edges)
@@ -139,6 +140,7 @@ void Window::resize(const nytl::Vec2i& delta, unsigned int edges)
 	}
 
 	sendConfigure(pending_.geometry_.size);
+	if(surfaceRes()) surfaceRes()->remap();
 }
 
 void Window::showWindowMenu(Seat& seat, const Event& trigger, const nytl::Vec2i& position)
@@ -159,8 +161,7 @@ void Window::showWindowMenu(Seat& seat, unsigned int triggerSerial, const nytl::
 
 bool Window::mapped() const
 {
-	return ((!parent_ || parent_->mapped()) && 
-			!static_cast<bool>(states_ & State::minimized)); 
+	return ((!parent_ || parent_->mapped()) && !(states_ & State::minimized)); 
 }
 
 void Window::commit()

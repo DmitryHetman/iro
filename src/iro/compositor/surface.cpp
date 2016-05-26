@@ -245,45 +245,40 @@ void SurfaceRes::commit()
 
     if(commited_.buffer.get())
     {
-        if(surfaceContext_)
-		{
-			if(!surfaceContext_->attachBuffer(*commited_.buffer.get(), bufferSize_))
-			{
-				ny::sendWarning("SurfaceRes::commit: attaching the buffer failed");
-				return;
-			}
-
-			commited_.buffer->sendRelease();
-		}
-		else
+        if(!surfaceContext_)
 		{
 			ny::sendWarning("SurfaceRes::commit: no valiud surfaceContext_");
 			return;
 		}
 
-		if(!mapped())
+		if(!surfaceContext_->attachBuffer(*commited_.buffer.get(), bufferSize_))
 		{
+			ny::sendWarning("SurfaceRes::commit: attaching the buffer failed");
 			return;
 		}
 
-		auto* bckn = compositor().backend();
-		if(!bckn)
-		{
-			ny::sendWarning("SurfaceRes::commit: compositor has no valid backend");
-			return;
-		}
-
-        mappedOutputs_ = bckn->outputsAt(extents());
-		ny::sendLog("found mapOutputs: ", mappedOutputs_.size());
-        for(auto* o : mappedOutputs_)
-        {
-            o->mapSurface(*this);
-        }
+		commited_.buffer->sendRelease();
+		remap();
     }
 }
 
 void SurfaceRes::remap()
 {
+	if(!mapped()) return;
+
+	auto* bckn = compositor().backend();
+	if(!bckn)
+	{
+		ny::sendWarning("SurfaceRes::commit: compositor has no valid backend");
+		return;
+	}
+
+	mappedOutputs_ = bckn->outputsAt(extents());
+	ny::sendLog("found mapOutputs: ", mappedOutputs_.size());
+	for(auto* o : mappedOutputs_)
+	{
+		o->mapSurface(*this);
+	}
 }
 
 SurfaceRole& SurfaceRes::role(std::unique_ptr<SurfaceRole> role)
@@ -301,7 +296,7 @@ SurfaceRole& SurfaceRes::role(std::unique_ptr<SurfaceRole> role)
 	else if(roleType() != role->roleType())
 	{
 		ny::sendWarning("SurfaceRes::role: surface already has a different role");
-		return *role; //aargh
+		return *role_;
 	}
 
 	role_ = std::move(role);

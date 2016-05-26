@@ -43,7 +43,7 @@ public:
 protected:
 	WindowState pending_ {};
 	WindowState commited_ {};
-	State states_ = State::normal;
+	nytl::Flags<State> states_ = State::normal;
 
 	nytl::Vec2i position_ {0, 0};
 	nytl::Vec2ui normalSize_; //size when in normal state...
@@ -70,7 +70,7 @@ protected:
 
 public:
 	Window() {};
-	State states() const { return states_; }
+	nytl::Flags<State> states() const { return states_; }
 
 	nytl::Rect2i geometry() const { return commited_.geometry_; }
 	nytl::Vec2i position() const { return position_; }

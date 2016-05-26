@@ -53,7 +53,7 @@ const struct wl_subsurface_interface subsurfaceImplementation =
 };
 
 //SubsurfaceResObserver
-void SubsurfaceRes::SurfaceObserver::obsDestruction(nytl::Observable& surface)
+void SubsurfaceRes::SurfaceObserver::destructionCallback(nytl::Observable& surface)
 {
 	if(static_cast<SurfaceRes*>(&surface) == subsurface_->surface_)
 	{
@@ -78,6 +78,8 @@ SubsurfaceRes::SubsurfaceRes(SurfaceRes& surf, wl_client& client, unsigned int i
 
 	surface_->addObserver(surfaceObserver_);
 	parent_->addObserver(parentObserver_);
+	std::cout << "observer1 " << &parentObserver_ << "\n";
+	std::cout << "observer2 " << &surfaceObserver_ << "\n";
 }
 
 SubsurfaceRes::~SubsurfaceRes()

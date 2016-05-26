@@ -99,6 +99,7 @@ void Pointer::setOver(SurfaceRes* newOne)
 
     SurfaceRes* old = over_.get();
     over_.reset(newOne);
+	std::cout << "obs5: " << &over_ << " " << over_.get() << "\n";
 
     //send enter
     if(newOne)
@@ -127,7 +128,7 @@ void Pointer::sendMove(const nytl::Vec2i& pos)
 {
 	//todo
 	//redraw, position and stuff
-	auto cpos = nytl::clamp(pos, nytl::Vec2i{0, 0}, nytl::Vec2i{1920, 1080});
+	auto cpos = nytl::clamp(pos, nytl::Vec2i{0, 0}, nytl::Vec2i{1920 + 1280, 1080});
 	nytl::Vec2i delta = cpos - position_;
 	position_ = cpos;
 
@@ -235,6 +236,7 @@ void Pointer::cursor(SurfaceRes& surf, const nytl::Vec2i& hotspot)
 	crole->hotspot(hotspot);
 
     cursor_.reset(&surf);
+	std::cout << "obs5: " << &cursor_ << " " << cursor_.get() << "\n";
 }
 
 void Pointer::resetCursor()

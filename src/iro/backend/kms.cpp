@@ -21,8 +21,121 @@
 
 #include <cstring>
 
-namespace iro
-{
+	namespace iro
+	{
+
+	struct DrmOutputMode
+	{
+		unsigned int width;
+		unsigned int height;
+		unsigned int refresh;
+		unsigned int type;
+		unsigned int flags;
+		std::string name;
+	};
+
+	struct DrmOutput
+	{
+		drmModeConnector* connector;
+		drmModeEncoder* encoder;
+		drmModeCrtc* crtc;
+		unsigned int id;
+		std::vector<DrmOutputMode> modes;
+	};
+
+	std::vector<DrmOutput> queryInformation(int fd)
+	{
+		std::vector<DrmOutput> ret;
+		drmModeRes* resources = drmModeGetResources(fd);
+
+		auto conCount = static_cast<unsigned int>(resources->count_connectors);
+		auto encCount = static_cast<unsigned int>(resources->count_encoders);
+		auto crtCount = static_cast<unsigned int>(resources->count_crtcs);
+	 
+		ny::sendLog(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+		ny::sendLog("KmsBackend::KmsBackend: Begininning to query outputs");
+		ny::sendLog("drmResources contain ", conCount, " connectors");
+		ny::sendLog("drmResources contain ", encCount, " encoders");
+		ny::sendLog("drmResources contain ", crtCount, " crtcs");
+		ny::sendLog("drmResources contain ", resources->count_fbs, " fbs");
+
+		for(auto c = 0u; c < conCount; c++)
+		{
+			auto connector = drmModeGetConnector(fd, resources->connectors[c]);
+			if(!connector)
+			{
+				ny::log("Failed to get connector ", c, ", ", resources->connectors[c]);
+				continue;
+			}
+
+			if(connector->connection != DRM_MODE_CONNECTED)
+			{
+				ny::log("Connector ", c, " is not connected.");
+				continue;
+			}
+
+			auto conEncCount = static_cast<unsigned int>(connector->count_encoders);
+			ny::log("Found ", conEncCount, " encoder for connector ", connector);
+			for(auto e = 0u; e < conEncCount; ++e)
+			{
+				auto encoder = drmModeGetEncoder(fd, connector->encoders[e]);
+				if(!encoder)
+				{
+					ny::log("Failed to get encoder for ", e, ", ", connector->encoders[e]);
+					continue;
+				}
+
+				ny::log("Found matching connector/encoder pair: ", connector, " & ", encoder);
+				auto crtc = drmModeGetCrtc(fd, encoder->crtc_id);
+
+				if(!crtc)
+				{
+					ny::log("Failed to get crtc for id ", encoder->crtc_id);
+					continue;
+				}
+
+				ny::log("Succefully retrieved ctrc ", crtc, " with id ", encoder->crtc_id);
+				auto modeCount = static_cast<unsigned int>(connector->count_modes);
+				if(!modeCount)
+				{
+					ny::log("Found no modes for pair");
+					continue;
+				}
+
+				DrmOutput output;
+				output.connector = connector;
+				output.encoder = encoder;
+				output.crtc = crtc;
+				output.id = ret.size();
+				
+				output.modes.resize(modeCount);
+
+				ny::log("Found ", modeCount, " matching modes for pair");
+				for(auto m = 0u; m < modeCount; ++m)
+				{
+					const auto& mode = connector->modes[m];
+					output.modes[m].height = mode.vdisplay;
+					output.modes[m].width = mode.hdisplay;
+					output.modes[m].refresh = mode.vrefresh;
+					output.modes[m].flags = mode.flags;
+					output.modes[m].type = mode.type;
+					output.modes[m].name = mode.name;
+
+					ny::log("Mode ", m, ": ", mode.name, 
+						"\n\twidth: ", mode.hdisplay, "\n\theight: ", mode.vdisplay,
+						"\n\trefresh: ", mode.vrefresh, "\n\ttype: ", mode.type,
+						"\n\tflags: ", mode.flags);
+				}
+
+				ret.push_back(output);
+			}
+		}
+
+	ny::log("End of drm querying. Could find ", ret.size(), " valid drm outputs!");
+	ny::log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+	return ret;
+}
+
 
 //drmCallbacks
 void KmsOutput::drmPageFlipEvent(int, unsigned int, unsigned int, unsigned int, void *data)
@@ -75,71 +188,19 @@ KmsBackend::KmsBackend(Compositor& comp, DeviceHandler& dev)
 	}
 	eglContext_->bindWlDisplay(compositor_->wlDisplay());
 
-	//drm resources
-    drmModeRes* resources = drmModeGetResources(drm_->fd());
-    if (!resources)
-    {
-        throw std::runtime_error("KmsBackend::KmsBackend: drmModeGetResources failed");
-        return;
-    }
-
-	//find and create outputs
-    unsigned int c, e; //connector, encoder
-    drmModeConnector* connector = nullptr;
-    drmModeEncoder* encoder = nullptr;
-
-	ny::sendLog(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-	ny::sendLog("KmsBackend::KmsBackend: Begininning to query outputs");
-	ny::sendLog("drmResources contain ", resources->count_connectors, " connectors");
-	ny::sendLog("drmResources contain ", resources->count_encoders, " encoders");
-
-    for (c = 0; c < static_cast<unsigned int>(resources->count_connectors); c++)
-    {
-        if(!(connector = drmModeGetConnector(drm_->fd(), resources->connectors[c])))
-		{
-			ny::sendLog("failed to get connector ", resources->connectors[c]);
-			continue;
-		}
-
-        if (connector->connection == DRM_MODE_CONNECTED && connector->count_modes > 0)
-        {
-            for (e = 0; e < static_cast<unsigned int>(resources->count_encoders); e++)
-            {
-                if(!(encoder = drmModeGetEncoder(drm_->fd(), resources->encoders[e])))
-				{
-					ny::sendLog("failed to get encoder ", resources->encoders[e]);
-					continue;
-				}
-
-                if (encoder->encoder_id == connector->encoder_id)
-                {
-					//create output
-					ny::sendLog(">>matching connector/encoder pair ", outputs_.size());
-                    addOutput(std::make_unique<KmsOutput>(*this, connector, encoder, 
-								outputs_.size()));
-                }
-				else
-				{
-					ny::sendLog(encoder, "and ", connector ,": different encoders");
-					drmModeFreeEncoder(encoder);
-				}
-            }
-        }
-		else
-		{
-			ny::sendLog("connector ", connector, " invalid");
-			drmModeFreeConnector(connector);
-		}
-    }
-
-	ny::sendLog("End of querying kms outputs: created ", outputs_.size());
-	ny::sendLog(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-
-    if (outputs_.size() == 0)
+	auto infos = queryInformation(drm_->fd());
+    if(infos.empty())
     {
         throw std::runtime_error("kmsBackend::kmsBackend: unable to create an output");
         return;
     }
+
+	for(auto& info : infos)
+	{
+		ny::log("mc: ", info.modes.size());
+		auto output = std::make_unique<KmsOutput>(*this, info);
+		addOutput(std::move(output));
+	}
 
 	//drm events
     drmEventSource_ = 
@@ -148,8 +209,8 @@ KmsBackend::KmsBackend(Compositor& comp, DeviceHandler& dev)
 
 KmsBackend::~KmsBackend()
 {
-	for(auto& outp : outputs_)
-		destroyOutput(*outp);
+	for(auto i = 0u; i < outputs_.size();)
+		if(!destroyOutput(*outputs_[i])) ++i;
 
 	if(eglContext_)
 	{
@@ -199,14 +260,19 @@ void KmsBackend::onTerminalLeave()
 }
 
 //output
-KmsOutput::KmsOutput(KmsBackend& kms, drmModeConnector* c, drmModeEncoder* e, unsigned int id) 
-	: Output(kms.compositor(), id), backend_(&kms), drmConnector_(c), drmEncoder_(e)
+KmsOutput::KmsOutput(KmsBackend& kms, const DrmOutput& output) 
+	: Output(kms.compositor(), output.id), backend_(&kms)
 {
+	drmEncoder_ = output.encoder;
+	drmConnector_ = output.connector;
+	drmCrtc_ = output.crtc;
     drmSavedCrtc_ = drmModeGetCrtc(kms.drmDevice().fd(), drmEncoder_->crtc_id);
 
+	if(id() == 1) position_ = {1920, 0};
+
     //todo: init modes correctly
-    size_.x = drmConnector_->modes[0].hdisplay;
-    size_.y = drmConnector_->modes[0].vdisplay;
+    size_.x = output.modes[0].width;
+    size_.y = output.modes[0].height;
 
 	//gbm
     gbmSurface_ = gbm_surface_create(kms.gbmDevice(), size_.x, size_.y, 
@@ -239,6 +305,8 @@ KmsOutput::KmsOutput(KmsBackend& kms, drmModeConnector* c, drmModeEncoder* e, un
 	}
 
 	scheduleRepaint();
+	current_ = &fbs_[0];
+	next_ = &fbs_[1];
 }
 
 KmsOutput::~KmsOutput()
@@ -262,8 +330,9 @@ void KmsOutput::resetCrtc()
 		return;
 	}
 
-    drmModeSetCrtc(backend().drmDevice().fd(), drmSavedCrtc_->crtc_id, drmSavedCrtc_->buffer_id, 
-		drmSavedCrtc_->x, drmSavedCrtc_->y, &drmConnector_->connector_id, 1, &drmSavedCrtc_->mode);
+	auto* s = drmSavedCrtc_;
+    drmModeSetCrtc(backend().drmDevice().fd(), s->crtc_id, s->buffer_id, s->x, s->y, 
+		&drmConnector_->connector_id, 1, &s->mode);
 }
 
 void KmsOutput::redraw()
@@ -282,9 +351,15 @@ void KmsOutput::redraw()
 	}
 
 	Output::redraw();
+
+	ny::sendLog("KmsOutput::eglSurface = ", eglSurface_);
+	ny::sendLog("EglContext::eglSurface = ", backend().eglContext()->eglSurface());
+
 	if(!backend().eglContext()->apply())
 	{
 		ny::sendWarning("KmsOutput::redraw: failed to swap egl buffers");
+		scheduleRepaint();
+		return;
 	}
 
 	swapBuffers();
@@ -295,6 +370,8 @@ void KmsOutput::redraw()
 void KmsOutput::createFB(Framebuffer& obj)
 {
     obj.buffer = gbm_surface_lock_front_buffer(gbmSurface_);
+
+	if(!obj.buffer) throw std::runtime_error("gbm_surface_lock_front_buffer failed");
 
     unsigned int width = gbm_bo_get_width(obj.buffer);
     unsigned int height = gbm_bo_get_height(obj.buffer);

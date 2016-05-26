@@ -73,8 +73,11 @@ void MyShellModule::render(Output& outp, ny::DrawContext& dc)
 		myTexture.create(myImage);
 	}
 	
+	glViewport(0, 0, outp.size().x, outp.size().y);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	dc.clear(ny::Color::red);
 
 	ny::TextureBrush texBrush;
 	texBrush.extents.position = {0.f, 0.f};
@@ -100,10 +103,11 @@ void MyShellModule::render(Output& outp, ny::DrawContext& dc)
 			cursorSurface = surf;
 
 		ny::Rectangle surfaceRect(surf->extents());
+		surfaceRect.position(surfaceRect.position() - outp.extents().position);
 		dc.mask(surfaceRect);
 
 		ny::TextureBrush surfaceBrush;
-		surfaceBrush.extents = surf->extents();
+		surfaceBrush.extents = surfaceRect;
 		surfaceBrush.texture = surf->surfaceContext().content();
 
 		dc.fill(surfaceBrush);
@@ -111,23 +115,24 @@ void MyShellModule::render(Output& outp, ny::DrawContext& dc)
 		surf->sendFrameDone();
 	}
 
-	/*
+	
 	if(cursorSurface)
 	{
 		SurfaceRes* surf = cursorSurface;
 		ny::Rectangle surfaceRect(surf->extents());
+		surfaceRect.position(surfaceRect.position() - outp.extents().position);
 		dc.mask(surfaceRect);
 
 		ny::TextureBrush surfaceBrush;
-		surfaceBrush.extents = surf->extents();
+		surfaceBrush.extents = surfaceRect;
 		surfaceBrush.texture = surf->surfaceContext().content();
 
 		dc.fill(surfaceBrush);
 
 		surf->sendFrameDone();
 	}
-	*/
-//	else
+	
+	else
 	{
 		if(!cursorTexture.glTexture())
 		{
@@ -137,7 +142,7 @@ void MyShellModule::render(Output& outp, ny::DrawContext& dc)
 		}
 
 		ny::TextureBrush cursorBrush;
-		cursorBrush.extents.position = seat_->pointer()->position();
+		cursorBrush.extents.position = seat_->pointer()->position() - outp.extents().position;
 		cursorBrush.extents.size = nytl::Vec2f(30, 30);
 		cursorBrush.texture = &cursorTexture;
 

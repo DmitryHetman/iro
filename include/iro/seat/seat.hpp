@@ -9,12 +9,12 @@
 namespace iro
 {
 
-///The seat class represents a unix input connection. It can handle one pointer, keyboard or
+///The seat class represents a unix input connection. It can handle one pointer, keyboard and
 ///touch field.
 class Seat : public Global
 {
 protected:
-	Compositor* compositor_;
+	Compositor* compositor_ = nullptr;
     std::string name_;
 
     std::unique_ptr<Pointer> pointer_;
@@ -22,7 +22,7 @@ protected:
     std::unique_ptr<Touch> touch_;
 
 public:
-    Seat(Compositor& comp, const nytl::Vec3b& capas = {1, 1, 1});
+    Seat(Compositor& comp, const nytl::Vec3b& caps = {1, 1, 1});
 	~Seat();
 
 	const std::string& name() const { return name_; }
@@ -41,9 +41,9 @@ class SeatRes : public Resource
 protected:
     Seat* seat_;
 
-    PointerRes* pointer_ {nullptr};
-    KeyboardRes* keyboard_ {nullptr};
-    TouchRes* touch_ {nullptr};
+    PointerRes* pointer_ = nullptr;
+    KeyboardRes* keyboard_ = nullptr;
+    TouchRes* touch_ = nullptr;
 
 public:
     SeatRes(Seat& s, wl_client& client, unsigned int id, unsigned int version);

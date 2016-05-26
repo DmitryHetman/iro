@@ -94,7 +94,7 @@ target_link_libraries(iro
 	${XCB_ICCCM_LIBRARIEs}
 	${XKBCOMMON_LIBRARIES}
 	${CMAKE_DL_LIBS}
-	ny-draw
-	ny-base
+	/usr/lib/libny-draw.so
+	/usr/lib/libny-base.so
 	iro-protos
 )
