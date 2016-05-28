@@ -3,8 +3,10 @@
 #include <iro/compositor/xdgShell.hpp>
 #include <iro/backend/surfaceContext.hpp>
 #include <iro/backend/output.hpp>
+#include <iro/compositor/window.hpp>
 #include <iro/seat/seat.hpp>
 #include <iro/seat/pointer.hpp>
+#include <iro/seat/keyboard.hpp>
 #include <ny/draw/drawContext.hpp>
 #include <ny/draw/image.hpp>
 #include <ny/draw/gl/texture.hpp>
@@ -26,7 +28,9 @@ protected:
 	ny::GlTexture myTexture;
 	ny::GlTexture cursorTexture;
 
-	unsigned int windowCount_ {0};
+	std::vector<Window*> windows_;
+	Window* focus_;
+	unsigned int highestZOrder_ = 0;
 
 public:
 	virtual ~MyShellModule();
@@ -34,8 +38,20 @@ public:
 	virtual void init(Compositor& comp, Seat& s) override;
 	virtual void render(Output& outp, ny::DrawContext& dc) override;
 
-	virtual void windowCreated(Window& win) override { windowCount_++; }
-	virtual void windowDestroyed(Window& win) override { windowCount_--; }
+	virtual void windowCreated(Window& win) override 
+	{ 
+		windows_.push_back(&win); 
+		win.zOrder(highestZOrder_ + 1);
+		highestZOrder_++;
+		focus_ = &win;
+	}
+	virtual void windowDestroyed(Window& win) override 
+	{
+		auto it = std::find(windows_.begin(), windows_.end(), &win);
+		if(it != windows_.end()) windows_.erase(it);
+	}
+
+	void keyboardFocus(SurfaceRes* old, SurfaceRes* newS);
 };
 
 //loadFunc
@@ -61,6 +77,46 @@ void MyShellModule::init(Compositor& comp, Seat& seat)
 
 	shell_.reset(new Shell(comp));
 	xdgShell_.reset(new XdgShell(comp));
+
+	seat.keyboard()->onFocus(nytl::memberCallback(&MyShellModule::keyboardFocus, this));
+}
+
+void MyShellModule::keyboardFocus(SurfaceRes* oldS, SurfaceRes* newS)
+{
+	/*
+	if(old)
+	{
+		auto role = old->role();
+		if(role)
+		{
+			auto windowRole = dynamic_cast<Window*>(role);
+			//doSomething?
+		}
+	}
+	*/
+
+	focus_ = nullptr;
+
+	if(newS)
+	{
+		auto role = newS->role();
+		if(role)
+		{
+			auto windowRole = dynamic_cast<WindowSurfaceRole*>(role);
+			if(windowRole)
+			{
+				windowRole->window().zOrder(highestZOrder_ + 1);
+				std::cout << "order: " << windowRole->window().zOrder() << "\n";
+				highestZOrder_++;
+				focus_ = &windowRole->window();
+			
+				std::sort(windows_.begin(), windows_.end(), 
+					[](Window* a, Window* b){ return a->zOrder() < b->zOrder(); });
+			}
+		}
+	}
+
+	std::cout << "yoyoyoyoyoyo " << oldS << " -> " << newS << "\n";
 }
 
 void MyShellModule::render(Output& outp, ny::DrawContext& dc)
@@ -88,19 +144,42 @@ void MyShellModule::render(Output& outp, ny::DrawContext& dc)
 	dc.mask(bg);
 	dc.fill(texBrush);
 
-	for(unsigned int i(0); i < windowCount_; ++i)
-	{
-		ny::Rectangle r({50 + 100.f * i, 50.f}, {80.f, 80.f});
-		dc.mask(r);
-		dc.fill(ny::Color(200, 150, 230));
-	}
-
-	ny::sendLog("Shell: Drawing ", outp.mappedSurfaces().size(), " mapped surfaces");
 	SurfaceRes* cursorSurface = nullptr;
+	ny::sendLog("Shell: Drawing ", outp.mappedSurfaces().size(), " mapped surfaces");
 	for(auto& surf : outp.mappedSurfaces())
 	{
 		if(surf->roleType() == surfaceRoleType::cursor)
 			cursorSurface = surf;
+
+		/*
+		ny::Rectangle surfaceRect(surf->extents());
+		surfaceRect.position(surfaceRect.position() - outp.extents().position);
+		dc.mask(surfaceRect);
+
+		ny::TextureBrush surfaceBrush;
+		surfaceBrush.extents = surfaceRect;
+		surfaceBrush.texture = surf->surfaceContext().content();
+
+		dc.fill(surfaceBrush);
+		*/
+
+		surf->sendFrameDone();
+	}
+
+	//windows are sorted by z order
+	for(auto& window : windows_)
+	{
+		auto* surf = window->surfaceRes();	
+		if(!surf) continue;
+
+		if(window == focus_)
+		{
+			ny::Rectangle surfaceRect(surf->extents());
+			surfaceRect.position(surfaceRect.position() + nytl::Vec2ui{20,20});
+			surfaceRect.size(surfaceRect.size() - nytl::Vec2ui{40,40});
+			dc.mask(surfaceRect);
+			dc.fill(ny::Color::green);
+		}
 
 		ny::Rectangle surfaceRect(surf->extents());
 		surfaceRect.position(surfaceRect.position() - outp.extents().position);
@@ -111,10 +190,7 @@ void MyShellModule::render(Output& outp, ny::DrawContext& dc)
 		surfaceBrush.texture = surf->surfaceContext().content();
 
 		dc.fill(surfaceBrush);
-
-		surf->sendFrameDone();
 	}
-
 	
 	if(cursorSurface)
 	{

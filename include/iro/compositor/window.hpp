@@ -52,6 +52,7 @@ protected:
 	std::string appID_;
 
 	Window* parent_ = nullptr; //needed here?
+	unsigned int zOrder_ = 0;
 
 	//active union member correspunds  
 	union
@@ -92,6 +93,9 @@ public:
 
 	void title(const std::string& title){ title_ = title; }
 	void appID(const std::string& id){ appID_ = id; }
+
+	void zOrder(unsigned int order) { zOrder_ = order; }
+	unsigned int zOrder() const { return zOrder_; }
 
 	virtual void setMaximized(Output& outp);
 	virtual void setFullscreen(Output& outp, unsigned int method);
